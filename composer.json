@@ -22,13 +22,20 @@
 	"squizlabs/php_codesniffer": "*",
         "phpcompatibility/php-compatibility": "*",
         "wp-coding-standards/wpcs": "*",
-      "phpcompatibility/phpcompatibility-wp": "^1.0"
+      "phpcompatibility/phpcompatibility-wp": "^1.0",
+      "wpreadme2markdown/wp2md": "^3.0"
     },
     "prefer-stable" : true,
     "scripts": {
         "lint": "phpcs",
 	"install-codestandards": [
 		"Dealerdirect\\Composer\\Plugin\\Installers\\PHPCodeSniffer\\Plugin::run"
+	],
+	"update-readme": [
+		"wp2md -i readme.txt | tail -n +12 > readme.md"
+	],
+	"post-update-cmd": [
+		"@update-readme"
 	]
     }
 }
