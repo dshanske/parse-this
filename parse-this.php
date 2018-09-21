@@ -38,5 +38,5 @@ if ( ! function_exists( 'parse_this_loader' ) ) {
 		// Parse This API
 		require_once plugin_dir_path( __FILE__ ) . 'includes/class-parse-this-api.php';
 	}
-	add_action( 'plugins_loaded', 'parse_this_loader' );
+	add_action( 'plugins_loaded', 'parse_this_loader', 11 );
 }
