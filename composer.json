@@ -32,7 +32,7 @@
 		"Dealerdirect\\Composer\\Plugin\\Installers\\PHPCodeSniffer\\Plugin::run"
 	],
 	"update-readme": [
-		"wp2md -i readme.txt | tail -n +12 > readme.md"
+		"wp2md -i readme.txt | tail -n +11 > readme.md"
 	],
 	"post-update-cmd": [
 		"@update-readme"
