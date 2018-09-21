@@ -520,9 +520,12 @@ class MF2_Post {
 		$photos  = $this->get( 'photo', false );
 		if ( is_array( $photos ) ) {
 			$newphotos = $this->sideload_images( $photos );
-			$diff      = array_diff( $photos, $newphotos );
-			if ( ! empty( $diff ) ) {
-				$this->set( 'photo' );
+			if ( is_array( $newphotos ) ) {
+				$diff = array_diff( $photos, $newphotos );
+				if ( ! empty( $diff ) ) {
+					$this->set( 'photo', $newphotos );
+				}
+				$photos = $newphotos;
 			}
 		}
 		$att_ids = array_merge( $att_ids, $this->get_attachments_from_urls( $photos ) );
