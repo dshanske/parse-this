@@ -56,7 +56,9 @@ class Parse_This {
 				$this->doc = $this->doc->loadHTML( $this->content );
 			} else {
 				$this->doc = new DOMDocument();
+				libxml_use_internal_errors( true );
 				$this->doc->loadHTML( mb_convert_encoding( $this->content, 'HTML-ENTITIES', mb_detect_encoding( $this->content ) ) );
+				libxml_use_internal_errors( false );
 			}
 		}
 	}
