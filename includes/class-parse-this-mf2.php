@@ -717,6 +717,8 @@ class Parse_This_MF2 {
 				return self::parse_hcard( $item, $input, $url );
 			} elseif ( in_array( 'h-entry', $item['type'], true ) || in_array( 'h-cite', $item['type'], true ) ) {
 				return self::parse_hentry( $item, $input );
+			} elseif ( in_array( 'h-event', $item['type'], true ) ) {
+				return self::parse_hevent( $item, $input );
 			}
 		}
 
@@ -865,6 +867,22 @@ class Parse_This_MF2 {
 				} else {
 					$data[ $p ] = $v;
 				}
+			}
+		}
+		return array_filter( $data );
+	}
+
+	public static function parse_hevent( $hevent, $mf ) {
+		$data       = array(
+			'type' => 'event',
+			'name' => null,
+			'url'  => null,
+		);
+		$properties = array( 'url', 'name', 'location', 'content', 'start', 'end', 'photo' );
+		foreach ( $properties as $p ) {
+			$v = self::get_plaintext( $hevent, $p );
+			if ( null !== $v ) {
+				$data[ $p ] = $v;
 			}
 		}
 		return array_filter( $data );
