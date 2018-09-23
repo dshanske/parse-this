@@ -208,6 +208,11 @@ class Parse_This_HTML {
 			return array();
 		}
 		$xpath = new DOMXPath( $doc );
+
+		$jsonld = array();
+		foreach( $xpath->query("//script[@type='application/ld+json']") as $script ) {
+			$jsonld = json_decode( $script->textContent );
+		}
 		$meta  = array();
 		// Look for OGP properties
 		foreach ( $xpath->query( '//meta[(@name or @property) and @content]' ) as $tag ) {
@@ -318,7 +323,7 @@ class Parse_This_HTML {
 		$audios = array_unique( $audios );
 		$videos = array_unique( $videos );
 		$images = array_unique( $images );
-		$return = compact( 'meta', 'images', 'embeds', 'audios', 'videos', 'links', 'content' );
+		$return = compact( 'jsonld', 'meta', 'images', 'embeds', 'audios', 'videos', 'links', 'content' );
 		$jf2    = self::raw_to_jf2( $return );
 		if ( WP_DEBUG ) {
 			$jf2['_raw'] = $return;
