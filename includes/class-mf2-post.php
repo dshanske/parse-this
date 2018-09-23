@@ -540,6 +540,9 @@ class MF2_Post {
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		require_once ABSPATH . 'wp-admin/includes/image.php';
 		foreach ( $photos as $key => $value ) {
+			if ( ! wp_http_validate_url( $value ) ) {
+				continue;
+			}
 			if ( ! attachment_url_to_postid( $value ) ) {
 				$id = media_sideload_image( $value, $this->uid, null, 'id' );
 				if ( $id ) {
