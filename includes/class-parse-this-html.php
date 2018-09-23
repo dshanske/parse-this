@@ -210,10 +210,10 @@ class Parse_This_HTML {
 		$xpath = new DOMXPath( $doc );
 
 		$jsonld = array();
-		foreach( $xpath->query("//script[@type='application/ld+json']") as $script ) {
-			$jsonld = json_decode( $script->textContent );
+		foreach ( $xpath->query( "//script[@type='application/ld+json']" ) as $script ) {
+			$jsonld = json_decode( $script->textContent ); // phpcs:ignore
 		}
-		$meta  = array();
+		$meta = array();
 		// Look for OGP properties
 		foreach ( $xpath->query( '//meta[(@name or @property) and @content]' ) as $tag ) {
 			$meta_name = self::limit_string( $tag->getAttribute( 'property' ) );
