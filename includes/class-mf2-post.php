@@ -456,12 +456,8 @@ class MF2_Post {
 	}
 
 	public function get_attached_media( $type, $post ) {
-		$posts  = get_attached_media( $type, $post );
-		$return = array();
-		foreach ( $posts as $post ) {
-			$return[] = $post->post_ID;
-		}
-		return array_filter( $return );
+		$posts = get_attached_media( $type, $post );
+		return wp_list_pluck( $posts, 'post_ID' );
 	}
 
 	public function get_audios() {
@@ -499,9 +495,8 @@ class MF2_Post {
 		}
 		$post_content = ifset( $this->content['html'] );
 		if ( $post_content ) {
-			preg_match( '/id=[\'"]wp-image-([\d]*)[\'"]/i', $post_content, $att_ids );
-			// If the content_allow flag is true then return the ids else return false so that there will not be double images
-			if ( is_array( $att_ids ) && ! empty( $att_ids ) ) {
+			$att_ids = self::get_img_ids_from_content( $post_content );
+			if ( $att_ids ) {
 				return $content_allow ? $att_ids : array();
 			}
 			// Search the post's content for the <img /> tag and get its URL.
@@ -514,7 +509,7 @@ class MF2_Post {
 		// If there is a featured image return only that. Otherwise return all images
 		$featured = get_post_thumbnail_id( $this->uid );
 		if ( $featured ) {
-			return $featured;
+			return array( $featured );
 		}
 		$att_ids = $this->get_attached_media( 'image', $this->uid );
 		$photos  = $this->get( 'photo', false );
@@ -551,6 +546,24 @@ class MF2_Post {
 			}
 		}
 		return $photos;
+	}
+
+	public function get_img_ids_from_content( $content ) {
+		$content = wp_unslash( $content );
+		$return  = array();
+		$doc     = new DOMDocument();
+		$doc->loadHTML( $content );
+		$images = $doc->getElementsByTagName( 'img' );
+		foreach ( $images as $image ) {
+			$classes = $image->getAttribute( 'class' );
+			$classes = explode( ' ', $classes );
+			foreach ( $classes as $class ) {
+				if ( 0 === strpos( $class, 'wp-image-' ) ) {
+					$return[] = (int) str_replace( 'wp-image-', '', $class );
+				}
+			}
+		}
+		return $return;
 	}
 
 	public function get_img_urls_from_content( $content ) {
