@@ -67,11 +67,11 @@ class Parse_This_API {
 			array(
 				array(
 					'methods'             => WP_REST_Server::READABLE,
-					'callback'            => array( $this, 'read' ),
+					'callback'            => array( 'Parse_This_API', 'read' ),
 					'args'                => array(
 						'url' => array(
 							'required'          => true,
-							'validate_callback' => array( $this, 'is_valid_url' ),
+							'validate_callback' => array( 'Parse_This_API', 'is_valid_url' ),
 							'sanitize_callback' => 'esc_url_raw',
 						),
 					),
