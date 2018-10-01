@@ -160,7 +160,11 @@ class MF2_Post {
 	 */
 	public function get_author() {
 		if ( ! $this->post_author ) {
-			return false;
+			return ifset( $this->meta['author'], false );
+		}
+		// Attachments may have been uploaded by a user but may have metadata for original author
+		if ( is_attachment( $this->uid ) && isset( $this->meta['author'] ) ) {
+			return $this - meta['author'];
 		}
 		return array(
 			'type'       => array( 'h-card' ),
