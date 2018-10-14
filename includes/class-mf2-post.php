@@ -30,7 +30,9 @@ class MF2_Post {
 		}
 		$_mf2_post = wp_cache_get( $this->uid, 'mf2_posts' );
 		if ( is_object( $_mf2_post ) ) {
-			return $_mf2_post;
+			if ( ! empty( $mf2_post->url ) ) {
+				return $_mf2_post;
+			}
 		}
 		$post = get_post( $post );
 		if ( ! $post ) {
@@ -349,6 +351,19 @@ class MF2_Post {
 		} else {
 			switch ( $key ) {
 				case 'url':
+				case 'uid':
+					break;
+				case 'post_author':
+					if ( is_numeric( $value ) ) {
+						wp_update_post(
+							array(
+								'ID'          => $this->uid,
+								'post_author' => $value,
+							)
+						);
+					}
+					break;
+				case 'author':
 					break;
 				case 'published':
 					$date      = new DateTime( $value );
