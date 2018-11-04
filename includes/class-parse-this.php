@@ -98,6 +98,15 @@ class Parse_This {
 					);
 				}
 			}
+			// Check to see if the current page is an h-feed
+			$this->parse();
+			if ( 'feed' === $this->jf2['type'] ) {
+				$links[] = array(
+					'url'  => $url,
+					'type' => 'feed',
+					'name' => $this->jf2['name'],
+				);
+			}
 
 			return array( 'results' => $links );
 		}
