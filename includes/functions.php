@@ -37,6 +37,9 @@ if ( ! function_exists( 'jf2_to_mf2' ) ) {
 if ( ! function_exists( 'mf2_to_jf2' ) ) {
 
 	function mf2_to_jf2( $entry ) {
+		if ( empty( $entry ) ) {
+			return $entry;
+		}
 		if ( wp_is_numeric_array( $entry ) || ! isset( $entry['properties'] ) ) {
 			return $entry;
 		}
