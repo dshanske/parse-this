@@ -63,6 +63,19 @@ class Parse_This {
 		}
 	}
 
+	private function get_feed_type( $type ) {
+		switch ( $type ) {
+			case 'application/json':
+				return 'jsonfeed';
+			case 'application/rss+xml':
+				return 'rss';
+			case 'application/atom+xml':
+				return 'atom';
+			default:
+				return 'feed';
+		}
+	}
+
 	/**
 	 * Fetches a list of feeds
 	 *
@@ -90,10 +103,11 @@ class Parse_This {
 				$rel   = $link->getAttribute( 'rel' );
 				$href  = $link->getAttribute( 'href' );
 				$title = $link->getAttribute( 'title' );
+				$type  = self::get_feed_type( $link->getAttribute( 'type' ) );
 				if ( in_array( $rel, array( 'alternate', 'feed' ), true ) ) {
 					$links[] = array(
 						'url'  => $href,
-						'type' => 'feed',
+						'type' => $type,
 						'name' => $title,
 					);
 				}
@@ -103,14 +117,14 @@ class Parse_This {
 			if ( 'feed' === $this->jf2['type'] ) {
 				$links[] = array(
 					'url'  => $url,
-					'type' => 'feed',
+					'type' => 'h-feed',
 					'name' => $this->jf2['name'],
 				);
 			}
 
 			return array( 'results' => $links );
 		}
-		return new WP_Error( 'unknown error' );
+		return new WP_Error( 'unknown error', null, $this->content );
 	}
 
 	/**
@@ -190,10 +204,11 @@ class Parse_This {
 		if ( 'application/json' === $content_type ) {
 			$content = json_decode( $content, true );
 			if ( $content && isset( $content['version'] ) && 'https://jsonfeed.org/version/1' === $content['version'] ) {
-				$this->content = new JSONFeed( $content, $url );
+				$content = Parse_This_JSONFeed::to_jf2( $content, $url );
+				$this->set( $content, $url, true );
 			}
 			// We do not yet know how to cope with this
-			return false;
+			return true;
 		}
 		$this->set( $content, $url, ( 'application/jf2+json' === $content_type ) );
 		return true;
