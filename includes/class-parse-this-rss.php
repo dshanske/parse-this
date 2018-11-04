@@ -64,7 +64,7 @@ class Parse_This_RSS {
 				'content'   => array_filter(
 					array(
 						'html' => htmlspecialchars( $item->get_content( true ) ),
-						'text' => wp_strip_tags( $item->get_content( true ) ),
+						'text' => wp_strip_all_tags( $item->get_content( true ) ),
 					)
 				),
 				'published' => $item->get_date( DATE_W3C ),

@@ -64,6 +64,47 @@ class Parse_This {
 	}
 
 	/**
+	 * Fetches a list of feeds
+	 *
+	 * @param string $url URL to scan
+	 */
+	public function fetch_feeds( $url = null ) {
+		if ( ! $url ) {
+			$url = $this->url;
+		}
+		if ( empty( $url ) ) {
+			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'indieweb-post-kinds' ) );
+		}
+		$this->fetch( $url );
+		// A feed was given
+		if ( $this->content instanceof SimplePie ) {
+			return array(
+				'results' => array( Parse_This_RSS::parse( $this->content, $url ) ),
+			);
+		}
+		if ( $this->doc instanceof DOMDocument ) {
+			$xpath = new DOMXPath( $this->doc );
+			// Fetch and gather <link> data.
+			$links = array();
+			foreach ( $xpath->query( '//link[@rel and @href]' ) as $link ) {
+				$rel   = $link->getAttribute( 'rel' );
+				$href  = $link->getAttribute( 'href' );
+				$title = $link->getAttribute( 'title' );
+				if ( in_array( $rel, array( 'alternate', 'feed' ), true ) ) {
+					$links[] = array(
+						'url'  => $href,
+						'type' => 'feed',
+						'name' => $title,
+					);
+				}
+			}
+
+			return array( 'results' => $links );
+		}
+		return new WP_Error( 'unknown error' );
+	}
+
+	/**
 	 * Downloads the source's via server-side call for the given URL.
 	 *
 	 * @param string $url URL to scan.
@@ -127,7 +168,7 @@ class Parse_This {
 
 			$content->enable_cache( false );
 			$content->strip_htmltags( false );
-			$this->set( $content, $url );
+			$this->set( $content, $url, true );
 			return true;
 		}
 
