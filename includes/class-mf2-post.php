@@ -30,7 +30,7 @@ class MF2_Post {
 		}
 		$_mf2_post = wp_cache_get( $this->uid, 'mf2_posts' );
 		if ( is_object( $_mf2_post ) ) {
-			if ( ! empty( $mf2_post->url ) ) {
+			if ( ! empty( $_mf2_post->url ) ) {
 				return $_mf2_post;
 			}
 		}
