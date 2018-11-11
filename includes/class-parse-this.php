@@ -168,14 +168,14 @@ class Parse_This {
 			$xpath = new DOMXPath( $this->doc );
 			// Fetch and gather <link> data.
 			$links = array();
-			foreach ( $xpath->query( '//link[@rel and @href]' ) as $link ) {
+			foreach ( $xpath->query( '(//link|//a)[@rel and @href]' ) as $link ) {
 				$rel   = $link->getAttribute( 'rel' );
 				$href  = $link->getAttribute( 'href' );
 				$title = $link->getAttribute( 'title' );
 				$type  = self::get_feed_type( $link->getAttribute( 'type' ) );
 				if ( in_array( $rel, array( 'alternate', 'feed' ), true ) ) {
 					$links[] = array(
-						'url'  => $href,
+						'url'  => WP_Http::make_absolute_url( $href, $url ),
 						'type' => $type,
 						'name' => $title,
 					);
