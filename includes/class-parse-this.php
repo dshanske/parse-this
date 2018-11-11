@@ -90,6 +90,7 @@ class Parse_This {
 				'SimplePie/Cache.php',
 				'SimplePie/File.php',
 				'SimplePie/Sanitize.php',
+				'SimplePie/Rating.php',
 				'SimplePie/Registry.php',
 				'SimplePie/IRI.php',
 				'SimplePie/Locator.php',
