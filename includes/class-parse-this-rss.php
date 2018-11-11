@@ -81,8 +81,15 @@ class Parse_This_RSS {
 			}
 			if ( ! $medium ) {
 				$medium = $enclosure->get_type();
-				if ( 'audio/mpeg' === $medium ) {
-					$medium = 'audio';
+				switch ( $medium ) {
+					case 'audio/mpeg':
+						$medium = 'audio';
+						break;
+					case 'image/jpeg':
+					case 'image/png':
+					case 'image/gif':
+						$medium = 'photo';
+						break;
 				}
 			}
 			if ( array_key_exists( $medium, $return ) ) {
