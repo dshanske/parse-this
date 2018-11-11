@@ -70,6 +70,7 @@ class Parse_This_RSS {
 				'published' => $item->get_date( DATE_W3C ),
 				'updated'   => $item->get_updated_date( DATE_W3C ),
 				'url'       => $item->get_permalink(),
+				'uid'       => $item->get_id(),
 				'location'  => self::get_location( $item ),
 				'category'  => self::get_categories( $item->get_categories() ),
 			)
