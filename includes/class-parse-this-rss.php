@@ -101,6 +101,12 @@ class Parse_This_RSS {
 				$return[ $medium ] = $enclosure->get_link();
 			}
 		}
+		// If there is just one photo it is probably the featured image
+		if ( isset( $return['photo'] ) && is_string( $return['photo'] ) ) {
+			$return['featured'] = $return['photo'];
+			unset( $return['photo'] );
+		}
+		$return['post_type'] = Parse_This_MF2::post_type_discovery( jf2_to_mf2( $return ) );
 		return array_filter( $return );
 	}
 

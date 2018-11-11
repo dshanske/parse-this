@@ -53,8 +53,8 @@ class Parse_This_JSONFeed {
 				)
 			);
 			if ( array_key_exists( 'attachments', $item ) ) {
-				foreach( $item['attachments'] as $attachment ) {
-					switch( $attachment['mime_type'] ) {
+				foreach ( $item['attachments'] as $attachment ) {
+					switch ( $attachment['mime_type'] ) {
 						case 'audio/mpeg':
 							$newitem['audio'] = $attachment['url'];
 							break;

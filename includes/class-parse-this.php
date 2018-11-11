@@ -286,6 +286,7 @@ class Parse_This {
 			return;
 		} elseif ( $this->content instanceof SimplePie ) {
 			$this->jf2 = Parse_This_RSS::parse( $this->content, $this->url );
+			return;
 		} elseif ( $this->doc instanceof DOMDocument ) {
 			$content = $this->doc;
 		} else {
