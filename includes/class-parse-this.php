@@ -186,10 +186,23 @@ class Parse_This {
 			if ( 'feed' === $this->jf2['type'] ) {
 				$links[] = array(
 					'url'  => $url,
-					'type' => 'h-feed',
+					'type' => 'microformats',
 					'name' => $this->jf2['name'],
 				);
 			}
+			// Sort feeds by priority
+			$rank = array(
+				'microformats' => 0,
+				'jsonfeed'     => 1,
+				'atom'         => 2,
+				'rss'          => 3,
+			);
+			usort(
+				$links,
+				function( $a, $b ) use ( $rank ) {
+					return $rank[ $a['type'] ] > $rank[ $b['type'] ];
+				}
+			);
 
 			return array( 'results' => $links );
 		}
