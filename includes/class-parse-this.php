@@ -71,6 +71,14 @@ class Parse_This {
 				return 'rss';
 			case 'application/atom+xml':
 				return 'atom';
+			case 'application/jf2feed+json':
+				return 'jf2feed';
+			case 'application/stream+json':
+				return 'activitystream';
+			case 'application/mf2+json':
+				return 'mf2-json';
+			case 'application/jf2+json':
+				return 'jf2-json';
 			default:
 				return 'feed';
 		}
@@ -192,10 +200,14 @@ class Parse_This {
 			}
 			// Sort feeds by priority
 			$rank = array(
-				'microformats' => 0,
-				'jsonfeed'     => 1,
-				'atom'         => 2,
-				'rss'          => 3,
+				'jf2feed'        => 0,
+				'jf2-json'       => 1,
+				'mf2-json'       => 2,
+				'microformats'   => 3,
+				'jsonfeed'       => 4,
+				'atom'           => 5,
+				'rss'            => 6,
+				'activitystream' => 6,
 			);
 			usort(
 				$links,
