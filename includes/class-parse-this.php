@@ -305,7 +305,12 @@ class Parse_This {
 		return true;
 	}
 
-	public function parse() {
+	public function parse( $args = array() ) {
+		$defaults = array(
+			'alternate' => false,
+			'feed'      => false,
+		);
+		$args     = wp_parse_args( $args, $defaults );
 		if ( $this->content instanceof WP_Post ) {
 			$this->jf2 = self::wp_post( $this->content );
 			return;
@@ -322,11 +327,12 @@ class Parse_This {
 		}
 		// Ensure not already preparsed
 		if ( empty( $this->jf2 ) ) {
-			$this->jf2 = Parse_This_MF2::parse( $content, $this->url, array( 'alternate' => false ) );
+			$this->jf2 = Parse_This_MF2::parse( $content, $this->url, $args );
 		}
 		// If No MF2
 		if ( empty( $this->jf2 ) ) {
-			$this->jf2 = Parse_This_HTML::parse( $content, $this->url );
+			$args['alternate'] = true;
+			$this->jf2         = Parse_This_HTML::parse( $content, $this->url, $args );
 			return;
 		}
 		// If the parsed jf2 is missing any sort of content then try to find it in the HTML
