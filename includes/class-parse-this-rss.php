@@ -40,13 +40,17 @@ class Parse_This_RSS {
 		if ( ! $author ) {
 			return array();
 		}
-		return array_filter(
+		$return = array_filter(
 			array(
 				'name'  => $author->get_name(),
 				'url'   => $author->get_link(),
 				'email' => $author->get_email(),
 			)
 		);
+		if ( 1 === count( $return ) ) {
+			$return = array_pop( $return );
+		}
+		return $return;
 	}
 
 	/*
