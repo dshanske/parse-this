@@ -729,12 +729,11 @@ class Parse_This_MF2 {
 					return $parsed;
 				}
 				if ( 'card' === $parsed['type'] ) {
-					$card = $parsed;
 					unset( $input['items'][ $key ] );
 					return array_filter(
 						array(
 							'type'   => 'feed',
-							'author' => $card,
+							'author' => $parsed,
 							'items'  => self::parse_children( $input['items'], $input ),
 							'name'   => ifset( $card['name'] ),
 							'url'    => $url,
@@ -771,9 +770,13 @@ class Parse_This_MF2 {
 
 	public static function parse_item( $item, $mf ) {
 		if ( in_array( 'h-feed', $item['type'], true ) ) {
-			return self::parse_hfeed( $item, $mf );
+			if ( 1 !== count( $item['children'] ) ) {
+				return self::parse_hfeed( $item, $mf );
+			} else {
+				return self::parse_item( $item['children'][0] );
+			}
 		} elseif ( in_array( 'h-card', $item['type'], true ) ) {
-			return self::parse_hcard( $item, $mf, $url );
+			return self::parse_hcard( $item, $mf );
 		} elseif ( in_array( 'h-entry', $item['type'], true ) || in_array( 'h-cite', $item['type'], true ) ) {
 			return self::parse_hentry( $item, $mf );
 		} elseif ( in_array( 'h-event', $item['type'], true ) ) {
