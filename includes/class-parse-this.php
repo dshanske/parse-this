@@ -273,6 +273,10 @@ class Parse_This {
 		}
 
 		// Strip any character set off the content type
+		$ct = explode( ';', $content_type );
+		if ( is_array( $ct ) ) {
+			$content_type = trim( array_shift( $ct ) );
+		}
 		$content_type = trim( array_shift( explode( ';', $content_type ) ) );
 		// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway
 		if ( ( in_array( $content_type, array( 'application/rss+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/xml' ), true ) ) ) {
