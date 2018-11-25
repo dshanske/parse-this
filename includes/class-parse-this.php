@@ -232,7 +232,7 @@ class Parse_This {
 		if ( ! $url ) {
 			$url = $this->url;
 		}
-		if ( empty( $url ) ) {
+		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
 			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'indieweb-post-kinds' ) );
 		}
 		if ( wp_parse_url( home_url(), PHP_URL_HOST ) === wp_parse_url( $url, PHP_URL_HOST ) ) {
