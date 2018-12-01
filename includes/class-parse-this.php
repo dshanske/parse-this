@@ -275,9 +275,9 @@ class Parse_This {
 		// Strip any character set off the content type
 		$ct = explode( ';', $content_type );
 		if ( is_array( $ct ) ) {
-			$content_type = trim( array_shift( $ct ) );
+			$content_type = array_shift( $ct );
 		}
-		$content_type = trim( array_shift( explode( ';', $content_type ) ) );
+		$content_type = trim( $content_type );
 		// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway
 		if ( ( in_array( $content_type, array( 'application/rss+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/xml' ), true ) ) ) {
 			// Get a SimplePie feed object from the specified feed source.
@@ -311,8 +311,9 @@ class Parse_This {
 
 	public function parse( $args = array() ) {
 		$defaults = array(
-			'alternate' => false,
-			'feed'      => false,
+			'alternate' => false, // check for rel-alternate jf2 or mf2 feed
+			'feed'      => false, // If true will return the full feed otherwise will only return top-level
+			'follow'    => false, // If set to true h-card and author properties with external urls will be retrieved parsed and merged into the return
 		);
 		$args     = wp_parse_args( $args, $defaults );
 		if ( $this->content instanceof WP_Post ) {
