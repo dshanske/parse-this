@@ -22,7 +22,7 @@ class Parse_This_JSONFeed {
 	public function to_jf2( $content, $url ) {
 		$return          = array_filter(
 			array(
-				'type'    => 'feed',
+				'type'    => 'jsonfeed',
 				'name'    => self::ifset( 'title', $content ),
 				'url'     => $url,
 				'summary' => self::ifset( 'description', $content ),
