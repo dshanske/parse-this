@@ -1,11 +1,11 @@
 <?php
 
 class Parse_This_JSONFeed {
-	private function ifset( $key, $array ) {
+	private static function ifset( $key, $array ) {
 		return isset( $array[ $key ] ) ? $array[ $key ] : null;
 	}
 
-	private function get_author( $array ) {
+	private static function get_author( $array ) {
 		if ( ! isset( $array['author'] ) ) {
 			return array();
 		}
@@ -19,7 +19,7 @@ class Parse_This_JSONFeed {
 		);
 	}
 
-	public function to_jf2( $content, $url ) {
+	public static function to_jf2( $content, $url ) {
 		$return          = array_filter(
 			array(
 				'type'    => 'jsonfeed',
