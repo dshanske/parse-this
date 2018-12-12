@@ -641,7 +641,7 @@ class Parse_This_MF2 {
 
 	public static function parse_item( $item, $mf, $args ) {
 		if ( self::is_type( $item, 'h-feed' ) ) {
-			if ( 1 !== count( $item['children'] ) ) {
+			if ( isset( $item['children'] ) && 1 !== count( $item['children'] ) ) {
 				return self::parse_hfeed( $item, $mf, $args );
 			} else {
 				return self::parse_item( $item['children'][0], $args );
