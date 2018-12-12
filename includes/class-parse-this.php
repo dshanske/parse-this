@@ -159,7 +159,10 @@ class Parse_This {
 		if ( empty( $url ) ) {
 			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'indieweb-post-kinds' ) );
 		}
-		$this->fetch( $url );
+		$fetch = $this->fetch( $url );
+		if ( is_wp_error( $fetch ) ) {
+			return $fetch;
+		}
 		// A feed was given
 		if ( $this->content instanceof SimplePie ) {
 			return array(
@@ -242,9 +245,9 @@ class Parse_This {
 		}
 
 		$args          = array(
-			'timeout'             => 10,
+			'timeout'             => 15,
 			'limit_response_size' => 1048576,
-			'redirection'         => 1,
+			'redirection'         => 5,
 			// Use an explicit user-agent for Parse This
 			'user-agent'          => 'Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:57.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36 Parse This/WP',
 		);
