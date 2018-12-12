@@ -166,7 +166,14 @@ class Parse_This {
 		// A feed was given
 		if ( $this->content instanceof SimplePie ) {
 			return array(
-				'results' => array( Parse_This_RSS::parse( $this->content, $url ) ),
+				'results' => array(
+					array(
+						'url'        => $url,
+						'type'       => 'feed',
+						'_feed_type' => Parse_This_RSS::get_type( $this->content ),
+						'name'       => $this->content->get_title(),
+					),
+				),
 			);
 		}
 		if ( $this->doc instanceof DOMDocument ) {
@@ -288,7 +295,7 @@ class Parse_This {
 
 		$response = wp_safe_remote_get( $url, $args );
 		$content  = wp_remote_retrieve_body( $response );
-		if ( in_array( $content_type, array( 'application/mf2+json', 'application/jf2+json' ), true ) ) {
+		if ( in_array( $content_type, array( 'application/mf2+json', 'application/jf2+json', 'application/jf2feed+json' ), true ) ) {
 			$content = json_decode( $content, true );
 			return true;
 		}
