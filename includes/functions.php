@@ -209,6 +209,9 @@ if ( ! function_exists( 'normalize_url' ) ) {
 
 if ( ! function_exists( 'post_type_discover' ) ) {
 	function post_type_discovery( $jf2 ) {
+		if ( ! is_array( $jf2 ) ) {
+			return '';
+		}
 		if ( ! array_key_exists( 'type', $jf2 ) ) {
 			return '';
 		}
@@ -236,7 +239,7 @@ if ( ! function_exists( 'post_type_discover' ) ) {
 				'audio'     => array( 'audio' ),
 			);
 			foreach ( $map as $key => $value ) {
-				$diff = array_intersect( $jf2, $value );
+				$diff = array_intersect( array_keys( $jf2 ), $value );
 				if ( ! empty( $diff ) ) {
 					return $key;
 				}
