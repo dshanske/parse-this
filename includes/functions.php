@@ -207,7 +207,7 @@ if ( ! function_exists( 'normalize_url' ) ) {
 	}
 }
 
-if ( ! function_exists( 'post_type_discover' ) ) {
+if ( ! function_exists( 'post_type_discovery' ) ) {
 	function post_type_discovery( $jf2 ) {
 		if ( ! is_array( $jf2 ) ) {
 			return '';
