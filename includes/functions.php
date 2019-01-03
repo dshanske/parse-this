@@ -212,6 +212,9 @@ if ( ! function_exists( 'post_type_discovery' ) ) {
 		if ( ! is_array( $jf2 ) ) {
 			return '';
 		}
+		if ( array_key_exists( 'properties', $jf2 ) ) {
+			$jf2 = mf2_to_jf2( $jf2 );
+		}
 		if ( ! array_key_exists( 'type', $jf2 ) ) {
 			return '';
 		}
