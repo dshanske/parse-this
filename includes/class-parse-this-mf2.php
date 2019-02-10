@@ -581,9 +581,22 @@ class Parse_This_MF2 {
 			return array();
 		}
 
+		// If there is more than one item in the page it might be a feed but often feeds are not wrapped in h-feed
+		// Look for a top-level h-card that does not match the page URL and try working on that (anonymous function courtesy of aaronpk)
+		if ( $count > 1 ) {
+			$tmpmf2         = array_filter(
+				$input['items'],
+				function( $item ) use ( $url ) {
+						return ! ( in_array( 'h-card', $item['type'], true ) && isset( $item['properties']['url'][0] ) && $item['properties']['url'][0] !== $url );
+				}
+			);
+			$input['items'] = array_values( $tmpmf2 );
+		}
+
 		if ( 1 === $count ) {
 			return self::parse_item( $input['items'][0], $input, $args );
 		}
+
 		$return = array();
 		$card   = null;
 		foreach ( $input['items'] as $key => $item ) {
@@ -615,7 +628,10 @@ class Parse_This_MF2 {
 			$return[] = $parsed;
 		}
 
-		return $return;
+		return array(
+			'type'  => 'feed',
+			'items' => $return,
+		);
 	}
 
 	public static function parse_hfeed( $entry, $mf, $args ) {
