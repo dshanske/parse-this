@@ -819,7 +819,7 @@ class Parse_This_MF2 {
 				$data[ $p ] = $v;
 			}
 		}
-		$data = array_merge( $data, self::parse_h( $entry, $mf ) );
+		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
 		return array_filter( $data );
 	}
 
@@ -839,7 +839,7 @@ class Parse_This_MF2 {
 				$data[ $p ] = $v;
 			}
 		}
-		$data = array_merge( $data, self::parse_h( $entry, $mf ) );
+		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
 		return array_filter( $data );
 	}
 
