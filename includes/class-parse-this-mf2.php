@@ -620,6 +620,12 @@ class Parse_This_MF2 {
 				break;
 			}
 		}
+		if ( 1 === count( $input['items'] ) ) {
+			if ( self::has_prop( $input['items'][0], 'author' ) ) {
+				$input['items'][0]['properties']['author'] = array( $hcard );
+			}
+			return $input;
+		}
 		return array(
 			'items' => array(
 				array(
