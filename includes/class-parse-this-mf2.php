@@ -660,17 +660,19 @@ class Parse_This_MF2 {
 		if ( isset( $data['author'] ) ) {
 			$authors[] = $data['author'];
 		}
-		foreach ( $data['items'] as $key => $item ) {
-			foreach ( $authors as $author ) {
-				if ( is_string( $author['url'] ) ) {
-					$author['url'] = array( $author['url'] );
+		if ( isset( $data['items'] ) ) {
+			foreach ( $data['items'] as $key => $item ) {
+				foreach ( $authors as $author ) {
+					if ( is_string( $author['url'] ) ) {
+						$author['url'] = array( $author['url'] );
+					}
+					if ( in_array( $item['author']['url'], $author['url'] ) ) {
+						$item['author'] = $author;
+						break;
+					}
 				}
-				if ( in_array( $item['author']['url'], $author['url'] ) ) {
-					$item['author'] = $author;
-					break;
-				}
+				$data['items'][ $key ] = $item;
 			}
-			$data['items'][ $key ] = $item;
 		}
 		return $data;
 	}
