@@ -183,13 +183,9 @@ class Parse_This_MF2 {
 						$data[ $p ] = self::parse_item( $v, $mf, $args );
 					} else {
 						if ( isset( $data[ $p ] ) ) {
-							if ( is_array( $data[ $p ] ) ) {
-								$data[ $p ][] = $v;
-							} elseif ( is_string( $data[ $p ] ) ) {
-								$data[ $p ] = array( $data[ $p ], $v );
-							}
+							$data[ $p ][] = $v;
 						} else {
-							$data[ $p ] = $v;
+							$data[ $p ] = array( $v );
 						}
 					}
 				}
@@ -666,7 +662,7 @@ class Parse_This_MF2 {
 					if ( is_string( $author['url'] ) ) {
 						$author['url'] = array( $author['url'] );
 					}
-					if ( in_array( $item['author']['url'], $author['url'] ) ) {
+					if ( in_array( $item['author']['url'], $author['url'], true ) ) {
 						$item['author'] = $author;
 						break;
 					}
@@ -718,12 +714,6 @@ class Parse_This_MF2 {
 		return array();
 	}
 
-	public static function parse_hcite( $entry, $mf, $args ) {
-		$data         = self::get_prop_array( $entry, array_keys( $entry['properties'] ) );
-		$data['type'] = 'cite';
-		return $data;
-	}
-
 	public static function compare( $string1, $string2 ) {
 		if ( empty( $string1 ) || empty( $string2 ) ) {
 			return false;
@@ -761,9 +751,6 @@ class Parse_This_MF2 {
 			} else {
 				$data['syndication'] = $mf['rels']['syndication'];
 			}
-			if ( 1 === count( $data['syndication'] ) ) {
-				$data['syndication'] = array_pop( $data['syndication'] );
-			}
 		}
 		return array_filter( $data );
 	}
@@ -795,13 +782,14 @@ class Parse_This_MF2 {
 			'checked-in-by',
 		);
 		$data         = self::get_prop_array( $entry, $properties );
-		$data['type'] = 'entry';
+		$data['type'] = self::is_type( $entry, 'h-entry' ) ? 'entry' : 'cite';
 		$properties   = array( 'url', 'weather', 'temperature', 'rsvp', 'featured', 'swarm-coins' );
 		foreach ( $properties as $property ) {
 			$data[ $property ] = self::get_plaintext( $entry, $property );
 		}
 		$data              = array_filter( $data );
 		$data              = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
+		$data              = self::references( $data );
 		$data['post-type'] = post_type_discovery( $data );
 		return array_filter( $data );
 	}
@@ -810,8 +798,40 @@ class Parse_This_MF2 {
 		if ( ! self::is_microformat( $hcard ) ) {
 			return;
 		}
+		$data       = array();
+		$properties = array(
+			'url',
+			'uid',
+			'name',
+			'note',
+			'photo',
+			'bday',
+			'callsign',
+			'latitude',
+			'longitude',
+			'street-address',
+			'extended-address',
+			'locality',
+			'region',
+			'country-name',
+			'label',
+			'post-office-box',
+			'given-name',
+			'honoric-prefix',
+			'additional-name',
+			'family-name',
+			'honorifix-suffix',
+			'email',
+			'postal-code',
+			'altitude',
+			'location',
+		);
+		foreach ( $properties as $property ) {
+			$data[ $property ] = self::get_plaintext( $hcard, $property );
+		}
+		$data = array_filter( $data );
+		$data = array_merge( self::get_prop_array( $hcard, array_keys( $hcard['properties'] ) ), $data );
 
-		$data         = self::get_prop_array( $hcard, array_keys( $hcard['properties'] ) );
 		$data['type'] = 'card';
 		if ( isset( $hcard['children'] ) ) {
 			// In the case of sites like tantek.com where multiple feeds are nested inside h-card if it is a feed request return only the first feed
@@ -834,7 +854,7 @@ class Parse_This_MF2 {
 			'url'  => null,
 		);
 		$data       = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
-		$properties = array( 'location', 'start', 'end', 'photo' );
+		$properties = array( 'location', 'start', 'end', 'photo', 'uid', 'url' );
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $entry, $p );
 			if ( null !== $v ) {
@@ -982,4 +1002,26 @@ class Parse_This_MF2 {
 		}
 		return array_filter( $data );
 	}
+
+	/* Turns nested properties into references per the jf2 spec
+	*/
+	public static function references( $data ) {
+		foreach ( $data as $key => $value ) {
+			if ( ! is_array( $value ) ) {
+				continue;
+			}
+			// Indicates nested type
+			if ( array_key_exists( 'type', $value ) && 'cite' === $value['type'] ) {
+				if ( ! isset( $data['references'] ) ) {
+					$data['references'] = array();
+				}
+				if ( isset( $value['url'] ) ) {
+					$data['references'][ $value['url'] ] = $value;
+					$data[ $key ]                        = array( $value['url'] );
+				}
+			}
+		}
+		return $data;
+	}
+
 }
