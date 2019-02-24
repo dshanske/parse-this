@@ -364,11 +364,11 @@ class Parse_This {
 
 	public function parse( $args = array() ) {
 		$defaults = array(
-			'alternate' => false, // check for rel-alternate jf2 or mf2 feed
-			'return'    => 'single', // Options are single, feed, or TBC mention
-			'follow'    => false, // If set to true h-card and author properties with external urls will be retrieved parsed and merged into the return
-			'limit'     => 150, // Limit the number of children returned.
-			'html'      => true, // If mf2 parsing does not work look for html parsing
+			'alternate'  => false, // check for rel-alternate jf2 or mf2 feed
+			'return'     => 'single', // Options are single, feed, or TBC mention
+			'follow'     => false, // If set to true h-card and author properties with external urls will be retrieved parsed and merged into the return
+			'limit'      => 150, // Limit the number of children returned.
+			'html'       => true, // If mf2 parsing does not work look for html parsing
 			'references' => true, // Store nested citations as references per the JF2 spec
 		);
 		$args     = wp_parse_args( $args, $defaults );
