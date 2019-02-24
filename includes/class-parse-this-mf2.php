@@ -789,7 +789,9 @@ class Parse_This_MF2 {
 		}
 		$data              = array_filter( $data );
 		$data              = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
-		$data              = self::references( $data );
+		if ( $args['references'] ) {
+			$data              = self::references( $data );
+		}	
 		$data['post-type'] = post_type_discovery( $data );
 		return array_filter( $data );
 	}
