@@ -53,7 +53,7 @@ class Parse_This_RSS {
 		}
 		$return = array_filter(
 			array(
-				'type' => 'card',
+				'type'  => 'card',
 				'name'  => $author->get_name(),
 				'url'   => $author->get_link(),
 				'email' => $author->get_email(),

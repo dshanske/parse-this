@@ -710,8 +710,10 @@ class Parse_This_MF2 {
 			return self::parse_hresume( $item, $mf, $args );
 		} elseif ( self::is_type( $item, 'h-item' ) ) {
 			return self::parse_hitem( $item, $mf, $args );
+		} elseif ( self::is_type( $item, 'h-leg' ) ) {
+			return self::parse_hleg( $item, $mf, $args );
 		}
-		return array();
+		return self::parse_hunknown( $item, $mf, $args );
 	}
 
 	public static function compare( $string1, $string2 ) {
@@ -721,6 +723,13 @@ class Parse_This_MF2 {
 		$string1 = trim( $string1 );
 		$string2 = trim( $string2 );
 		return ( 0 === strpos( $string1, $string2 ) );
+	}
+
+	public static function parse_hunknown( $unknown, $mf, $args ) {
+		// Parse unknown h property
+		$data         = self::parse_h( $unknown, $mf, $args );
+		$data['type'] = $unknown['type'][0];
+		return $data;
 	}
 
 	public static function parse_h( $entry, $mf, $args ) {
@@ -755,6 +764,28 @@ class Parse_This_MF2 {
 		return array_filter( $data );
 	}
 
+	public static function parse_hleg( $leg, $mf, $args ) {
+		// The aaronpk special
+		$data       = array();
+		$properties = array(
+			'url',
+			'name',
+			'origin',
+			'destination',
+			'operator',
+			'transit-type',
+			'number',
+		);
+		foreach ( $properties as $property ) {
+			$data[ $property ] = self::get_plaintext( $leg, $property );
+		}
+
+		$data['departure'] = self::get_datetime_property( 'departure', $leg, false, null );
+		$data['arrival']   = self::get_datetime_property( 'arrival', $leg, false, null );
+		$data              = array_filter( $data );
+		return $data;
+	}
+
 	public static function parse_hentry( $entry, $mf, $args ) {
 		// Array Values
 		$properties   = array(
@@ -780,18 +811,20 @@ class Parse_This_MF2 {
 			'tag-of',
 			'location',
 			'checked-in-by',
+			'pk-ate',
+			'pk-drank',
 		);
 		$data         = self::get_prop_array( $entry, $properties );
 		$data['type'] = self::is_type( $entry, 'h-entry' ) ? 'entry' : 'cite';
-		$properties   = array( 'url', 'weather', 'temperature', 'rsvp', 'featured', 'swarm-coins' );
+		$properties   = array( 'url', 'weather', 'temperature', 'rsvp', 'featured', 'swarm-coins', 'latitude', 'longitude' );
 		foreach ( $properties as $property ) {
 			$data[ $property ] = self::get_plaintext( $entry, $property );
 		}
-		$data              = array_filter( $data );
-		$data              = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
+		$data = array_filter( $data );
+		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
 		if ( $args['references'] ) {
-			$data              = self::references( $data );
-		}	
+			$data = self::references( $data );
+		}
 		$data['post-type'] = post_type_discovery( $data );
 		return array_filter( $data );
 	}
