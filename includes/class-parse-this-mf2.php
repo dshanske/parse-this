@@ -738,7 +738,7 @@ class Parse_This_MF2 {
 		$data['published'] = self::get_published( $entry );
 		$data['updated']   = self::get_updated( $entry );
 		$data['url']       = normalize_url( self::get_plaintext( $entry, 'url' ) );
-		$author            = jf2_to_mf2( self::find_author( $entry, $args['follow'] ) );
+		$author            = jf2_to_mf2( self::find_author( $entry, $mf, $args['follow'] ) );
 		$data['author']    = self::parse_hcard( $author, $mf, $args, $data['url'] );
 		$data['content']   = self::parse_html_value( $entry, 'content' );
 		$data['summary']   = self::get_summary( $entry, $data['content'] );
