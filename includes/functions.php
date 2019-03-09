@@ -242,6 +242,9 @@ if ( ! function_exists( 'post_type_discovery' ) ) {
 		if ( ! array_key_exists( 'type', $jf2 ) ) {
 			return '';
 		}
+		if ( 'event' === $jf2['type'] ) {
+			return 'event';
+		}
 		if ( 'entry' === $jf2['type'] ) {
 			$map = array(
 				'rsvp'      => array( 'rsvp' ),
