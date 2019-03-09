@@ -78,7 +78,7 @@ class Parse_This_HTML {
 		}
 
 		// Does not look like a URL.
-		if ( ! wp_http_validate_url( $url ) ) {
+		if ( ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
 			return '';
 		}
 
