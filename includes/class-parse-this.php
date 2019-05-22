@@ -154,6 +154,27 @@ class Parse_This {
 	}
 
 	/**
+	 * Returns a list of supported content types
+	 *
+	 * @param string $content_type
+	 * @return boolean if supported
+	 */
+	public function supported_content( $content_type ) {
+		$types = array(
+			'application/mf2+json',
+			'text/html',
+			'application/json',
+			'application/xml',
+			'text/xml',
+			'application/jf2+json',
+			'application/jf2feed+json',
+			'application/rss+xml',
+			'application/atom+xml',
+		);
+		return in_array( $content_type, $types, true );
+	}
+
+	/**
 	 * Fetches a list of feeds
 	 *
 	 * @param string $url URL to scan
@@ -206,7 +227,8 @@ class Parse_This {
 				}
 			}
 			// Check to see if the current page is an h-feed
-			$this->parse( array( 'feed' => true ) );
+			$this->parse( array( 'return' => 'feed' ) );
+
 			if ( isset( $this->jf2['type'] ) && 'feed' === $this->jf2['type'] ) {
 				$links[] = array_filter(
 					array(
@@ -286,9 +308,6 @@ class Parse_This {
 		$response      = wp_safe_remote_get( $url, $args );
 		$response_code = wp_remote_retrieve_response_code( $response );
 		$content_type  = wp_remote_retrieve_header( $response, 'content-type' );
-		if ( preg_match( '#(image|audio|video|model)/#is', $content_type ) ) {
-			return new WP_Error( 'content-type', 'Content Type is Media' );
-		}
 		if ( in_array( $response_code, array( 403, 415 ), true ) ) {
 			$args['user-agent'] = $user_agent;
 			$response           = wp_safe_remote_get( $url, $args );
@@ -298,13 +317,18 @@ class Parse_This {
 			}
 		}
 
-		$content = wp_remote_retrieve_body( $response );
 		// Strip any character set off the content type
 		$ct = explode( ';', $content_type );
 		if ( is_array( $ct ) ) {
 			$content_type = array_shift( $ct );
 		}
 		$content_type = trim( $content_type );
+		// List of content types we know how to handle
+		if ( ! self::supported_content( $content_type ) ) {
+			return new WP_Error( 'content-type', 'Content Type is Not Supported', array( 'content-type' => $content_type ) );
+		}
+
+		$content = wp_remote_retrieve_body( $response );
 		// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway
 		if ( ( in_array( $content_type, array( 'application/rss+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/xml' ), true ) ) ) {
 			// Get a SimplePie feed object from the specified feed source.
@@ -340,7 +364,7 @@ class Parse_This {
 	public function parse( $args = array() ) {
 		$defaults = array(
 			'alternate'  => false, // check for rel-alternate jf2 or mf2 feed
-			'return'     => 'single', // Options are single, feed, or TBC mention
+			'return'     => 'single', // Options are single, feed or TBC mention
 			'follow'     => false, // If set to true h-card and author properties with external urls will be retrieved parsed and merged into the return
 			'limit'      => 150, // Limit the number of children returned.
 			'html'       => true, // If mf2 parsing does not work look for html parsing
