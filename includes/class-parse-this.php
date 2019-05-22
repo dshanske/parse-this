@@ -250,28 +250,6 @@ class Parse_This {
 		return new WP_Error( 'unknown error', null, $this->content );
 	}
 
-	public function head( $url, $args ) {
-		$args          = array_filter( $args );
-		$response      = wp_safe_remote_head( $url, $args );
-		$response_code = wp_remote_retrieve_response_code( $response );
-		$content_type  = wp_remote_retrieve_header( $response, 'content-type' );
-		if ( is_wp_error( $response ) ) {
-			return $response;
-		}
-		switch ( $response_code ) {
-			case 200:
-				break;
-			default:
-				return new WP_Error( 'source_error', wp_remote_retrieve_response_message( $response ), array( 'status' => $response_code ) );
-		}
-
-		if ( preg_match( '#(image|audio|video|model)/#is', $content_type ) ) {
-			return new WP_Error( 'content-type', 'Content Type is Media' );
-		}
-		return $content_type;
-	}
-
-
 	/**
 	 * Downloads the source's via server-side call for the given URL.
 	 *
@@ -304,24 +282,23 @@ class Parse_This {
 			'redirection'         => 5,
 			// Use an explicit user-agent for Parse This
 		);
-		$content_type = self::head( $url, $args );
-		if ( is_wp_error( $content_type ) ) {
-			if ( 'source_error' === $content_type->get_error_code() ) {
-				$data = $content_type->get_error_data();
-				if ( in_array( $data['status'], array( 403, 415 ), true ) ) {
-					$args['user-agent'] = $user_agent;
-					$content_type       = self::head( $url, $args );
-					if ( is_wp_error( $content_type ) ) {
-						return $content_type;
-					}
-				} else {
-					return $content_type;
-				}
-			} else {
-				return $content_type;
+
+		$response      = wp_safe_remote_get( $url, $args );
+		$response_code = wp_remote_retrieve_response_code( $response );
+		$content_type  = wp_remote_retrieve_header( $response, 'content-type' );
+		if ( preg_match( '#(image|audio|video|model)/#is', $content_type ) ) {
+			return new WP_Error( 'content-type', 'Content Type is Media' );
+		}
+		if ( in_array( $response_code, array( 403, 415 ), true ) ) {
+			$args['user-agent'] = $user_agent;
+			$response           = wp_safe_remote_get( $url, $args );
+			$response_code      = wp_remote_retrieve_response_code( $response );
+			if ( in_array( $response_code, array( 403, 415 ), true ) ) {
+				return new WP_Error( 'source_error', 'Unable to Retrieve' );
 			}
 		}
 
+		$content = wp_remote_retrieve_body( $response );
 		// Strip any character set off the content type
 		$ct = explode( ';', $content_type );
 		if ( is_array( $ct ) ) {
@@ -340,8 +317,6 @@ class Parse_This {
 			return true;
 		}
 
-		$response = wp_safe_remote_get( $url, $args );
-		$content  = wp_remote_retrieve_body( $response );
 		if ( in_array( $content_type, array( 'application/mf2+json', 'application/jf2+json', 'application/jf2feed+json' ), true ) ) {
 			$content = json_decode( $content, true );
 			return true;
