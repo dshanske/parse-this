@@ -309,7 +309,12 @@ if ( ! function_exists( 'post_type_discovery' ) ) {
 
 function parse_this_clean_content( $content ) {
 	$allowed = array(
-		'a'          => array(),
+		'a'          => array(
+			'href'   => array(),
+			'rel'    => array(),
+			'name'   => array(),
+			'target' => array(),
+		),
 		'abbr'       => array(),
 		'b'          => array(),
 		'br'         => array(),
@@ -334,6 +339,11 @@ function parse_this_clean_content( $content ) {
 		'li'         => array(),
 		'ol'         => array(),
 		'span'       => array(),
+		'img'        => array(
+			'src'   => array(),
+			'alt'   => array(),
+			'title' => array(),
+		),
 	);
 	return trim( wp_kses( $content, $allowed ) );
 }
