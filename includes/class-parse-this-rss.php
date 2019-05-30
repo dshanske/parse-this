@@ -54,7 +54,7 @@ class Parse_This_RSS {
 		$return = array_filter(
 			array(
 				'type'  => 'card',
-				'name'  => $author->get_name(),
+				'name'  => wp_strip_all_tags( htmlspecialchars_decode( $author->get_name() ) ),
 				'url'   => $author->get_link(),
 				'email' => $author->get_email(),
 			)
@@ -77,7 +77,7 @@ class Parse_This_RSS {
 			'content'     => array_filter(
 				array(
 					'html' => parse_this_clean_content( $item->get_content( true ) ),
-					'text' => wp_strip_all_tags( $item->get_content( true ) ),
+					'text' => wp_strip_all_tags( htmlspecialchars_decode( $item->get_content( true ) ) ),
 				)
 			),
 			'published'   => $item->get_date( DATE_W3C ),
