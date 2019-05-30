@@ -311,9 +311,7 @@ function parse_this_clean_content( $content ) {
 	$allowed = array(
 		'a'          => array(
 			'href'   => array(),
-			'rel'    => array(),
 			'name'   => array(),
-			'target' => array(),
 		),
 		'abbr'       => array(),
 		'b'          => array(),
