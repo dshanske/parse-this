@@ -306,3 +306,36 @@ if ( ! function_exists( 'post_type_discovery' ) ) {
 		return '';
 	}
 }
+
+function parse_this_clean_content( $content ) {
+	$allowed = array(
+		'a'          => array(),
+		'abbr'       => array(),
+		'b'          => array(),
+		'br'         => array(),
+		'code'       => array(),
+		'del'        => array(),
+		'em'         => array(),
+		'i'          => array(),
+		'q'          => array(),
+		'strike'     => array(),
+		'strong'     => array(),
+		'time'       => array(),
+		'blockquote' => array(),
+		'pre'        => array(),
+		'p'          => array(),
+		'h1'         => array(),
+		'h2'         => array(),
+		'h3'         => array(),
+		'h4'         => array(),
+		'h5'         => array(),
+		'h6'         => array(),
+		'ul'         => array(),
+		'li'         => array(),
+		'ol'         => array(),
+		'span'       => array(),
+	);
+	return trim( wp_kses( $content, $allowed ) );
+}
+
+

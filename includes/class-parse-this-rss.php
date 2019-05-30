@@ -24,7 +24,7 @@ class Parse_This_RSS {
 				'_feed_type' => self::get_type( $feed ),
 				'summary'    => $feed->get_description(),
 				'author'     => self::get_author( $feed->get_author() ),
-				'name'       => $title,
+				'name'       => htmlspecialchars_decode( $title, ENT_QUOTES ),
 				'url'        => $feed->get_permalink(),
 				'photo'      => $feed->get_image_url(),
 				'items'      => $items,
@@ -70,13 +70,13 @@ class Parse_This_RSS {
 	public static function get_item( $item, $title = '' ) {
 		$return     = array(
 			'type'        => 'entry',
-			'name'        => htmlspecialchars_decode( $item->get_title(), ENT_QUOTES ),
+			'name'        => $item->get_title(),
 			'author'      => self::get_author( $item->get_author() ),
 			'publication' => $title,
-			'summary'     => $item->get_description( true ),
+			'summary'     => wp_strip_all_tags( $item->get_description( true ) ),
 			'content'     => array_filter(
 				array(
-					'html' => htmlspecialchars( $item->get_content( true ) ),
+					'html' => parse_this_clean_content( $item->get_content( true ) ),
 					'text' => wp_strip_all_tags( $item->get_content( true ) ),
 				)
 			),
