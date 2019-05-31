@@ -126,14 +126,17 @@ class Parse_This_RSS {
 			}
 			if ( ! $medium ) {
 				$medium = $enclosure->get_type();
+				$medium = explode( '/', $medium );
+				$medium = array_shift( $medium );
 				switch ( $medium ) {
-					case 'audio/mpeg':
+					case 'audio':
 						$medium = 'audio';
 						break;
-					case 'image/jpeg':
-					case 'image/png':
-					case 'image/gif':
+					case 'image':
 						$medium = 'photo';
+						break;
+					case 'video':
+						$medium = 'video';
 						break;
 				}
 			}
@@ -152,7 +155,7 @@ class Parse_This_RSS {
 			unset( $return['photo'] );
 		}
 		$return['post_type'] = post_type_discovery( $return );
-		return array_filter( $return );
+		return array_filter( array_map( 'array_unique', $return ) );
 	}
 
 	private static function get_categories( $categories ) {
