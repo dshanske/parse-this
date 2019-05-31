@@ -23,7 +23,7 @@ class Parse_This_RSS {
 				'type'       => 'feed',
 				'_feed_type' => self::get_type( $feed ),
 				'summary'    => $feed->get_description(),
-				'author'     => self::get_author( $feed->get_author() ),
+				'author'     => self::get_authors( $feed->get_author() ),
 				'name'       => htmlspecialchars_decode( $title, ENT_QUOTES ),
 				'url'        => $feed->get_permalink(),
 				'photo'      => $feed->get_image_url(),
@@ -47,18 +47,49 @@ class Parse_This_RSS {
 	 * @param SimplePie_Author $author
 	 * @return JF2 array
 	 */
-	public static function get_author( $author ) {
+	public static function get_authors( $author ) {
 		if ( ! $author ) {
 			return array();
 		}
-		$return = array_filter(
-			array(
+		if ( $author instanceof SimplePie_Author ) {
+			$author = array( $author );
+		}
+		$return = array();
+		foreach ( $author as $a ) {
+			$r   = array(
 				'type'  => 'card',
-				'name'  => wp_strip_all_tags( htmlspecialchars_decode( $author->get_name() ) ),
-				'url'   => $author->get_link(),
-				'email' => $author->get_email(),
-			)
-		);
+				'name'  => htmlspecialchars_decode( $a->get_name() ),
+				'url'   => $a->get_link(),
+				'email' => $a->get_email(),
+			);
+			$dom = new DOMDocument();
+			$dom->loadHTML( $r['name'] );
+			$links = $dom->getElementsByTagName( 'a' );
+			$names = array();
+			foreach ( $links as $link ) {
+					$names[ wp_strip_all_tags( $link->nodeValue ) ] = $link->getAttribute( 'href' );
+			}
+			if ( ! empty( $names ) ) {
+				if ( 1 === count( $names ) ) {
+					reset( $names );
+					$r['name'] = key( $names );
+				} else {
+					foreach ( $names as $name => $url ) {
+						$return[] = array(
+							'type' => 'card',
+							'name' => $name,
+							'url'  => $url,
+						);
+					}
+				}
+			} else {
+				$r['name'] = wp_strip_all_tags( $r['name'] );
+				$return[]  = array_filter( $r );
+			}
+		}
+		if ( 1 === count( $return ) ) {
+			$return = array_shift( $return );
+		}
 		return $return;
 	}
 
@@ -71,7 +102,7 @@ class Parse_This_RSS {
 		$return     = array(
 			'type'        => 'entry',
 			'name'        => $item->get_title(),
-			'author'      => self::get_author( $item->get_author() ),
+			'author'      => self::get_authors( $item->get_authors() ),
 			'publication' => $title,
 			'summary'     => wp_strip_all_tags( $item->get_description( true ) ),
 			'content'     => array_filter(
