@@ -117,28 +117,27 @@ class Parse_This_RSS {
 			'uid'         => $item->get_id(),
 			'location'    => self::get_location( $item ),
 			'category'    => self::get_categories( $item->get_categories() ),
+			'featured'    => $item->get_thumbnail(),
 		);
 		$enclosures = $item->get_enclosures();
 		foreach ( $enclosures as $enclosure ) {
-			$medium = $enclosure->get_medium();
-			if ( 'image' === $medium ) {
-				$medium = 'photo';
-			}
+			$medium = $enclosure->get_type();
 			if ( ! $medium ) {
-				$medium = $enclosure->get_type();
+				$medium = $enclosure->get_medium();
+			} else {
 				$medium = explode( '/', $medium );
 				$medium = array_shift( $medium );
-				switch ( $medium ) {
-					case 'audio':
-						$medium = 'audio';
-						break;
-					case 'image':
-						$medium = 'photo';
-						break;
-					case 'video':
-						$medium = 'video';
-						break;
-				}
+			}
+			switch ( $medium ) {
+				case 'audio':
+					$medium = 'audio';
+					break;
+				case 'image':
+					$medium = 'photo';
+					break;
+				case 'video':
+					$medium = 'video';
+					break;
 			}
 			if ( array_key_exists( $medium, $return ) ) {
 				if ( is_string( $return[ $medium ] ) ) {
@@ -150,12 +149,12 @@ class Parse_This_RSS {
 			}
 		}
 		// If there is just one photo it is probably the featured image
-		if ( isset( $return['photo'] ) && is_string( $return['photo'] ) ) {
+		if ( isset( $return['photo'] ) && is_string( $return['photo'] ) && empty( $return['featured'] ) ) {
 			$return['featured'] = $return['photo'];
 			unset( $return['photo'] );
 		}
 		$return['post_type'] = post_type_discovery( $return );
-		return array_filter( array_map( 'array_unique', $return ) );
+		return array_filter( $return );
 	}
 
 	private static function get_categories( $categories ) {
