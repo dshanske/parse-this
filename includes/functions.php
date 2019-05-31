@@ -310,8 +310,8 @@ if ( ! function_exists( 'post_type_discovery' ) ) {
 function parse_this_clean_content( $content ) {
 	$allowed = array(
 		'a'          => array(
-			'href'   => array(),
-			'name'   => array(),
+			'href' => array(),
+			'name' => array(),
 		),
 		'abbr'       => array(),
 		'b'          => array(),
@@ -346,4 +346,21 @@ function parse_this_clean_content( $content ) {
 	return trim( wp_kses( $content, $allowed ) );
 }
 
-
+if ( ! function_exists( 'seconds_to_iso8601' ) ) {
+	function seconds_to_iso8601( $second ) {
+		$h   = intval( $second / 3600 );
+		$m   = intval( ( $second - $h * 3600 ) / 60 );
+		$s   = $second - ( $h * 3600 + $m * 60 );
+		$ret = 'PT';
+		if ( $h ) {
+			$ret .= $h . 'H';
+		}
+		if ( $m ) {
+			$ret .= $m . 'M';
+		}
+		if ( ( ! $h && ! $m ) || $s ) {
+			$ret .= $s . 'S';
+		}
+		return $ret;
+	}
+}

@@ -59,12 +59,18 @@ class Parse_This_JSONFeed {
 					switch ( $type ) {
 						case 'audio':
 							$newitem['audio'] = $attachment['url'];
+							if ( isset( $attachment['duration_in_seconds'] ) ) {
+								$newitem['duration'] = seconds_to_iso8601( $attachment['duration_in_seconds'] );
+							}
 							break;
 						case 'image':
 							$newitem['photo'] = $attachment['url'];
 							break;
 						case 'video':
 							$newitem['video'] = $attachment['url'];
+							if ( isset( $attachment['duration_in_seconds'] ) ) {
+								$newitem['duration'] = seconds_to_iso8601( $attachment['duration_in_seconds'] );
+							}
 							break;
 					}
 				}

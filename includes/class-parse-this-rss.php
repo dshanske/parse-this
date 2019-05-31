@@ -99,7 +99,7 @@ class Parse_This_RSS {
 	 * @return JF2
 	 */
 	public static function get_item( $item, $title = '' ) {
-		$return     = array(
+		$return = array(
 			'type'        => 'entry',
 			'name'        => $item->get_title(),
 			'author'      => self::get_authors( $item->get_authors() ),
@@ -119,6 +119,11 @@ class Parse_This_RSS {
 			'category'    => self::get_categories( $item->get_categories() ),
 			'featured'    => $item->get_thumbnail(),
 		);
+
+		if ( ! is_array( $return['category'] ) ) {
+			$return['category'] = array();
+		}
+
 		$enclosures = $item->get_enclosures();
 		foreach ( $enclosures as $enclosure ) {
 			$medium = $enclosure->get_type();
@@ -147,13 +152,39 @@ class Parse_This_RSS {
 			} else {
 				$return[ $medium ] = $enclosure->get_link();
 			}
+			if ( isset( $return['category'] ) && is_array( $return['category'] ) ) {
+				$return['category'] = array_merge( $return['category'], $enclosure->get_keywords() );
+			} else {
+				$return['category'] = $enclosure->get_keywords();
+			}
+			if ( ! isset( $return['duration'] ) ) {
+				$return['duration'] = seconds_to_iso8601( $enclosure->get_duration() );
+			}
 		}
 		// If there is just one photo it is probably the featured image
 		if ( isset( $return['photo'] ) && is_string( $return['photo'] ) && empty( $return['featured'] ) ) {
 			$return['featured'] = $return['photo'];
 			unset( $return['photo'] );
 		}
+		if ( empty( $return['featured'] ) ) {
+			$i = $item->get_item_tags( SIMPLEPIE_NAMESPACE_ITUNES, 'image' );
+			if ( is_array( $i ) ) {
+				$i = array_shift( $i );
+				if ( isset( $i['attribs'] ) && is_array( $i['attribs'] ) ) {
+					$i = array_shift( $i['attribs'] );
+					if ( isset( $i['href'] ) ) {
+						$i = $i['href'];
+					}
+				}
+			}
+			if ( is_string( $i ) ) {
+				$return['featured'] = $i;
+			}
+		}
 		$return['post_type'] = post_type_discovery( $return );
+		foreach ( array( 'category', 'video', 'audio' ) as $prop ) {
+			$return[ $prop ] = array_unique( $return[ $prop ] );
+		}
 		return array_filter( $return );
 	}
 
