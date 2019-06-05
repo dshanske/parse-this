@@ -200,7 +200,7 @@ class Parse_This_RSS {
 	}
 
 	private static function get_location_name( $item ) {
-		$return = $item->get_item_tags( SIMPLEPIE_NAMESPACE_GEORSS, 'featureName' );
+		$return = $item->get_item_tags( SIMPLEPIE_NAMESPACE_W3C_BASIC_GEO, 'featureName' );
 		if ( $return ) {
 			return $return[0]['data'];
 		}
