@@ -103,6 +103,7 @@ class Parse_This_RSS {
 			'type'        => 'entry',
 			'name'        => $item->get_title(),
 			'author'      => self::get_authors( $item->get_authors() ),
+			'contributors' => self::get_authors( $item->get_contributors() ),
 			'publication' => $title,
 			'summary'     => wp_strip_all_tags( $item->get_description( true ) ),
 			'content'     => array_filter(
