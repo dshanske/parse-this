@@ -123,11 +123,22 @@ class Parse_This_RSS {
 		$return = $item->get_item_tags( SIMPLEPIE_NAMESPACE_RSS_20, 'source' );
 		if ( $return ) {
 			return array(
-				'url' => $return[0]['attribs']['']['url'],
-				'name' => $return[0]['data']
+				'url'  => $return[0]['attribs']['']['url'],
+				'name' => $return[0]['data'],
 			);
 		}
 		return self::source_to_cite( $item->get_source() );
+	}
+
+	public function get_thumbnail( $item ) {
+		$return = $item->get_thumbnail();
+		if ( is_string( $return ) ) {
+			return $return;
+		}
+		if ( is_array( $return ) && isset( $return['url'] ) ) {
+			return $return['url'];
+		}
+		return null;
 	}
 
 	/*
@@ -156,7 +167,7 @@ class Parse_This_RSS {
 			'uid'          => $item->get_id(),
 			'location'     => self::get_location( $item ),
 			'category'     => self::get_categories( $item->get_categories() ),
-			'featured'     => $item->get_thumbnail(),
+			'featured'     => self::get_thumbnail( $item ),
 		);
 
 		if ( ! is_array( $return['category'] ) ) {
