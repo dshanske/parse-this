@@ -108,6 +108,8 @@ class Parse_This {
 				'SimplePie/Item.php',
 				'SimplePie/Parse/Date.php',
 				'SimplePie/Author.php',
+				'SimplePie/Copyright.php',
+				'SimplePie/Source.php',
 				'SimplePie.php',
 			);
 			foreach ( $files as $file ) {
