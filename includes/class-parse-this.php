@@ -94,7 +94,6 @@ class Parse_This {
 				require_once $file;
 			} else {
 				require_once ABSPATH . WPINC . '/class-simplepie.php';
-					break;
 			}
 		}
 		require_once ABSPATH . WPINC . '/class-wp-feed-cache.php';

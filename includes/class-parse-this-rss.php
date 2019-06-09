@@ -67,7 +67,7 @@ class Parse_This_RSS {
 			$links = $dom->getElementsByTagName( 'a' );
 			$names = array();
 			foreach ( $links as $link ) {
-					$names[ wp_strip_all_tags( $link->nodeValue ) ] = $link->getAttribute( 'href' );
+					$names[ wp_strip_all_tags( $link->nodeValue ) ] = $link->getAttribute( 'href' ); // phpcs:ignore
 			}
 			if ( ! empty( $names ) ) {
 				if ( 1 === count( $names ) ) {
