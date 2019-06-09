@@ -208,7 +208,10 @@ class Parse_This_RSS {
 				$return['category'] = $enclosure->get_keywords();
 			}
 			if ( ! isset( $return['duration'] ) ) {
-				$return['duration'] = seconds_to_iso8601( $enclosure->get_duration() );
+				$duration = $enclosure->get_duration();
+				if ( 0 < $duration ) {
+					$return['duration'] = seconds_to_iso8601( $duration );
+				}
 			}
 			$credits = $enclosure->get_credits();
 			foreach ( $credits as $credit ) {
