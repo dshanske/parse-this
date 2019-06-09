@@ -487,6 +487,22 @@ class Parse_This_HTML {
 				$jf2['featured'] = esc_url_raw( $parsely['image_url'] );
 			}
 		}
+		if ( ! isset( $jf2['author'] ) && isset( $meta['citation_author'] ) ) {
+			if ( is_string( $meta['citation_author'] ) ) {
+				$jf2['author'] = $meta['citation_author'];
+			} else {
+				$jf2['author'] = array();
+				foreach ( $meta['citation_author'] as $a ) {
+					$jf2['author'][] = array(
+						'type' => 'card',
+						'name' => $a,
+					);
+				}
+			}
+		}
+		if ( ! isset( $jf2['published'] ) && isset( $meta['citation_date'] ) ) {
+			$jf2['published'] = normalize_iso8601( $meta['citation_date'] );
+		}
 
 		if ( ! isset( $jf2['author'] ) && isset( $meta['author'] ) ) {
 			$jf2['author'] = $meta['author'];
