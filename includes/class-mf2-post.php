@@ -8,6 +8,7 @@
 class MF2_Post implements ArrayAccess {
 	public $uid;
 	public $post_author;
+	public $post_type;
 	public $author;
 	public $publication;
 	public $published;
@@ -43,6 +44,7 @@ class MF2_Post implements ArrayAccess {
 			return false;
 		}
 		$this->post_author = $post->post_author;
+		$this->post_type   = $post->post_type;
 		$this->author      = self::get_author();
 		$this->post_parent = $post->post_parent;
 		$this->published   = get_the_date( DATE_W3C, $post );
@@ -56,12 +58,11 @@ class MF2_Post implements ArrayAccess {
 		}
 		$this->summary  = $post->post_excerpt;
 		$this->mf2      = $this->get_mf2meta();
-		if ( 'attachment' === get_post_type( $post ) ) {
-			$this->url = wp_get_attachment_url( $post );
+		if ( 'attachment' === $post->post_type ) {
+			$this->url = wp_get_attachment_url( $post->ID );
 		} else {
-			$this->url = get_permalink( $post );
+			$this->url      = get_permalink( $post->ID );
 		}
-		$this->url      = get_permalink( $post->ID );
 		$this->name     = $post->post_title;
 		$this->category = $this->get_categories( $post->ID );
 		if ( $this->uid === (int) $this->name ) {
