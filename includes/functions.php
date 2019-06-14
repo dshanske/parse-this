@@ -379,7 +379,10 @@ if ( ! function_exists( 'pt_load_domdocument' ) ) {
 		} else {
 			$doc = new DOMDocument();
 			libxml_use_internal_errors( true );
-			$doc->loadHTML( mb_convert_encoding( $content, 'HTML-ENTITIES', mb_detect_encoding( $content ) ) );
+			if ( function_exists( 'mb_convert_encoding' ) ) {
+				$content = mb_convert_encoding( $content, 'HTML-ENTITIES', mb_detect_encoding( $content ) );
+			}
+			$doc->loadHTML( $content );
 			libxml_use_internal_errors( false );
 		}
 		return $doc;
