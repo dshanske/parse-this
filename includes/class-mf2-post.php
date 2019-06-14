@@ -639,9 +639,8 @@ class MF2_Post implements ArrayAccess {
 	public function get_img_ids_from_content( $content ) {
 		$content = wp_unslash( $content );
 		$return  = array();
-		$doc     = new DOMDocument();
-		$doc->loadHTML( $content );
-		$images = $doc->getElementsByTagName( 'img' );
+		$doc     = pt_load_domdocument( $content );
+		$images  = $doc->getElementsByTagName( 'img' );
 		foreach ( $images as $image ) {
 			$classes = $image->getAttribute( 'class' );
 			$classes = explode( ' ', $classes );
