@@ -56,12 +56,12 @@ class MF2_Post implements ArrayAccess {
 				'value' => wp_strip_all_tags( $post->post_content ),
 			);
 		}
-		$this->summary  = $post->post_excerpt;
-		$this->mf2      = $this->get_mf2meta();
+		$this->summary = $post->post_excerpt;
+		$this->mf2     = $this->get_mf2meta();
 		if ( 'attachment' === $post->post_type ) {
 			$this->url = wp_get_attachment_url( $post->ID );
 		} else {
-			$this->url      = get_permalink( $post->ID );
+			$this->url = get_permalink( $post->ID );
 		}
 		$this->name     = $post->post_title;
 		$this->category = $this->get_categories( $post->ID );
