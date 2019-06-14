@@ -56,14 +56,13 @@ class Parse_This_RSS {
 		}
 		$return = array();
 		foreach ( $author as $a ) {
-			$r   = array(
+			$r     = array(
 				'type'  => 'card',
 				'name'  => htmlspecialchars_decode( $a->get_name() ),
 				'url'   => $a->get_link(),
 				'email' => $a->get_email(),
 			);
-			$dom = new DOMDocument();
-			$dom->loadHTML( $r['name'] );
+			$dom   = pt_load_domdocument( $r['name'] );
 			$links = $dom->getElementsByTagName( 'a' );
 			$names = array();
 			foreach ( $links as $link ) {
