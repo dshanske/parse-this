@@ -17,7 +17,7 @@
 if ( ! function_exists( 'parse_this_loader' ) ) {
 	function parse_this_loader() {
 		require_once plugin_dir_path( __FILE__ ) . 'includes/functions.php';
-		// Parse This API
+		// Parse This REST Endpoint
 		require_once plugin_dir_path( __FILE__ ) . 'includes/class-rest-parse-this.php';
 
 		// MF2 Post

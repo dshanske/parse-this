@@ -1,8 +1,7 @@
 <?php
 /**
- * Gathers Data for Link Previews
+ * Provides REST Endpoint to Retrieve the Parsed Data
  *
- * Parses Arbitrary URLs
  */
 
 class REST_Parse_This {
