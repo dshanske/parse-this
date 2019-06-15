@@ -43,9 +43,9 @@ class Parse_This_RSS {
 	}
 
 	public static function validate_email( $email ) {
-		 $regexp = '/([a-z0-9_\.\-])+(\@|\[at\])+(([a-z0-9\-])+\.)+([a-z0-9]{2,4})+/i';
-		 preg_match( $regexp, $email, $match );
-		 return is_array( $match ) ? $match[0] : '';
+		$regexp = '/([a-z0-9_\.\-])+(\@|\[at\])+(([a-z0-9\-])+\.)+([a-z0-9]{2,4})+/i';
+		preg_match( $regexp, $email, $match );
+		return is_array( $match ) ? $match[0] : '';
 	}
 
 	/*
@@ -119,6 +119,8 @@ class Parse_This_RSS {
 				'name'    => $source->get_title(),
 				'summary' => $source->get_description(),
 				'url'     => $source->get_permalink(),
+				'author'  => self::get_authors( $source->get_authors() ),
+				'photo'   => $sourece->get_image_url(),
 			)
 		);
 	}
