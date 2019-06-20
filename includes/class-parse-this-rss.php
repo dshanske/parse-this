@@ -165,7 +165,7 @@ class Parse_This_RSS {
 			'summary'      => wp_strip_all_tags( $item->get_description( true ) ),
 			'content'      => array_filter(
 				array(
-					'html' => parse_this_clean_content( $item->get_content( true ) ),
+					'html' => Parse_This::clean_content( $item->get_content( true ) ),
 					'text' => wp_strip_all_tags( htmlspecialchars_decode( $item->get_content( true ) ) ),
 				)
 			),
