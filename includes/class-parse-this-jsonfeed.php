@@ -41,7 +41,7 @@ class Parse_This_JSONFeed {
 					'name'        => self::ifset( 'title', $item ),
 					'content'     => array_filter(
 						array(
-							'html' => self::ifset( 'content_html', $item ),
+							'html' => Parse_This::clean_content( self::ifset( 'content_html', $item ) ),
 							'text' => self::ifset( 'content_text', $item ),
 						)
 					),

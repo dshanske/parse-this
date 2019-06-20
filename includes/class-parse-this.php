@@ -38,6 +38,9 @@ class Parse_This {
 
 
 	public static function clean_content( $content ) {
+		if ( ! is_string( $content ) ) {
+			return $content;
+		}
 		$allowed = array(
 			'a'          => array(
 				'href' => array(),
