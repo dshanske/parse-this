@@ -28,7 +28,7 @@ class Parse_This {
 
 	public function get( $key = 'jf2' ) {
 		if ( 'mf2' === $key ) {
-			return jf2_to_mf2( $key );
+			return jf2_to_mf2( $this->jf2 );
 		}
 		if ( ! in_array( $key, get_object_vars( $this ), true ) ) {
 			$key = 'jf2';
@@ -431,7 +431,7 @@ class Parse_This {
 
 	public static function wp_post( $post ) {
 		$mf2 = new MF2_Post( $post );
-		return $mf2->get( null, true );
+		return mf2_to_jf2( $mf2->get() );
 	}
 
 }
