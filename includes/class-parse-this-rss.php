@@ -252,7 +252,9 @@ class Parse_This_RSS {
 		}
 		$return['post_type'] = post_type_discovery( $return );
 		foreach ( array( 'category', 'video', 'audio' ) as $prop ) {
-			$return[ $prop ] = array_unique( $return[ $prop ] );
+			if ( array_key_exists( $prop, $return ) && is_array( $return[ $prop ] ) ) {
+				$return[ $prop ] = array_unique( $return[ $prop ] );
+			}
 		}
 		return array_filter( $return );
 	}
