@@ -126,7 +126,7 @@ class Parse_This_RSS {
 	}
 
 
-	public function get_source( $item ) {
+	public static function get_source( $item ) {
 		$return = $item->get_item_tags( SIMPLEPIE_NAMESPACE_RSS_20, 'source' );
 		if ( $return ) {
 			return array(
@@ -137,7 +137,7 @@ class Parse_This_RSS {
 		return self::source_to_cite( $item->get_source() );
 	}
 
-	public function get_thumbnail( $item ) {
+	public static function get_thumbnail( $item ) {
 		if ( method_exists( $item, 'get_thumbnail' ) ) {
 			$return = $item->get_thumbnail();
 			if ( is_string( $return ) ) {
