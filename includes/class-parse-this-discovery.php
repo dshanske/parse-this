@@ -167,7 +167,7 @@ class Parse_This_Discovery {
 								'url'        => $jf2['url'],
 								'type'       => 'feed',
 								'_feed_type' => 'microformats',
-								'name'       => $jf2['name'],
+								'name'       => isset( $jf2['name'] ) ? $jf2['name'] : null,
 								'author'     => $author,
 							)
 						);
