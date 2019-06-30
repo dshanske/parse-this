@@ -173,22 +173,6 @@ class Parse_This {
 	}
 
 	/**
-	 * Fetches a list of feeds
-	 *
-	 * @param string $url URL to scan
-	 */
-	public function fetch_feeds( $url = null ) {
-		if ( ! $url ) {
-			$url = $this->url;
-		}
-		if ( empty( $url ) ) {
-			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'indieweb-post-kinds' ) );
-		}
-		$fetch = new Parse_This_Discovery();
-		return $fetch->fetch( $url );
-	}
-
-	/**
 	 * Downloads the source's via server-side call for the given URL.
 	 *
 	 * @param string $url URL to scan.
