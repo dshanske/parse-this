@@ -519,6 +519,38 @@ class Parse_This_MF2 {
 		return array_values( array_filter( $mfs, $callable ) );
 	}
 
+	public static function find_hfeed( $input, $url ) {
+		if ( ! class_exists( 'Mf2\Parser' ) ) {
+			require_once plugin_dir_path( __DIR__ ) . 'lib/mf2/Parser.php';
+		}
+		if ( is_string( $input ) || is_a( $input, 'DOMDocument' ) ) {
+			$parser = new Mf2\Parser( $input, $url );
+			$input  = $parser->parse();
+		}
+		$feeds = self::find_microformats_by_type( $input, 'h-feed', $flatten = true );
+		if ( empty( $feeds ) && array_key_exists( 'items', $input ) ) {
+			if ( 1 < count( $input['items'] ) ) {
+				$feeds[] = array(
+					'type'       => 'h-feed',
+					'properties' => array(
+						'url' => array( $url ),
+					),
+				);
+			}
+		}
+		foreach ( $feeds as $key => $feed ) {
+			if ( ! array_key_exists( 'url', $feed['properties'] ) ) {
+				if ( array_key_exists( 'id', $feed ) ) {
+					$feeds[ $key ]['properties']['url'] = array( $url . '#' . $feed['id'] );
+				} else {
+					$feeds[ $key ]['properties']['url'] = array( $url );
+				}
+			}
+		}
+		return $feeds;
+	}
+
+
 	/*
 	 * Parse MF2 into JF2
 	 *
