@@ -9,26 +9,36 @@ class Parse_This_JSONFeed {
 		if ( ! isset( $array['author'] ) ) {
 			return array();
 		}
-		$array = $array['author'];
-		return array_filter(
-			array(
-				'name'  => self::ifset( 'name', $array ),
-				'url'   => self::ifset( 'url', $array ),
-				'photo' => self::ifset( 'avatar', $array ),
-			)
-		);
+		$author = $array['author'];
+		if ( ! wp_is_numeric_array( $author ) ) {
+			$author = array( $author );
+		}
+		foreach ( $author as $element ) {
+			$return[] = array_filter(
+				array(
+					'name'  => self::ifset( 'name', $element ),
+					'url'   => self::ifset( 'url', $element ),
+					'photo' => self::ifset( 'avatar', $element ),
+				)
+			);
+		}
+		$return = array_filter( $return );
+		if ( 1 === count( $return ) ) {
+			return $return[0];
+		}
+		return $return;
 	}
 
 	public static function to_jf2( $content, $url ) {
 		$return          = array_filter(
 			array(
-				'type'    => 'feed',
+				'type'       => 'feed',
 				'_feed_type' => 'jsonfeed',
-				'name'    => self::ifset( 'title', $content ),
-				'url'     => $url,
-				'summary' => self::ifset( 'description', $content ),
-				'photo'   => self::ifset( 'icon', $content ),
-				'author'  => self::get_author( $content ),
+				'name'       => self::ifset( 'title', $content ),
+				'url'        => $url,
+				'summary'    => self::ifset( 'description', $content ),
+				'photo'      => self::ifset( 'icon', $content ),
+				'author'     => self::get_author( $content ),
 			)
 		);
 		$return['items'] = array();
