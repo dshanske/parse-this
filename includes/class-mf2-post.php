@@ -680,6 +680,7 @@ class MF2_Post implements ArrayAccess {
 					if ( ! attachment_url_to_postid( $value ) ) {
 						$id = media_sideload_image( $value, $this->uid, null, 'id' );
 						if ( $id ) {
+							update_post_meta( $id, 'mf2_url', $value );
 							$photos[ $key ] = wp_get_attachment_url( $id );
 						}
 					}
@@ -692,6 +693,7 @@ class MF2_Post implements ArrayAccess {
 				if ( ! $id ) {
 					$id = media_sideload_image( $value['url'], $this->uid, null, 'id' );
 					if ( $id ) {
+						update_post_meta( $id, 'mf2_url', $value );
 						$value['url'] = wp_get_attachment_url( $id );
 					}
 				}
