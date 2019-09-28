@@ -668,6 +668,15 @@ class MF2_Post implements ArrayAccess {
 		return false;
 	}
 
+	private function media_sideload_image( $url, $post_id, $description = null ) {
+		$id = media_sideload_image( $url, $post_id, $description, 'id' );
+		if ( $id ) {
+			update_post_meta( $id, 'mf2_url', $url );
+		}
+		return $id;
+	}
+
+
 	private function sideload_images( $photos ) {
 		require_once ABSPATH . 'wp-admin/includes/media.php';
 		require_once ABSPATH . 'wp-admin/includes/file.php';
@@ -678,9 +687,8 @@ class MF2_Post implements ArrayAccess {
 					continue;
 				} else {
 					if ( ! attachment_url_to_postid( $value ) ) {
-						$id = media_sideload_image( $value, $this->uid, null, 'id' );
+						$id = self::media_sideload_image( $value, $this->uid );
 						if ( $id ) {
-							update_post_meta( $id, 'mf2_url', $value );
 							$photos[ $key ] = wp_get_attachment_url( $id );
 						}
 					}
@@ -691,9 +699,8 @@ class MF2_Post implements ArrayAccess {
 				$value = mf2_to_jf2( $value );
 				$id    = attachment_url_to_postid( $value['url'] );
 				if ( ! $id ) {
-					$id = media_sideload_image( $value['url'], $this->uid, null, 'id' );
+					$id = self::media_sideload_image( $value['url'], $this->uid );
 					if ( $id ) {
-						update_post_meta( $id, 'mf2_url', $value );
 						$value['url'] = wp_get_attachment_url( $id );
 					}
 				}
