@@ -783,10 +783,6 @@ class Parse_This_MF2 {
 		if ( self::compare( $data['name'], $data['content']['text'] ) ) {
 			unset( $data['name'] );
 		}
-		// If summary and content are equal remove summary
-		if ( self::compare( $data['summary'], $data['content']['text'] ) ) {
-			unset( $data['summary'] );
-		}
 
 		if ( isset( $mf['rels']['syndication'] ) ) {
 			if ( isset( $data['syndication'] ) ) {
