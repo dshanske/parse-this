@@ -50,6 +50,7 @@ class Parse_This {
 			'b'          => array(),
 			'br'         => array(),
 			'code'       => array(),
+			'ins'        => array(),
 			'del'        => array(),
 			'em'         => array(),
 			'i'          => array(),
@@ -75,6 +76,10 @@ class Parse_This {
 				'alt'   => array(),
 				'title' => array(),
 			),
+			'video'      => array(),
+			'audio'      => array(),
+			'track'      => array(),
+			'source'     => array(),
 		);
 		return trim( wp_kses( $content, $allowed ) );
 	}
