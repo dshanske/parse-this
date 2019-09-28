@@ -39,6 +39,7 @@ class Parse_This_JSONFeed {
 				'summary'    => self::ifset( 'description', $content ),
 				'photo'      => self::ifset( 'icon', $content ),
 				'author'     => self::get_author( $content ),
+				'language'   => self::ifset( 'language', $content ),
 			)
 		);
 		$return['items'] = array();
@@ -61,6 +62,7 @@ class Parse_This_JSONFeed {
 					'updated'     => normalize_iso8601( self::ifset( 'date_modified', $item ) ),
 					'author'      => self::get_author( $item ),
 					'category'    => self::ifset( 'tags', $item ),
+					'language'    => self::ifset( 'language', $item ),
 				)
 			);
 			if ( array_key_exists( 'attachments', $item ) ) {
