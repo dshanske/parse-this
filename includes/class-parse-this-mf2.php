@@ -758,6 +758,10 @@ class Parse_This_MF2 {
 			return self::parse_hitem( $item, $mf, $args );
 		} elseif ( self::is_type( $item, 'h-leg' ) ) {
 			return self::parse_hleg( $item, $mf, $args );
+		} elseif ( self::is_type( $item, 'h-adr' ) ) {
+			return self::parse_hadr( $item, $mf, $args );
+		} elseif ( self::is_type( $item, 'h-geo' ) ) {
+			return self::parse_hadr( $item, $mf, $args );
 		}
 		return self::parse_hunknown( $item, $mf, $args );
 	}
@@ -926,20 +930,13 @@ class Parse_This_MF2 {
 		return array_filter( $data );
 	}
 
-	public static function parse_hevent( $entry, $mf, $args ) {
+	public static function parse_hevent( $event, $mf, $args ) {
 		$data       = array(
 			'type' => 'event',
-			'name' => null,
-			'url'  => null,
 		);
-		$data       = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
-		$properties = array( 'location', 'start', 'end', 'photo', 'uid', 'url' );
-		foreach ( $properties as $p ) {
-			$v = self::get_plaintext( $entry, $p );
-			if ( null !== $v ) {
-				$data[ $p ] = $v;
-			}
-		}
+		$data       = array_merge( $data, self::parse_h( $event, $mf, $args ) );
+		$properties = array( 'category', 'attendee', 'organizer', 'location', 'start', 'end', 'photo', 'uid', 'url' );
+		$data       = array_merge( $data, self::get_prop_array( $event, $properties ) );
 		return array_filter( $data );
 	}
 
@@ -1062,21 +1059,22 @@ class Parse_This_MF2 {
 	public static function parse_hadr( $hadr, $mf, $args ) {
 		$data       = array(
 			'type' => 'adr',
-			'name' => null,
-			'url'  => null,
 		);
-		$properties = array( 'url', 'name', 'photo', 'location', 'latitude', 'longitude', 'note', 'uid', 'locality', 'region', 'country' );
+		$properties = array( 'label', 'latitude', 'longitude', 'altitude', 'street-address', 'extended-address', 'locality', 'region', 'country-name', 'geo' );
+		$props      = self::get_prop_array( $hadr, $properties );
+		$data       = array_merge( $data, $props );
+		return array_filter( $data );
+	}
+
+	public static function parse_hgeo( $hgeo, $mf, $args ) {
+		$data       = array(
+			'type' => 'geo',
+		);
+		$properties = array( 'latitude', 'longitude', 'altitude' );
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $hadr, $p );
 			if ( null !== $v ) {
-				// Make sure the URL property is actually a URL
-				if ( 'url' === $p || 'photo' === $p ) {
-					if ( wp_http_validate_url( $v ) ) {
-						$data[ $p ] = $v;
-					}
-				} else {
-					$data[ $p ] = $v;
-				}
+				$data[ $p ] = $v;
 			}
 		}
 		return array_filter( $data );
