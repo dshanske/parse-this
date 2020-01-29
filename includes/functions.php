@@ -77,21 +77,21 @@ if ( ! function_exists( 'jf2_references' ) ) {
 			}
 			// Indicates nested type
 			if ( array_key_exists( 'type', $value ) && 'cite' === $value['type'] ) {
-				if ( ! isset( $data['references'] ) ) {
-					$data['references'] = array();
+				if ( ! isset( $data['refs'] ) ) {
+					$data['refs'] = array();
 				}
 				if ( isset( $value['url'] ) ) {
-					$data['references'][ $value['url'] ] = $value;
-					$data[ $key ]                        = array( $value['url'] );
+					$data['refs'][ $value['url'] ] = $value;
+					$data[ $key ]                  = array( $value['url'] );
 				}
 			}
 			if ( 'category' === $key && array_key_exists( 'type', $value ) && 'card' === $value['type'] ) {
-				if ( ! isset( $data['references'] ) ) {
-					$data['references'] = array();
+				if ( ! isset( $data['refs'] ) ) {
+					$data['refs'] = array();
 				}
 				if ( isset( $value['url'] ) ) {
-					$data['references'][ $value['url'] ] = $value;
-					$data[ $key ]                        = array( $value['url'] );
+					$data['refs'][ $value['url'] ] = $value;
+					$data[ $key ]                  = array( $value['url'] );
 				}
 			}
 		}
