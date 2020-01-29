@@ -85,13 +85,17 @@ if ( ! function_exists( 'jf2_references' ) ) {
 					$data[ $key ]                  = array( $value['url'] );
 				}
 			}
-			if ( 'category' === $key && array_key_exists( 'type', $value ) && 'card' === $value['type'] ) {
-				if ( ! isset( $data['refs'] ) ) {
-					$data['refs'] = array();
-				}
-				if ( isset( $value['url'] ) ) {
-					$data['refs'][ $value['url'] ] = $value;
-					$data[ $key ]                  = array( $value['url'] );
+			if ( 'category' === $key ) {
+				foreach ( $value as $k => $v ) {
+					if ( array_key_exists( 'type', $v ) ) {
+						if ( ! isset( $data['refs'] ) ) {
+							$data['refs'] = array();
+						}
+						if ( isset( $v['url'] ) ) {
+							$data['refs'][ $v['url'] ] = $v;
+							$data['category'][ $k ]    = $v['url'];
+						}
+					}
 				}
 			}
 		}
