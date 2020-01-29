@@ -85,6 +85,15 @@ if ( ! function_exists( 'jf2_references' ) ) {
 					$data[ $key ]                        = array( $value['url'] );
 				}
 			}
+			if ( 'category' === $key && array_key_exists( 'type', $value ) && 'card' === $value['type'] ) {
+				if ( ! isset( $data['references'] ) ) {
+					$data['references'] = array();
+				}
+				if ( isset( $value['url'] ) ) {
+					$data['references'][ $value['url'] ] = $value;
+					$data[ $key ]                        = array( $value['url'] );
+				}
+			}
 		}
 		return $data;
 	}
