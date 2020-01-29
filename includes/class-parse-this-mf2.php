@@ -255,7 +255,11 @@ class Parse_This_MF2 {
 	 * @return mixed|null
 	 */
 	public static function get_published( array $mf, $ensurevalid = false, $fallback = null ) {
-		return self::get_datetime_property( 'published', $mf, $ensurevalid, $fallback );
+		$date = self::get_datetime_property( 'published', $mf, $ensurevalid, $fallback );
+		if ( $date instanceof DateTime ) {
+			return $date->format( DATE_W3C );
+		}
+		return null;
 	}
 
 	/**
@@ -267,7 +271,11 @@ class Parse_This_MF2 {
 	 * @return mixed|null
 	 */
 	public static function get_updated( array $mf, $ensurevalid = false, $fallback = null ) {
-		return self::get_datetime_property( 'updated', $mf, $ensurevalid, $fallback );
+		$date = self::get_datetime_property( 'updated', $mf, $ensurevalid, $fallback );
+		if ( $date instanceof DateTime ) {
+			return $date->format( DATE_W3C );
+		}
+		return null;
 	}
 
 	/**
@@ -277,24 +285,26 @@ class Parse_This_MF2 {
 	 * @param array                            $mf
 	 * @param bool                             $ensurevalid
 	 * @param null|string                      $fallback
-	 * @return mixed|null
+	 * @return DateTime|null
 	 */
 	public static function get_datetime_property( $name, array $mf, $ensurevalid = false, $fallback = null ) {
 		$compliment = 'published' === $name ? 'updated' : 'published';
 		if ( self::has_prop( $mf, $name ) ) {
-			$return = self::get_prop( $mf, $name ); } elseif ( self::has_prop( $mf, $compliment ) ) {
+			$return = self::get_prop( $mf, $name );
+		} elseif ( self::has_prop( $mf, $compliment ) ) {
 			$return = self::get_prop( $mf, $compliment );
-			} else {
-				return $fallback; }
-			if ( ! $ensurevalid ) {
-				return $return; } else {
-				try {
-					$date = new DateTime( $return );
-					return $date->format( DATE_W3C );
-				} catch ( Exception $e ) {
-					return $fallback;
-				}
-				}
+		} else {
+			return $fallback;
+		}
+		if ( ! $ensurevalid ) {
+			return $return;
+		} else {
+			try {
+				return new DateTime( $return );
+			} catch ( Exception $e ) {
+				return $fallback;
+			}
+		}
 	}
 
 	/**
@@ -813,8 +823,8 @@ class Parse_This_MF2 {
 			$data[ $property ] = self::get_plaintext( $leg, $property );
 		}
 
-		$data['departure'] = self::get_datetime_property( 'departure', $leg, true, null );
-		$data['arrival']   = self::get_datetime_property( 'arrival', $leg, true, null );
+		$data['departure'] = self::get_datetime_property( 'departure', $leg, true, null )->format( DATE_W3C );
+		$data['arrival']   = self::get_datetime_property( 'arrival', $leg, true, null )->format( DATE_W3C );
 		$data              = array_filter( $data );
 		return $data;
 	}
