@@ -180,13 +180,12 @@ class Parse_This_MF2 {
 			if ( array_key_exists( $p, $mf['properties'] ) ) {
 				foreach ( $mf['properties'][ $p ] as $v ) {
 					if ( self::is_microformat( $v ) ) {
-						$data[ $p ] = self::parse_item( $v, $mf, $args );
+						$v = self::parse_item( $v, $mf, $args );
+					}
+					if ( isset( $data[ $p ] ) ) {
+						$data[ $p ][] = $v;
 					} else {
-						if ( isset( $data[ $p ] ) ) {
-							$data[ $p ][] = $v;
-						} else {
-							$data[ $p ] = array( $v );
-						}
+						$data[ $p ] = array( $v );
 					}
 				}
 			}
