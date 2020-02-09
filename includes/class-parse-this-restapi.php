@@ -53,15 +53,10 @@ class Parse_This_RESTAPI {
 	}
 
 	public static function get_author( $id, $url ) {
-		$return = wp_cache_get( $id, base64_encode( $url ) );
-		if ( false !== $return ) {
-			return $return;
-		}
-		$json = self::fetch( $url, sprintf( 'wp/v2/users/?include=%s', $id ) );
+		$json = self::fetch( $url, sprintf( 'wp/v2/users/%s', $id ) );
 		if ( is_wp_error( $json ) ) {
 			return null;
 		}
-		$json        = array_pop( $json );
 		$avatar_urls = self::ifset( 'avatar_urls', $json );
 		$avatar_urls = is_array( $avatar_urls ) ? end( $avatar_urls ) : null;
 		$return      = array(
@@ -71,7 +66,6 @@ class Parse_This_RESTAPI {
 			'note'  => self::ifset( 'description', $json ),
 			'photo' => $avatar_urls,
 		);
-		wp_cache_set( $id, $return, base64_encode( $url ), 86400 );
 		return $return;
 	}
 
@@ -91,8 +85,12 @@ class Parse_This_RESTAPI {
 				'_feed_type' => 'wordpress',
 			)
 		);
+		$authors         = array();
 		$return['items'] = array();
 		foreach ( $content as $item ) {
+			if ( ! array_key_exists( $item['author'], $authors ) ) {
+				$authors[ $item['author'] ] = self::get_author( $item['author'], $url );
+			}
 			$newitem           = array_filter(
 				array(
 					'uid'       => self::get_rendered( 'guid', $item ),
@@ -107,7 +105,7 @@ class Parse_This_RESTAPI {
 					'summary'   => self::get_rendered( 'excerpt', $item ),
 					'published' => normalize_iso8601( self::ifset( 'date_gmt', $item ) ),
 					'updated'   => normalize_iso8601( self::ifset( 'modified_gmt', $item ) ),
-					'author'    => self::get_author( self::ifset( 'author', $item ), $url ),
+					'author'    => $authors[ $item['author'] ],
 					'featured'  => self::get_featured( self::ifset( 'featured', $item ), $url ),
 					'kind'      => self::ifset( 'kind', $item ),
 				)
