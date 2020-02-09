@@ -78,15 +78,50 @@ class Parse_This_RESTAPI {
 		return self::ifset( 'source_url', $json );
 	}
 
+	public static function get_datetime( $time, $timezone = null ) {
+		$datetime = new DateTime( $time );
+		if ( 'UTC' === $datetime->getTimeZone()->getName() ) {
+			$datetime = new DateTime( $time, $timezone );
+		}
+		return $datetime->format( DATE_W3C );
+	}
+
+	public static function feed_data( $url ) {
+		$fetch = self::fetch( $url, '' );
+		return wp_array_slice_assoc( $fetch, array( 'name', 'url', 'timezone_string', 'gmt_offset', 'description' ) );
+	}
+
+	public static function timezone( $fetch ) {
+		$timezone_string = self::ifset( 'timezone_string', $fetch );
+		if ( $timezone_string ) {
+				return new DateTimeZone( $timezone_string );
+		}
+
+		$offset  = (float) self::ifset( 'gmt_offset', $fetch );
+		$hours   = (int) $offset;
+		$minutes = ( $offset - $hours );
+
+		$sign      = ( $offset < 0 ) ? '-' : '+';
+		$abs_hour  = abs( $hours );
+		$abs_mins  = abs( $minutes * 60 );
+		$tz_offset = sprintf( '%s%02d:%02d', $sign, $abs_hour, $abs_mins );
+		return new DateTimeZone( $tz_offset );
+	}
+
 	public static function to_jf2( $content, $url ) {
-		$return          = array_filter(
+		$return            = array_filter(
 			array(
 				'type'       => 'feed',
 				'_feed_type' => 'wordpress',
 			)
 		);
-		$authors         = array();
-		$return['items'] = array();
+		$data              = self::feed_data( $url );
+		$timezone          = self::timezone( $data );
+		$authors           = array();
+		$return['items']   = array();
+		$return['name']    = self::ifset( 'name', $data );
+		$return['summary'] = self::ifset( 'description', $data );
+		$return['url']     = self::ifset( 'url', $data );
 		foreach ( $content as $item ) {
 			if ( ! array_key_exists( $item['author'], $authors ) ) {
 				$authors[ $item['author'] ] = self::get_author( $item['author'], $url );
@@ -103,8 +138,8 @@ class Parse_This_RESTAPI {
 						)
 					),
 					'summary'   => self::get_rendered( 'excerpt', $item ),
-					'published' => normalize_iso8601( self::ifset( 'date_gmt', $item ) ),
-					'updated'   => normalize_iso8601( self::ifset( 'modified_gmt', $item ) ),
+					'published' => self::get_datetime( self::ifset( 'date_gmt', $item ), $timezone ),
+					'updated'   => self::get_datetime( self::ifset( 'modified_gmt', $item ), $timezone ),
 					'author'    => $authors[ $item['author'] ],
 					'featured'  => self::get_featured( self::ifset( 'featured', $item ), $url ),
 					'kind'      => self::ifset( 'kind', $item ),
