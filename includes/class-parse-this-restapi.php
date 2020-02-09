@@ -138,8 +138,8 @@ class Parse_This_RESTAPI {
 						)
 					),
 					'summary'   => self::get_rendered( 'excerpt', $item ),
-					'published' => self::get_datetime( self::ifset( 'date_gmt', $item ), $timezone ),
-					'updated'   => self::get_datetime( self::ifset( 'modified_gmt', $item ), $timezone ),
+					'published' => self::get_datetime( self::ifset( 'date', $item ), $timezone ),
+					'updated'   => self::get_datetime( self::ifset( 'modified', $item ), $timezone ),
 					'author'    => $authors[ $item['author'] ],
 					'featured'  => self::get_featured( self::ifset( 'featured', $item ), $url ),
 					'kind'      => self::ifset( 'kind', $item ),
