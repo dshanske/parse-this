@@ -78,7 +78,7 @@ class Parse_This_Discovery {
 				foreach ( $linkheaderss as $link ) {
 					if ( preg_match( '/<(.[^>]+)>;\s+rel\s?=\s?[\"\']?(https:\/\/)?api.w.org?\/?[\"\']?/i', $link, $result ) ) {
 						$links[] = array(
-							'url'        => sprintf( '%s/wp/v2/posts?per_page=20', WP_Http::make_absolute_url( $result[1], $url ) ),
+							'url'        => sprintf( '%s/wp/v2/posts?per_page=20', untrailingslashit( WP_Http::make_absolute_url( $result[1], $url ) ) ),
 							'type'       => 'feed',
 							'_feed_type' => 'wordpress',
 							'name'       => 'WordPress REST API',
