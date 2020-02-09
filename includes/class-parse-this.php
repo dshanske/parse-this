@@ -259,6 +259,11 @@ class Parse_This {
 				$content = Parse_This_JSONFeed::to_jf2( $content, $url );
 				$this->set( $content, $url, true );
 			}
+			// This header indicates we are probing the WordPress REST API
+			if ( wp_remote_retrieve_header( $response, 'x-wp-total' ) ) {
+				$content = Parse_This_RESTAPI::to_jf2( $content, $url );
+				$this->set( $content, $url, true );
+			}
 			// We do not yet know how to cope with this
 			return true;
 		}
