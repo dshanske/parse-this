@@ -205,8 +205,9 @@ class Parse_This_Discovery {
 				'jf2feed'      => 0,
 				'microformats' => 1,
 				'jsonfeed'     => 2,
-				'atom'         => 3,
-				'rss'          => 4,
+				'wordpress'    => 3,
+				'atom'         => 4,
+				'rss'          => 5,
 			);
 			usort(
 				$links,
