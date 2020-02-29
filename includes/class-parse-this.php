@@ -243,7 +243,7 @@ class Parse_This {
 		}
 		if ( in_array( $content_type, array( 'application/feed+json', 'application/json' ), true ) ) {
 			$content = json_decode( $content, true );
-			if ( class_exists( 'Parse_This_JSONFeed' ) && $content && isset( $content['version'] ) && 'https://jsonfeed.org/version/1' === $content['version'] ) {
+			if ( class_exists( 'Parse_This_JSONFeed' ) && $content && isset( $content['version'] ) && false !== strpos( $content['version'], 'https://jsonfeed.org/version/' ) ) {
 				$content = Parse_This_JSONFeed::to_jf2( $content, $url );
 				$this->set( $content, $url, true );
 			}
