@@ -212,7 +212,9 @@ class Parse_This {
 				return new WP_Error( 'source_error', 'Unable to Retrieve' );
 			}
 		}
-
+		if ( is_array( $content_type ) ) {
+			$content_type = array_pop( $content_type );
+		}
 		// Strip any character set off the content type
 		$ct = explode( ';', $content_type );
 		if ( is_array( $ct ) ) {
