@@ -267,7 +267,8 @@ class Parse_This {
 			'return'     => 'single', // Options are single, feed or TBC mention
 			'follow'     => false, // If set to true h-card and author properties with external urls will be retrieved parsed and merged into the return
 			'limit'      => 150, // Limit the number of children returned.
-			'html'       => true, // If mf2 parsing does not work look for html parsing
+			'jsonld'     => true,  // Try JSON-LD parsing
+			'html'       => true, // If mf2 parsing does not work look for html parsing which includes OGP, meta tags, and title tags
 			'references' => true, // Store nested citations as references per the JF2 spec
 		);
 		$args     = wp_parse_args( $args, $defaults );
@@ -293,20 +294,19 @@ class Parse_This {
 		if ( ! isset( $this->jf2['url'] ) ) {
 			$this->jf2['url'] = $this->url;
 		}
-		// If the HTML argument is not true return at this point
-		if ( ! $args['html'] ) {
-			return;
-		}
-		// If No MF2
-		if ( empty( $this->jf2 ) ) {
-			$args['alternate'] = true;
-			$this->jf2         = Parse_This_HTML::parse( $content, $this->url, $args );
-			return;
-		}
-		// If the parsed jf2 is missing any sort of content then try to find it in the HTML
+
+		// If No MF2 or if the parsed jf2 is missing any sort of content then try to find it in the HTML
 		$more = array_intersect( array_keys( $this->jf2 ), array( 'summary', 'content', 'references' ) );
-		if ( empty( $more ) && $this->doc instanceof DOMDocument ) {
-			$this->jf2 = array_merge( $this->jf2, Parse_This_HTML::parse( $this->doc, $this->url ) );
+		if ( empty( $more ) ) {
+			$alt = null;
+			if ( $args['jsonld'] ) {
+				$alt = Parse_This_JSONLD::parse( $this->doc, $this->url, $args );
+			}
+			if ( empty( $alt ) && $args['html'] ) {
+				$args['alternate'] = true;
+				$alt               = Parse_This_HTML::parse( $content, $this->url, $args );
+			}
+			$this->jf2 = array_merge( $this->jf2, $alt );
 		}
 		if ( ! isset( $this->jf2['url'] ) ) {
 			$this->jf2['url'] = $this->url;

@@ -95,7 +95,7 @@ class Parse_This_Base {
 	 * @param string $src Image source URL.
 	 * @return string If not matched an excluded URL type, the original URL, empty string otherwise.
 	 */
-	private static function limit_img( $src, $source_url ) {
+	protected static function limit_img( $src, $source_url ) {
 		$src = self::limit_url( $src, $source_url );
 
 		if ( preg_match( '!/ad[sx]?/!i', $src ) ) {
