@@ -24,7 +24,7 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		if ( WP_DEBUG ) {
 			$jf2['_jsonld'] = $jsonld;
 		}
-		return $jf2;
+		return array_filter( $jf2 );
 	}
 
 	public static function jsonld_to_jf2( $jsonld ) {
