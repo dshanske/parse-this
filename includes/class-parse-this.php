@@ -296,7 +296,7 @@ class Parse_This {
 		}
 
 		// If No MF2 or if the parsed jf2 is missing any sort of content then try to find it in the HTML
-		$more = array_intersect( array_keys( $this->jf2 ), array( 'summary', 'content', 'references' ) );
+		$more = array_intersect( array_keys( $this->jf2 ), array( 'summary', 'content', 'refs' ) );
 		if ( empty( $more ) ) {
 			$alt = null;
 			if ( $args['jsonld'] ) {
