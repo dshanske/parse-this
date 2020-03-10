@@ -175,7 +175,7 @@ class Parse_This_HTML extends Parse_This_Base {
 				if ( is_string( $video ) ) {
 					$jf2['video'] = $video;
 				} elseif ( is_array( $video ) ) {
-					$jf2['video']    = ifset( $video['url'] );
+					$jf2['video']    = ifset( $video['url'], ifset( $video[0] ) );
 					$jf2['category'] = ifset( $video['tag'] );
 				}
 			}
