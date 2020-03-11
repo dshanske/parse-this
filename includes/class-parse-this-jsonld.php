@@ -56,24 +56,31 @@ class Parse_This_JSONLD extends Parse_This_Base {
 					case 'ImageObject':
 						$jf2['image'] = self::image_to_photo( $json );
 						break;
+					case 'VideoObject':
+						$jf2['video'] = self::video_to_video( $json );
+						break;
 					case 'Place':
 						$jf2['place'] = self::place_to_hcard( $json );
 						break;
 				}
 			}
 		}
-		if ( ! array_key_exists( 'entry', $jf2 ) ) {
-			return array_filter( $jf2 );
-		}
-		$entry = $jf2['entry'];
-		if ( ! array_key_exists( 'author', $entry ) && array_key_exists( 'person', $jf2 ) ) {
-			$entry['author'] = $jf2['person'];
+		$return = null;
+		if ( array_key_exists( 'entry', $jf2 ) ) {
+			$return = $jf2['entry'];
+		} elseif ( array_key_exists( 'video', $jf2 ) ) {
+			$return = $jf2['video'];
+		} else {
+			return $jf2;
 		}
 
-		if ( ! array_key_exists( 'publication', $entry ) && array_key_exists( 'publisher', $jf2 ) ) {
-			$entry['publication'] = $jf2['publisher'];
+		if ( ! array_key_exists( 'author', $return ) && array_key_exists( 'person', $jf2 ) ) {
+			$return['author'] = $jf2['person'];
 		}
-		return $entry;
+		if ( ! array_key_exists( 'publication', $return ) && array_key_exists( 'publisher', $jf2 ) ) {
+			$return['publication'] = $jf2['publisher'];
+		}
+		return array_filter( $return );
 	}
 
 	public static function image_to_photo( $image ) {
@@ -85,6 +92,28 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		}
 		if ( self::is_jsonld_type( $image, 'ImageObject' ) ) {
 			return $image['url'];
+		}
+		return false;
+	}
+
+	public static function video_to_video( $video ) {
+		if ( is_string( $video ) ) {
+			return $video;
+		}
+		if ( ! self::is_jsonld( $video ) ) {
+			return false;
+		}
+		if ( self::is_jsonld_type( $video, 'VideoObject' ) ) {
+			$return = array(
+				'name'     => ifset( $video['name'] ),
+				'summary'  => ifset( $video['description'] ),
+				'featured' => ifset( $video['thumbnailUrl'] ),
+				'video'    => ifset( $video['contentUrl'] ),
+			);
+			if ( isset( $video['publisher'] ) ) {
+				$return['publication'] = self::organization_to_hcard( $video['publisher'] );
+			}
+			return array_filter( $return );
 		}
 		return false;
 	}

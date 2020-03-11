@@ -302,7 +302,14 @@ class Parse_This {
 			if ( $args['jsonld'] ) {
 				$alt = Parse_This_JSONLD::parse( $this->doc, $this->url, $args );
 			}
-			if ( empty( $alt ) && $args['html'] ) {
+			if ( empty( $alt ) ) {
+				$empty = true;
+			} elseif ( is_countable( $alt ) && 1 === count( $alt ) && array_key_exists( '_jsonld', $alt ) ) {
+				$empty = true;
+			} else {
+				$empty = false;
+			}
+			if ( $empty && $args['html'] ) {
 				$args['alternate'] = true;
 				$alt               = Parse_This_HTML::parse( $content, $this->url, $args );
 			}
