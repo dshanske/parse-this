@@ -313,7 +313,8 @@ class Parse_This {
 				$args['alternate'] = true;
 				if ( in_array( wp_parse_url( $this->url, PHP_URL_HOST ), array( 'youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be' ), true ) ) {
 					$alt = Parse_This_YouTube::parse( $this->content, $this->url, $args );
-				} else {
+				}
+				if ( ! $alt ) {
 					$alt = Parse_This_HTML::parse( $content, $this->url, $args );
 				}
 			}

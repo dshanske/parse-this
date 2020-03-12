@@ -19,10 +19,13 @@ class Parse_This_HTML extends Parse_This_Base {
 		$content = '';
 		$meta    = array();
 		// Look for OGP properties
-		foreach ( $xpath->query( '//meta[(@name or @property) and @content]' ) as $tag ) {
+		foreach ( $xpath->query( '//meta[(@name or @property or @itemprop) and @content]' ) as $tag ) {
 			$meta_name = self::limit_string( $tag->getAttribute( 'property' ) );
 			if ( ! $meta_name ) {
 				$meta_name = self::limit_string( $tag->getAttribute( 'name' ) );
+			}
+			if ( ! $meta_name ) {
+				$meta_name = self::limit_string( $tag->getAttribute( 'itemprop' ) );
 			}
 			$meta_value = $tag->getAttribute( 'content' );
 
@@ -302,8 +305,13 @@ class Parse_This_HTML extends Parse_This_Base {
 				}
 			}
 		}
+		if ( ! isset( $jf2['duration'] ) && isset( $meta['duration'] ) ) {
+			$jf2['duration'] = $meta['duration'];
+		}
 		if ( ! isset( $jf2['published'] ) && isset( $meta['citation_date'] ) ) {
 			$jf2['published'] = normalize_iso8601( $meta['citation_date'] );
+		} elseif ( ! isset( $jf2['published'] ) && isset( $meta['datePublished'] ) ) {
+			$jf2['published'] = normalize_iso8601( $meta['datePublished'] );
 		}
 
 		if ( ! isset( $jf2['author'] ) && ! empty( $meta['author'] ) ) {

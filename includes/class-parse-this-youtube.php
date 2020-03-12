@@ -19,7 +19,14 @@ class Parse_This_YouTube extends Parse_This_Base {
 		if ( empty( $decode ) ) {
 			return array();
 		}
-		$decode      = json_decode( $decode['args']['player_response'], true );
+		if ( ! isset( $decode['args'] ) ) {
+			return array();
+		}
+		$args = $decode['args'];
+		if ( ! isset( $args['player_response'] ) ) {
+			return array();
+		}
+		$decode      = json_decode( $args['player_response'], true );
 		$details     = $decode['videoDetails'];
 		$microformat = $decode['microformat']['playerMicroformatRenderer'];
 		$jf2         = array(
