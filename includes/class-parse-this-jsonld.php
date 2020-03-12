@@ -65,6 +65,11 @@ class Parse_This_JSONLD extends Parse_This_Base {
 					case 'VideoObject':
 						$jf2['video'] = self::video_to_video( $json );
 						break;
+					case 'Movie':
+					case 'TVSeries':
+					case 'TVEpisode':
+						$jf2['media'] = self::media_to_hcite( $json );
+						break;
 					case 'Place':
 						$jf2['place'] = self::place_to_hcard( $json );
 						break;
@@ -89,6 +94,10 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			$return = $jf2['video'];
 		} elseif ( array_key_exists( 'audio', $jf2 ) ) {
 			$return = $jf2['audio'];
+		} elseif ( array_key_exists( 'media', $jf2 ) ) {
+			$return = $jf2['media'];
+		} elseif ( array_key_exists( 'person', $jf2 ) ) {
+			$return = $jf2['person'];
 		} else {
 			return $jf2;
 		}
@@ -102,6 +111,42 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		return array_filter( $return );
 	}
 
+
+
+	public static function media_to_hcite( $movie ) {
+		if ( ! self::is_jsonld( $movie ) ) {
+			return false;
+		}
+		if ( self::is_jsonld_type( $movie, 'Movie' ) || self::is_jsonld_type( $movie, 'TVSeries' ) || self::is_jsonld_type( $movie, 'TVEpisode' ) ) {
+			$return = array(
+				'type'      => 'cite',
+				'name'      => ifset( $movie['name'] ),
+				'url'       => ifset( $movie['url'] ),
+				'summary'   => ifset( $movie['description'] ),
+				'duration'  => ifset( $movie['duration'] ),
+				'category'  => ifset( $movie['genre'] ),
+				'published' => normalize_iso8601( ifset( $movie['datePublished'] ) ),
+				'featured'  => self::image_to_photo( ifset( $movie['image'] ) ),
+				'video'     => self::video_to_video( ifset( $movie['trailer'] ) ),
+			);
+			if ( empty( $return['duration'] ) && isset( $movie['timeRequired'] ) ) {
+				$return['duration'] = $movie['timeRequired'];
+			}
+			foreach ( array( 'actor', 'director', 'creator' ) as $type ) {
+				if ( isset( $movie[ $type ] ) ) {
+					if ( ! wp_is_numeric_array( $movie[ $type ] ) ) {
+						$movie[ $type ] = array( $movie[ $type ] );
+					}
+					$return[ $type ] = array();
+					foreach ( $movie[ $type ] as $person ) {
+						$return[ $type ][] = self::person_to_hcard( $person );
+					}
+				}
+			}
+			return array_filter( $return );
+		}
+		return false;
+	}
 
 	public static function event_to_hevent( $event ) {
 		if ( ! self::is_jsonld( $event ) ) {
