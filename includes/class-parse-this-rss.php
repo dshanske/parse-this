@@ -226,6 +226,12 @@ class Parse_This_RSS {
 					$return['duration'] = seconds_to_iso8601( $duration );
 				}
 			}
+			if ( empty( $return['summary'] ) ) {
+				$return['summary'] = $enclosure->get_description();
+			}
+			if ( empty( $return['featured'] ) ) {
+				$return['featured'] = self::get_thumbnail( $enclosure );
+			}
 			$credits = $enclosure->get_credits();
 			if ( ! $credits ) {
 				$credits = array();
