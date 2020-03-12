@@ -111,6 +111,15 @@ class Parse_This_Discovery {
 		$content_type = trim( $content_type );
 
 		$content = wp_remote_retrieve_body( $response );
+		// Find Youtube RSS Feeds
+		if ( in_array( wp_parse_url( $url, PHP_URL_HOST ), array( 'www.youtube.com', 'm.youtube.com', 'youtube.com' ), true ) ) {
+			$links[] = array(
+				'url'        => self::youtube_rss( $url ),
+				'type'       => 'feed',
+				'_feed_type' => 'atom',
+				'name'       => 'YouTube Feed',
+			);
+		}
 		// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway
 		if ( ( in_array( $content_type, array( 'application/rss+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/xml' ), true ) ) ) {
 			$content = Parse_This::fetch_feed( $url );
@@ -229,4 +238,21 @@ class Parse_This_Discovery {
 		}
 	}
 
+
+	private static function youtube_rss( $url ) {
+		$youtube_url_base = 'https://www.youtube.com/feeds/videos.xml';
+		$preg_entities    = array(
+			'channel_id'  => '\/channel\/(([^\/])+?)$', //match YouTube channel ID from url
+			'user'        => '\/user\/(([^\/])+?)$', //match YouTube user from url
+			'playlist_id' => '\/playlist\?list=(([^\/])+?)$',  //match YouTube playlist ID from url
+		);
+
+		foreach ( $preg_entities as $key => $preg_entity ) {
+			if ( preg_match( '/' . $preg_entity . '/', $url, $matches ) ) {
+				if ( isset( $matches[1] ) ) {
+						return $youtube_url_base . '?' . $key . '=' . $matches[1];
+				}
+			}
+		}
+	}
 }
