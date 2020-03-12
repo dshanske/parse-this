@@ -53,6 +53,9 @@ class Parse_This_JSONLD extends Parse_This_Base {
 					case 'WebSite':
 						$jf2['site'] = self::website_to_hcard( $json );
 						break;
+					case 'BusinessEvent':
+						$jf2['event'] = self::event_to_hevent( $json );
+						break;
 					case 'ImageObject':
 						$jf2['image'] = self::image_to_photo( $json );
 						break;
@@ -80,6 +83,8 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			if ( array_key_exists( 'person', $jf2 ) ) {
 				$return['author'] = $jf2['person'];
 			}
+		} elseif ( array_key_exists( 'event', $jf2 ) ) {
+			$return = $jf2['event'];
 		} elseif ( array_key_exists( 'video', $jf2 ) ) {
 			$return = $jf2['video'];
 		} elseif ( array_key_exists( 'audio', $jf2 ) ) {
@@ -96,6 +101,29 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		}
 		return array_filter( $return );
 	}
+
+
+	public static function event_to_hevent( $event ) {
+		if ( ! self::is_jsonld( $event ) ) {
+			return false;
+		}
+		if ( self::is_jsonld_type( $event, 'BusinessEvent' ) ) {
+			$return = array(
+				'type'      => 'event',
+				'name'      => ifset( $event['name'] ),
+				'url'       => ifset( $event['url'] ),
+				'summary'   => ifset( $event['description'] ),
+				'organizer' => self::organization_to_hcard( ifset( $event['organizer'] ) ),
+				'location'  => self::place_to_hcard( ifset( $event['location'] ) ),
+				'start'     => normalize_iso8601( ifset( $event['startDate'] ) ),
+				'end'       => normalize_iso8601( ifset( $event['endDate'] ) ),
+				'featured'  => self::image_to_photo( ifset( $event['image'] ) ),
+			);
+			return array_filter( $return );
+		}
+		return false;
+	}
+
 
 	public static function image_to_photo( $image ) {
 		if ( is_string( $image ) ) {
