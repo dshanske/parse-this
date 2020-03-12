@@ -56,6 +56,9 @@ class Parse_This_JSONLD extends Parse_This_Base {
 					case 'ImageObject':
 						$jf2['image'] = self::image_to_photo( $json );
 						break;
+					case 'AudioObject':
+						$jf2['audio'] = self::audio_to_audio( $json );
+						break;
 					case 'VideoObject':
 						$jf2['video'] = self::video_to_video( $json );
 						break;
@@ -68,8 +71,19 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		$return = null;
 		if ( array_key_exists( 'entry', $jf2 ) ) {
 			$return = $jf2['entry'];
+			if ( array_key_exists( 'video', $jf2 ) ) {
+				$return = array_merge( $return, $jf2['video'] );
+			}
+			if ( array_key_exists( 'audio', $jf2 ) ) {
+				$return = array_merge( $return, $jf2['audio'] );
+			}
+			if ( array_key_exists( 'person', $jf2 ) ) {
+				$return['author'] = $jf2['person'];
+			}
 		} elseif ( array_key_exists( 'video', $jf2 ) ) {
 			$return = $jf2['video'];
+		} elseif ( array_key_exists( 'audio', $jf2 ) ) {
+			$return = $jf2['audio'];
 		} else {
 			return $jf2;
 		}
@@ -96,6 +110,36 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		return false;
 	}
 
+	public static function audio_to_audio( $audio ) {
+		if ( is_string( $audio ) ) {
+			return $audio;
+		}
+		if ( ! self::is_jsonld( $audio ) ) {
+			return false;
+		}
+		if ( self::is_jsonld_type( $audio, 'AudioObject' ) ) {
+			$return = array(
+				'name'      => ifset( $audio['name'] ),
+				'summary'   => ifset( $audio['description'] ),
+				'featured'  => ifset( $audio['thumbnailUrl'] ),
+				'audio'     => ifset( $audio['contentUrl'] ),
+				'published' => normalize_iso8601( ifset( $audio['uploadDate'] ) ),
+				'duration'  => ifset( $audio['duration'] ),
+			);
+			if ( isset( $audio['transcript'] ) ) {
+				$return['content'] = array(
+					'html'  => Parse_This::clean_content( $audio['transcript'] ),
+					'value' => wp_strip_all_tags( $audio['transcript'] ),
+				);
+			}
+			if ( isset( $audio['publisher'] ) ) {
+				$return['publication'] = self::organization_to_hcard( $audio['publisher'] );
+			}
+			return array_filter( $return );
+		}
+		return false;
+	}
+
 	public static function video_to_video( $video ) {
 		if ( is_string( $video ) ) {
 			return $video;
@@ -105,11 +149,19 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		}
 		if ( self::is_jsonld_type( $video, 'VideoObject' ) ) {
 			$return = array(
-				'name'     => ifset( $video['name'] ),
-				'summary'  => ifset( $video['description'] ),
-				'featured' => ifset( $video['thumbnailUrl'] ),
-				'video'    => ifset( $video['contentUrl'] ),
+				'name'      => ifset( $video['name'] ),
+				'summary'   => ifset( $video['description'] ),
+				'featured'  => ifset( $video['thumbnailUrl'] ),
+				'video'     => ifset( $video['contentUrl'] ),
+				'published' => normalize_iso8601( ifset( $video['uploadDate'] ) ),
+				'duration'  => ifset( $video['duration'] ),
 			);
+			if ( isset( $vidio['transcript'] ) ) {
+				$return['content'] = array(
+					'html'  => Parse_This::clean_content( $vidio['transcript'] ),
+					'value' => wp_strip_all_tags( $vidio['transcript'] ),
+				);
+			}
 			if ( isset( $video['publisher'] ) ) {
 				$return['publication'] = self::organization_to_hcard( $video['publisher'] );
 			}
@@ -316,6 +368,13 @@ class Parse_This_JSONLD extends Parse_This_Base {
 
 		if ( isset( $jf2['author'] ) && wp_is_numeric_array( $jf2['author'] ) && 1 === count( $jf2['author'] ) ) {
 			$jf2['author'] = $jf2['author'][0];
+		}
+
+		if ( isset( $newsarticle['video'] ) ) {
+			$jf2['video'] = $newsarticle['video'][0]['@id'];
+		}
+		if ( isset( $newsarticle['audio'] ) ) {
+			$jf2['audio'] = $newsarticle['audio'][0]['@id'];
 		}
 
 		if ( isset( $newsarticle['publisher'] ) ) {
