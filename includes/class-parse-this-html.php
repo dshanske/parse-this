@@ -305,6 +305,11 @@ class Parse_This_HTML extends Parse_This_Base {
 				}
 			}
 		}
+		if ( ! isset( $jf2['latitude'] ) && isset( $meta['playfoursquare'] ) ) {
+			$jf2['latitude']  = ifset( $meta['playfoursquare']['location:latitude'] );
+			$jf2['longitude'] = ifset( $meta['playfoursquare']['location:longitude'] );
+		}
+
 		if ( ! isset( $jf2['duration'] ) && isset( $meta['duration'] ) ) {
 			$jf2['duration'] = $meta['duration'];
 		}
