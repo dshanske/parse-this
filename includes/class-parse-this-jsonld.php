@@ -18,7 +18,12 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		$jsonld  = array();
 		$content = '';
 		foreach ( $xpath->query( "//script[@type='application/ld+json']" ) as $script ) {
-			$jsonld[] = json_decode( $script->textContent, true ); // phpcs:ignore
+			$content  = $script->textContent; // phpcs:ignore
+			$jsonld[] = json_decode( $content, true );
+		}
+		$jsonld = array_filter( $jsonld );
+		if ( 1 === count( $jsonld ) && wp_is_numeric_array( $jsonld[0] ) ) {
+			$jsonld = $jsonld[0];
 		}
 		$jf2 = self::jsonld_to_jf2( $jsonld );
 		if ( WP_DEBUG ) {
@@ -32,9 +37,6 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			return array();
 		}
 		$jf2 = array();
-		if ( 1 === count( $jsonld ) && wp_is_numeric_array( $jsonld[0] ) ) {
-			$jsonld = $jsonld[0];
-		}
 		foreach ( $jsonld as $json ) {
 			if ( self::is_jsonld( $json ) ) {
 				switch ( $json['@type'] ) {
@@ -48,6 +50,7 @@ class Parse_This_JSONLD extends Parse_This_Base {
 						break;
 					case 'Organization':
 					case 'NGO':
+					case 'MusicGroup':
 						$jf2['org'] = self::organization_to_hcard( $json );
 						break;
 					case 'WebSite':
@@ -64,6 +67,9 @@ class Parse_This_JSONLD extends Parse_This_Base {
 						break;
 					case 'VideoObject':
 						$jf2['video'] = self::video_to_video( $json );
+						break;
+					case 'MusicRelease':
+						$jf2['music'] = self::music_to_hcite( $json );
 						break;
 					case 'Movie':
 					case 'TVSeries':
@@ -109,6 +115,56 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			$return['publication'] = $jf2['publisher'];
 		}
 		return array_filter( $return );
+	}
+
+	public static function music_to_hcite( $music ) {
+		if ( ! self::is_jsonld( $music ) ) {
+			return false;
+		}
+		if ( self::is_jsonld_type( $music, 'MusicRelease' ) ) {
+			$return = array(
+				'type'      => 'cite',
+				'name'      => ifset( $music['name'] ),
+				'url'       => ifset( $music['url'] ),
+				'summary'   => ifset( $music['description'] ),
+				'duration'  => ifset( $music['duration'] ),
+				'category'  => ifset( $music['genre'] ),
+				'published' => normalize_iso8601( ifset( $music['datePublished'] ) ),
+				'featured'  => self::image_to_photo( ifset( $music['image'] ) ),
+			);
+			if ( isset( $music['releaseOf'] ) ) {
+				if ( isset( $music['releaseOf']['byArtist'] ) ) {
+					$return['author'] = array();
+					foreach ( $music['releaseOf']['byArtist'] as $artist ) {
+						$return['author'][] = array(
+							array_filter(
+								array(
+									'type' => 'card',
+									'name' => ifset( $artist['name'] ),
+									'url'  => ifset( $artist['@id'] ),
+								)
+							),
+						);
+					}
+				}
+			}
+			if ( isset( $music['tracks'] ) ) {
+				$return['tracks'] = array();
+				foreach ( $music['tracks'] as $track ) {
+					$return['tracks'][] = self::music_to_hcite( $track );
+				}
+			}
+			return array_filter( $return );
+		}
+		if ( self::is_jsonld_type( $music, 'MusicRecording' ) ) {
+			$return = array(
+				'name'     => ifset( $music['name'] ),
+				'duration' => ifset( $music['duration'] ),
+			);
+			return array_filter( $return );
+		}
+
+		return false;
 	}
 
 
@@ -354,20 +410,31 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		if ( ! self::is_jsonld( $organization ) ) {
 			return false;
 		}
-		if ( ! self::is_jsonld_type( $organization, 'Organization' ) && ! self::is_jsonld_type( $organization, 'NGO' ) ) {
+		if ( ! self::is_jsonld_type( $organization, 'Organization' ) && ! self::is_jsonld_type( $organization, 'NGO' ) && ! self::is_jsonld_type( $organization, 'MusicGroup' ) ) {
 			return false;
 		}
 
 		$publication = array(
 			'type'     => 'card',
-			'_type'    => 'organization',
+			'_type'    => $organization['@type'],
 			'name'     => ifset( $organization['name'] ),
 			'photo'    => self::image_to_photo( ifset( $organization['logo'] ) ),
 			'url'      => ifset( $organization['url'] ),
 			'me'       => ifset( $organization['sameAs'] ),
 			'email'    => ifset( $organization['email'] ),
 			'location' => self::place_to_hcard( ifset( $organization['location'] ) ),
+			'summary'  => ifset( $organization['description'] ),
 		);
+		if ( empty( $publication['photo'] ) ) {
+			$publication['photo'] = self::image_to_photo( ifset( $organization['image'] ) );
+		}
+		if ( isset( $organization['member'] ) ) {
+			$publication['member'] = array();
+			foreach ( $organization['member'] as $member ) {
+				$publication['member'] = self::person_to_hcard( $member );
+			}
+			$publication['members'] = array_filter( $publication['members'] );
+		}
 		if ( isset( $organization['address'] ) ) {
 			$address = self::postaladdress_to_address( $organization['address'] );
 			if ( is_array( $address ) ) {
