@@ -5,7 +5,6 @@
  */
 class Parse_This_YouTube extends Parse_This_Base {
 	/**
-	 * Parses _meta, _images, and _links data from the content.
 	 *
 	 * @access public
 	 */

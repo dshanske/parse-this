@@ -14,6 +14,9 @@ class Parse_This_HTML extends Parse_This_Base {
 		if ( ! $doc ) {
 			return array();
 		}
+		if ( ! is_object( $doc ) ) {
+			return $doc;
+		}
 		$xpath = new DOMXPath( $doc );
 
 		$content = '';

@@ -193,6 +193,7 @@ class Parse_This {
 		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
 			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'indieweb-post-kinds' ) );
 		}
+
 		$user_agent = 'Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:57.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36 Parse This/WP';
 		$args       = array(
 			'timeout'             => 15,
@@ -287,6 +288,14 @@ class Parse_This {
 		if ( ! $content ) {
 			return new WP_Error( 'Missing Content' );
 		}
+
+		if ( ! is_array( $this->jf2 ) ) {
+			$this->jf2 = array(
+				'raw' => $this->jf2,
+				'url' => $this->url,
+			);
+			return;
+		}
 		// Ensure not already preparsed
 		if ( empty( $this->jf2 ) ) {
 			$this->jf2 = Parse_This_MF2::parse( $content, $this->url, $args );
@@ -294,7 +303,6 @@ class Parse_This {
 		if ( ! isset( $this->jf2['url'] ) ) {
 			$this->jf2['url'] = $this->url;
 		}
-
 		// If No MF2 or if the parsed jf2 is missing any sort of content then try to find it in the HTML
 		$more = array_intersect( array_keys( $this->jf2 ), array( 'summary', 'content', 'refs' ) );
 		if ( empty( $more ) ) {
@@ -313,6 +321,9 @@ class Parse_This {
 				$args['alternate'] = true;
 				if ( in_array( wp_parse_url( $this->url, PHP_URL_HOST ), array( 'youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be' ), true ) ) {
 					$alt = Parse_This_YouTube::parse( $this->content, $this->url, $args );
+				}
+				if ( in_array( wp_parse_url( $this->url, PHP_URL_HOST ), array( 'www.instagram.com', 'instagram.com' ), true ) ) {
+					$alt = Parse_This_Instagram::parse( $this->doc, $this->url, $args );
 				}
 				if ( ! $alt ) {
 					$alt = Parse_This_HTML::parse( $content, $this->url, $args );
