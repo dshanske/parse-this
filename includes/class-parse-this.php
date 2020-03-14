@@ -180,12 +180,36 @@ class Parse_This {
 		return in_array( $content_type, $types, true );
 	}
 
+	public static function redirect( $url, $allowlist = true ) {
+		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
+			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'indieweb-post-kinds' ) );
+		}
+		$domain     = wp_parse_url( $url, PHP_URL_HOST );
+		$shorteners = array( 'fb.me', 't.co', 'youtu.be', 'ow.ly', 'bit.ly', 'tinyurl.com' );
+		if ( ! $allowlist && ! in_array( $domain, $shorteners, true ) ) {
+			return false;
+		}
+		$user_agent    = 'Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:57.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36 Parse This/WP';
+		$args          = array(
+			'timeout'             => 15,
+			'limit_response_size' => 1048576,
+			'redirection'         => 0,
+		);
+		$response      = wp_safe_remote_get( $url, $args );
+		$response_code = wp_remote_retrieve_response_code( $response );
+		$redirect      = wp_remote_retrieve_header( $response, 'location' );
+		if ( ! $redirect ) {
+			return false;
+		}
+		return ( normalize_url( $redirect ) !== normalize_url( $url ) ) ? $redirect : false;
+	}
+
 	/**
-	 * Downloads the source's via server-side call for the given URL.
-	 *
-	 * @param string $url URL to scan.
-	 * @return WP_Error|boolean WP_Error if invalid and true if successful
-	 */
+	 * Downloads the source's via server - side call for the given URL .
+	*
+	* @param string $url URL to scan .
+	* @return WP_Error | boolean WP_Error if invalid and true if successful
+	*/
 	public function fetch( $url = null ) {
 		if ( ! $url ) {
 			$url = $this->url;
@@ -193,7 +217,6 @@ class Parse_This {
 		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
 			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'indieweb-post-kinds' ) );
 		}
-
 		$user_agent = 'Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:57.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36 Parse This/WP';
 		$args       = array(
 			'timeout'             => 15,
@@ -333,6 +356,17 @@ class Parse_This {
 		}
 		if ( ! isset( $this->jf2['url'] ) ) {
 			$this->jf2['url'] = $this->url;
+		}
+		// Expand Short URLs in summary
+		if ( isset( $this->jf2['summary'] ) ) {
+			$urls = wp_extract_urls( $this->jf2['summary'] );
+			foreach ( $urls as $url ) {
+				$redirect = self::redirect( $url );
+				if ( $redirect ) {
+					$this->jf2['_urls'][] = $redirect;
+					$this->jf2['summary'] = str_replace( $url, $redirect, $this->jf2['summary'] );
+				}
+			}
 		}
 
 	}
