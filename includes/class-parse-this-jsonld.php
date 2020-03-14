@@ -56,6 +56,7 @@ class Parse_This_JSONLD extends Parse_This_Base {
 					case 'WebSite':
 						$jf2['site'] = self::website_to_hcard( $json );
 						break;
+					case 'Event':
 					case 'BusinessEvent':
 						$jf2['event'] = self::event_to_hevent( $json );
 						break;
@@ -208,7 +209,7 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		if ( ! self::is_jsonld( $event ) ) {
 			return false;
 		}
-		if ( self::is_jsonld_type( $event, 'BusinessEvent' ) ) {
+		if ( self::is_jsonld_type( $event, 'Event' ) || self::is_jsonld_type( $event, 'BusinessEvent' ) ) {
 			$return = array(
 				'type'      => 'event',
 				'name'      => ifset( $event['name'] ),
