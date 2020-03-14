@@ -183,14 +183,23 @@ class Parse_This_RSS {
 			$return['category'] = array();
 		}
 
+		// To cover the non obvious types
+		$medium_map = array(
+			'application/x-shockwave-flash' => 'video',
+		);
+
 		$enclosures = $item->get_enclosures();
 		foreach ( $enclosures as $enclosure ) {
 			$medium = $enclosure->get_type();
 			if ( ! $medium ) {
 				$medium = $enclosure->get_medium();
 			} else {
-				$medium = explode( '/', $medium );
-				$medium = array_shift( $medium );
+				if ( array_key_exists( $medium, $medium_map ) ) {
+					$medium = $medium_map[ $medium ];
+				} else {
+					$medium = explode( '/', $medium );
+					$medium = array_shift( $medium );
+				}
 			}
 			switch ( $medium ) {
 				case 'audio':
