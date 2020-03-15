@@ -19,8 +19,7 @@ class Parse_This_HTML extends Parse_This_Base {
 		}
 		$xpath = new DOMXPath( $doc );
 
-		$content = '';
-		$meta    = array();
+		$meta = array();
 		// Look for OGP properties
 		foreach ( $xpath->query( '//meta[(@name or @property or @itemprop) and @content]' ) as $tag ) {
 			$meta_name = self::limit_string( $tag->getAttribute( 'property' ) );
@@ -46,40 +45,46 @@ class Parse_This_HTML extends Parse_This_Base {
 			$meta = self::set( $meta, $meta_name, $meta_value );
 		}
 
-		// Fetch and gather <img> data.
-		$images = array();
-		foreach ( $xpath->query( '//img[@src]' ) as $image ) {
-			$src = self::limit_img( $image->getAttribute( 'src' ), $url );
-			if ( ! empty( $src ) ) {
-				$images[] = $src;
+		$meta['title'] = trim( $xpath->query( '//title' )->item( 0 )->textContent );
+		$meta          = self::parse_meta( $meta );
+		if ( isset( $meta['og'] ) ) {
+			$meta['og'] = self::parse_meta( $meta['og'] );
+		}
+		$jf2 = self::meta_to_jf2( $meta );
+
+		if ( ! isset( $jf2['video'] ) ) {
+			// Fetch and gather <video> data.
+			$videos = array();
+			foreach ( $xpath->query( '//video' ) as $video ) {
+				$src = $video->getAttribute( 'src' );
+				if ( ! empty( $src ) ) {
+					$videos = $src;
+				}
 			}
+			$jf2['video'] = array_unique( $videos );
 		}
 
-		// Fetch and gather <video> data.
-		$videos = array();
-		foreach ( $xpath->query( '//video' ) as $video ) {
-			$src = $video->getAttribute( 'src' );
-			if ( ! empty( $src ) ) {
-				$videos = $src;
+		if ( ! isset( $jf2['audio'] ) ) {
+			// Fetch and gather <audio> data.
+			$audios = array();
+
+			foreach ( $xpath->query( '//audio' ) as $audio ) {
+				$src = $audio->getAttribute( 'src' );
+				if ( ! empty( $src ) ) {
+					$audios[] = $src;
+				}
 			}
+
+			foreach ( $xpath->query( '//figure' ) as $audio ) {
+				$src = $audio->getAttribute( 'data-audio-url' );
+				if ( ! empty( $src ) ) {
+					$audios[] = $src;
+				}
+			}
+			$jf2['audio'] = array_unique( $audios );
 		}
 
-		// Fetch and gather <audio> data.
-		$audios = array();
-
-		foreach ( $xpath->query( '//audio' ) as $audio ) {
-			$src = $audio->getAttribute( 'src' );
-			if ( ! empty( $src ) ) {
-				$audios[] = $src;
-			}
-		}
-		foreach ( $xpath->query( '//figure' ) as $audio ) {
-			$src = $audio->getAttribute( 'data-audio-url' );
-			if ( ! empty( $src ) ) {
-				$audios[] = $src;
-			}
-		}
-
+		/* For now do not search every link embed etc
 		// Fetch and gather <iframe> data.
 		$embeds = array();
 
@@ -90,6 +95,16 @@ class Parse_This_HTML extends Parse_This_Base {
 			}
 		}
 
+		// Fetch and gather <img> data.
+		$images = array();
+		foreach ( $xpath->query( '//img[@src]' ) as $image ) {
+			$src = self::limit_img( $image->getAttribute( 'src' ), $url );
+			if ( ! empty( $src ) ) {
+				$images[] = $src;
+			}
+		}
+		$images = array_unique( $images );
+
 		// Fetch and gather <link> data.
 		$links = array();
 
@@ -99,12 +114,6 @@ class Parse_This_HTML extends Parse_This_Base {
 			if ( ! empty( $url ) ) {
 				$links[ $rel ] = $url;
 			}
-		}
-
-		$meta['title'] = trim( $xpath->query( '//title' )->item( 0 )->textContent );
-		$meta          = self::parse_meta( $meta );
-		if ( isset( $meta['og'] ) ) {
-			$meta['og'] = self::parse_meta( $meta['og'] );
 		}
 
 		$video_extensions = array(
@@ -135,26 +144,19 @@ class Parse_This_HTML extends Parse_This_Base {
 			if ( in_array( $extension, $video_extensions, true ) ) {
 				$videos[] = $url;
 			}
-		}
-		$content = apply_filters( 'parse_this_content', $content, $xpath, $url );
+		} */
 
-		$audios = array_unique( $audios );
-		$videos = array_unique( $videos );
-		$images = array_unique( $images );
-		$return = array_filter( compact( 'meta', 'images', 'embeds', 'audios', 'videos', 'links', 'content' ) );
-		$jf2    = self::raw_to_jf2( $return );
 		if ( WP_DEBUG ) {
-			$jf2['_raw'] = $return;
+			$jf2['_meta'] = $meta;
 		}
 		return $jf2;
 	}
 
-	public static function raw_to_jf2( $raw ) {
+	public static function meta_to_jf2( $meta ) {
 		if ( empty( $raw ) ) {
 			return array();
 		}
-		$jf2  = array();
-		$meta = isset( $raw['meta'] ) ? $raw['meta'] : array();
+		$jf2 = array();
 		if ( isset( $meta['og'] ) ) {
 			if ( isset( $meta['og']['url'] ) ) {
 				$jf2['url'] = $meta['og']['url'];
@@ -325,13 +327,6 @@ class Parse_This_HTML extends Parse_This_Base {
 		if ( ! isset( $jf2['author'] ) && ! empty( $meta['author'] ) ) {
 			$jf2['author'] = $meta['author'];
 		}
-		if ( ! empty( $raw['audios'] ) && ! isset( $jf2['audio'] ) ) {
-			$jf2['audio'] = $raw['audios'];
-		}
-		if ( ! empty( $raw['videos'] ) && ! isset( $jf2['video'] ) ) {
-			$jf2['video'] = $raw['videos'];
-		}
-
 		//  If Site Name is not set use domain name less www
 		if ( ! isset( $jf2['publication'] ) && isset( $jf2['url'] ) ) {
 			$jf2['publication'] = preg_replace( '/^www\./', '', wp_parse_url( $jf2['url'], PHP_URL_HOST ) );

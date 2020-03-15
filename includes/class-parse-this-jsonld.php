@@ -235,6 +235,12 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			return false;
 		}
 		if ( self::is_jsonld_type( $image, 'ImageObject' ) ) {
+			/* if ( isset( $image['caption'] ) ) {
+				return array(
+					'value' => $image['url'],
+					'alt' => $image['caption']
+				);
+			} */
 			return $image['url'];
 		}
 		return false;
@@ -360,7 +366,7 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		if ( is_string( $person ) ) {
 			return array(
 				'type' => 'card',
-				'name' => $person
+				'name' => $person,
 			);
 		}
 		if ( ! self::is_jsonld( $person ) ) {
@@ -483,6 +489,9 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			$jf2['summary'] = $newsarticle['description'];
 		}
 		if ( isset( $newsarticle['image'] ) ) {
+			if ( wp_is_numeric_array( $newsarticle['image'] ) ) {
+				$newsarticle['image'] = end( $newsarticle['image'] );
+			}
 			$jf2['featured'] = self::image_to_photo( $newsarticle['image'] );
 		}
 		if ( isset( $newsarticle['keywords'] ) ) {
