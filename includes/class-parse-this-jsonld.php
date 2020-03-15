@@ -345,7 +345,7 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			'name'  => ifset( $place['name'] ),
 			'note'  => ifset( $place['description'] ),
 			'tel'   => ifset( $place['telephone'] ),
-			'photo' => self::image_to_photo( $place['image'] ),
+			'photo' => self::image_to_photo( ifset( $place['image'] ) ),
 			'me'    => ifset( $place['sameAs'] ),
 			'geo'   => self::geocoordinates_to_geo( $place['geo'] ),
 		);
@@ -357,6 +357,12 @@ class Parse_This_JSONLD extends Parse_This_Base {
 	}
 
 	public static function person_to_hcard( $person ) {
+		if ( is_string( $person ) ) {
+			return array(
+				'type' => 'card',
+				'name' => $person
+			);
+		}
 		if ( ! self::is_jsonld( $person ) ) {
 			return false;
 		}
