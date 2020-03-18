@@ -87,7 +87,7 @@ if ( ! function_exists( 'jf2_references' ) ) {
 			}
 			if ( 'category' === $key ) {
 				foreach ( $value as $k => $v ) {
-					if ( array_key_exists( 'type', $v ) ) {
+					if ( is_array( $v ) && array_key_exists( 'type', $v ) ) {
 						if ( ! isset( $data['refs'] ) ) {
 							$data['refs'] = array();
 						}
