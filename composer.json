@@ -18,15 +18,15 @@
     },
     "require-dev": {
 	"mf2/mf2": "dev-master",
-        "dealerdirect/phpcodesniffer-composer-installer": "^0.4.3",
+        "dealerdirect/phpcodesniffer-composer-installer": "*",
 	"squizlabs/php_codesniffer": "*",
         "phpcompatibility/php-compatibility": "*",
         "wp-coding-standards/wpcs": "*",
-      "phpcompatibility/phpcompatibility-wp": "^1.0",
-      "wpreadme2markdown/wp2md": "^3.0",
+      "phpcompatibility/phpcompatibility-wp": "*",
+      "wpreadme2markdown/wp2md": "*",
       "simplepie/simplepie": "*",
-      "masterminds/html5": "^2.6",
-      "symfony/polyfill-mbstring": "^1.12"
+      "masterminds/html5": "*",
+      "symfony/polyfill-mbstring": "*"
     },
     "prefer-stable" : true,
     "scripts": {
