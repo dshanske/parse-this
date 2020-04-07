@@ -69,28 +69,30 @@ class Parse_This_Discovery {
 		$response      = wp_safe_remote_get( $url, $args );
 		$response_code = wp_remote_retrieve_response_code( $response );
 		$content_type  = wp_remote_retrieve_header( $response, 'content-type' );
-
+		$wprest = false;
 		$linkheaders = wp_remote_retrieve_header( $response, 'link' );
 		if ( $linkheaders ) {
 			if ( is_array( $linkheaders ) ) {
 				foreach ( $linkheaders as $link ) {
 					if ( preg_match( '/<(.[^>]+)>;\s+rel\s?=\s?[\"\']?(https:\/\/)?api.w.org?\/?[\"\']?/i', $link, $result ) ) {
 						$links[] = array(
-							'url'        => sprintf( '%s/wp/v2/posts?per_page=20', untrailingslashit( WP_Http::make_absolute_url( $result[1], $url ) ) ),
+							'url'        => sprintf( '%s/wp/v2/posts', untrailingslashit( WP_Http::make_absolute_url( $result[1], $url ) ) ),
 							'type'       => 'feed',
 							'_feed_type' => 'wordpress',
 							'name'       => 'WordPress REST API',
 						);
 					}
+					$wprest = true;
 				}
 			} else {
 				if ( preg_match( '/<(.[^>]+)>;\s+rel\s?=\s?[\"\']?(https:\/\/)?api.w.org?\/?[\"\']?/i', $linkheaders, $result ) ) {
 						$links[] = array(
-							'url'        => sprintf( '%s/wp/v2/posts?per_page=20', untrailingslashit( WP_Http::make_absolute_url( $result[1], $url ) ) ),
+							'url'        => sprintf( '%s/wp/v2/posts', untrailingslashit( WP_Http::make_absolute_url( $result[1], $url ) ) ),
 							'type'       => 'feed',
 							'_feed_type' => 'wordpress',
 							'name'       => 'WordPress REST API',
 						);
+						$wprest = true;
 				}
 			}
 		}
@@ -168,15 +170,16 @@ class Parse_This_Discovery {
 							)
 						);
 					}
-					if ( 'https://api.w.org/' === $rel ) {
+					if ( 'https://api.w.org/' === $rel && ! $wprest ) {
 						$links[] = array_filter(
 							array(
-								'url'        => sprintf( '%s/wp/v2/posts?per_page=20', untrailingslashit( WP_Http::make_absolute_url( $href, $url ) ) ),
+								'url'        => sprintf( '%s/wp/v2/posts', untrailingslashit( WP_Http::make_absolute_url( $href, $url ) ) ),
 								'type'       => 'feed',
 								'_feed_type' => 'wordpress',
 								'name'       => 'WordPress REST API',
 							)
 						);
+						$wprest = true;
 					}
 				}
 				// Check to see if the current page is an h-feed
