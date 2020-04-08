@@ -761,6 +761,8 @@ class Parse_This_MF2 {
 			return self::parse_hadr( $item, $mf, $args );
 		} elseif ( self::is_type( $item, 'h-geo' ) ) {
 			return self::parse_hadr( $item, $mf, $args );
+		} elseif ( self::is_type( $item, 'h-measure' ) ) {
+			return self::parse_hmeasure( $item, $mf, $args );
 		}
 		return self::parse_hunknown( $item, $mf, $args );
 	}
@@ -806,6 +808,20 @@ class Parse_This_MF2 {
 			} else {
 				$data['syndication'] = $mf['rels']['syndication'];
 			}
+		}
+		return array_filter( $data );
+	}
+
+	public static function parse_hmeasure( $measure, $mf, $args ) {
+		$data       = array(
+			'type' => 'measure',
+		);
+		$properties = array(
+			'num',
+			'unit',
+		);
+		foreach ( $properties as $property ) {
+			$data[ $property ] = self::get_plaintext( $measure, $property );
 		}
 		return array_filter( $data );
 	}
@@ -1059,7 +1075,7 @@ class Parse_This_MF2 {
 		$data       = array(
 			'type' => 'adr',
 		);
-		$properties = array( 'label', 'latitude', 'longitude', 'altitude', 'street-address', 'extended-address', 'locality', 'region', 'country-name', 'geo' );
+		$properties = array( 'weather', 'temperature', 'label', 'latitude', 'longitude', 'altitude', 'street-address', 'extended-address', 'locality', 'region', 'country-name', 'geo' );
 		$props      = self::get_prop_array( $hadr, $properties );
 		$data       = array_merge( $data, $props );
 		return array_filter( $data );
