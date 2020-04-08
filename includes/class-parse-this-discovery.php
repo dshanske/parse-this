@@ -69,8 +69,8 @@ class Parse_This_Discovery {
 		$response      = wp_safe_remote_get( $url, $args );
 		$response_code = wp_remote_retrieve_response_code( $response );
 		$content_type  = wp_remote_retrieve_header( $response, 'content-type' );
-		$wprest = false;
-		$linkheaders = wp_remote_retrieve_header( $response, 'link' );
+		$wprest        = false;
+		$linkheaders   = wp_remote_retrieve_header( $response, 'link' );
 		if ( $linkheaders ) {
 			if ( is_array( $linkheaders ) ) {
 				foreach ( $linkheaders as $link ) {
@@ -92,7 +92,7 @@ class Parse_This_Discovery {
 							'_feed_type' => 'wordpress',
 							'name'       => 'WordPress REST API',
 						);
-						$wprest = true;
+						$wprest  = true;
 				}
 			}
 		}
@@ -179,7 +179,7 @@ class Parse_This_Discovery {
 								'name'       => 'WordPress REST API',
 							)
 						);
-						$wprest = true;
+						$wprest  = true;
 					}
 				}
 				// Check to see if the current page is an h-feed

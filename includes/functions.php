@@ -87,6 +87,9 @@ if ( ! function_exists( 'jf2_references' ) ) {
 			if ( ! is_array( $val ) ) {
 				continue;
 			}
+			if ( ! wp_is_numeric_array( $val ) ) {
+				$val = array( $val );
+			}
 			if ( wp_is_numeric_array( $val ) ) {
 				foreach ( $val as $value ) {
 					// Indicates nested type

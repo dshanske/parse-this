@@ -182,11 +182,7 @@ class Parse_This_MF2 {
 					if ( self::is_microformat( $v ) ) {
 						$v = self::parse_item( $v, $mf, $args );
 					}
-					if ( isset( $data[ $p ] ) ) {
-						$data[ $p ][] = $v;
-					} else {
-						$data[ $p ] = array( $v );
-					}
+					$data[ $p ] = $v;
 				}
 			}
 		}
@@ -946,6 +942,9 @@ class Parse_This_MF2 {
 	}
 
 	public static function parse_hevent( $event, $mf, $args ) {
+		if ( ! self::is_microformat( $event ) ) {
+			return;
+		}
 		$data       = array(
 			'type' => 'event',
 		);
@@ -956,6 +955,9 @@ class Parse_This_MF2 {
 	}
 
 	public static function parse_hreview( $entry, $mf, $args ) {
+		if ( ! self::is_microformat( $entry ) ) {
+			return;
+		}
 		$data       = array(
 			'type' => 'review',
 			'name' => null,
@@ -976,6 +978,9 @@ class Parse_This_MF2 {
 
 
 	public static function parse_hproduct( $entry, $mf, $args ) {
+		if ( ! self::is_microformat( $entry ) ) {
+			return;
+		}
 		$data       = array(
 			'type' => 'product',
 			'name' => null,
@@ -996,6 +1001,9 @@ class Parse_This_MF2 {
 
 
 	public static function parse_hresume( $entry, $mf, $args ) {
+		if ( ! self::is_microformat( $entry ) ) {
+			return;
+		}
 		$data       = array(
 			'type' => 'resume',
 			'name' => null,
@@ -1015,6 +1023,9 @@ class Parse_This_MF2 {
 	}
 
 	public static function parse_hlisting( $entry, $mf, $args ) {
+		if ( ! self::is_microformat( $entry ) ) {
+			return;
+		}
 		$data       = array(
 			'type' => 'listing',
 			'name' => null,
@@ -1033,55 +1044,71 @@ class Parse_This_MF2 {
 		return array_filter( $data );
 	}
 
-	public static function parse_hrecipe( $entry, $mf, $args ) {
+	public static function parse_hrecipe( $recipe, $mf, $args ) {
+		if ( ! self::is_microformat( $recipe ) ) {
+			return;
+		}
 		$data       = array(
 			'type' => 'recipe',
 			'name' => null,
 			'url'  => null,
 		);
 		$properties = array( 'category', 'item' );
-		$data       = self::get_prop_array( $entry, $properties );
+		$data       = self::get_prop_array( $recipe, $properties );
 		$properties = array();
 		foreach ( $properties as $p ) {
-			$v = self::get_plaintext( $entry, $p );
+			$v = self::get_plaintext( $recipe, $p );
 			if ( null !== $v ) {
 				$data[ $p ] = $v;
 			}
 		}
-		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
+		$data = array_merge( $data, self::parse_h( $recipe, $mf, $args ) );
 		return array_filter( $data );
 	}
 
-	public static function parse_hitem( $entry, $mf, $args ) {
+	public static function parse_hitem( $item, $mf, $args ) {
+		if ( ! self::is_microformat( $item ) ) {
+			return;
+		}
 		$data       = array(
 			'type' => 'item',
 			'name' => null,
 			'url'  => null,
 		);
 		$properties = array( 'category', 'item' );
-		$data       = self::get_prop_array( $entry, $properties );
+		$data       = self::get_prop_array( $item, $properties );
 		$properties = array();
 		foreach ( $properties as $p ) {
-			$v = self::get_plaintext( $entry, $p );
+			$v = self::get_plaintext( $item, $p );
 			if ( null !== $v ) {
 				$data[ $p ] = $v;
 			}
 		}
-		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
+		$data = array_merge( $data, self::parse_h( $item, $mf, $args ) );
 		return array_filter( $data );
 	}
 
 	public static function parse_hadr( $hadr, $mf, $args ) {
+		if ( ! self::is_microformat( $hadr ) ) {
+			return;
+		}
 		$data       = array(
 			'type' => 'adr',
 		);
-		$properties = array( 'weather', 'temperature', 'label', 'latitude', 'longitude', 'altitude', 'street-address', 'extended-address', 'locality', 'region', 'country-name', 'geo' );
+		$properties = array( 'weather', 'latitude', 'longitude', 'altitude', 'label', 'street-address', 'extended-address', 'locality', 'region', 'country-name' );
+		foreach ( $properties as $property ) {
+			$data[ $property ] = self::get_plaintext( $hadr, $property );
+		}
+		$properties = array( 'temperature', 'geo' );
 		$props      = self::get_prop_array( $hadr, $properties );
 		$data       = array_merge( $data, $props );
 		return array_filter( $data );
 	}
 
 	public static function parse_hgeo( $hgeo, $mf, $args ) {
+		if ( ! self::is_microformat( $hgeo ) ) {
+			return;
+		}
 		$data       = array(
 			'type' => 'geo',
 		);
