@@ -37,6 +37,7 @@
     },
     "prefer-stable" : true,
     "scripts": {
+        "phpunit": "phpunit",
 	"lint:phpcpd": "./vendor/bin/phpcpd --fuzzy --exclude .git --exclude vendor --exclude node_modules --exclude lib .",
 	"lint:wpcs": "./vendor/bin/phpcs",
 	"lint:wpcs-fix": "./vendor/bin/phpcbf",

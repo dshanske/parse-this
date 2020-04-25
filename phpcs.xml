@@ -12,10 +12,11 @@
 	<config name="minimum_supported_wp_version" value="4.7"/>
 	<rule ref="WordPress.WP.DeprecatedFunctions" />
 
-	<rule ref="WordPress-Core">
+	<rule ref="WordPress-Extra">
 		<exclude name="WordPress.Security.ValidatedSanitizedInput" />
 		<exclude name="WordPress.Security.NonceVerification" />
 	</rule>
+	<rule ref="WordPress-Docs" />
 	<rule ref="WordPress.Files.FileName">
 	<properties>
 	<property name="strict_class_file_names" value="false" />
