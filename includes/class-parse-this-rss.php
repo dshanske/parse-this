@@ -1,7 +1,7 @@
 <?php
 /**
  * Helpers for Turning RSS/Atom into JF2
-**/
+ **/
 
 class Parse_This_RSS {
 

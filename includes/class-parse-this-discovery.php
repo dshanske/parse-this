@@ -2,7 +2,6 @@
 
 /**
  * Parse This Discovery class.
- *
  */
 class Parse_This_Discovery {
 	private function get_feed_type( $type ) {
@@ -245,9 +244,9 @@ class Parse_This_Discovery {
 	private static function youtube_rss( $url ) {
 		$youtube_url_base = 'https://www.youtube.com/feeds/videos.xml';
 		$preg_entities    = array(
-			'channel_id'  => '\/channel\/(([^\/])+?)$', //match YouTube channel ID from url
-			'user'        => '\/user\/(([^\/])+?)$', //match YouTube user from url
-			'playlist_id' => '\/playlist\?list=(([^\/])+?)$',  //match YouTube playlist ID from url
+			'channel_id'  => '\/channel\/(([^\/])+?)$', // match YouTube channel ID from url
+			'user'        => '\/user\/(([^\/])+?)$', // match YouTube user from url
+			'playlist_id' => '\/playlist\?list=(([^\/])+?)$',  // match YouTube playlist ID from url
 		);
 
 		foreach ( $preg_entities as $key => $preg_entity ) {

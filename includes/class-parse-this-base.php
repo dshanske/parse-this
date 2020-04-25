@@ -2,7 +2,6 @@
 /**
  * Parse This Base class.
  * Originally Derived from the Press This Class with Enhancements.
- *
  */
 class Parse_This_Base {
 	/**
@@ -92,7 +91,6 @@ class Parse_This_Base {
 	 * Excluded URLs include share-this type buttons, loaders, spinners, spacers, WordPress interface images,
 	 * tiny buttons or thumbs, mathtag.com or quantserve.com images, or the WordPress.com stats gif.
 	 *
-	 *
 	 * @param string $src Image source URL.
 	 * @return string If not matched an excluded URL type, the original URL, empty string otherwise.
 	 */
@@ -142,7 +140,6 @@ class Parse_This_Base {
 	 *
 	 * Not all core oEmbed providers are supported. Supported providers include YouTube, Vimeo,
 	 * Vine, Daily Motion, SoundCloud, and Twitter.
-	 *
 	 *
 	 * @param string $src Embed source URL.
 	 * @param string $source_url Source URL

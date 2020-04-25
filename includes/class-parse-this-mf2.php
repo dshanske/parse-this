@@ -11,7 +11,7 @@ class Parse_This_MF2 {
 	/**
 	 * is this what type
 	 *
-	 * @param array $mf Parsed Microformats Array
+	 * @param array  $mf Parsed Microformats Array
 	 * @param string $type Type
 	 * @return bool
 	 */
@@ -166,8 +166,8 @@ class Parse_This_MF2 {
 	/**
 	 *  Return an array of properties, and may contain plaintext content
 	 *
-	 * @param array       $mf
-	 * @param array       $properties
+	 * @param array $mf
+	 * @param array $properties
 	 * @return null|array
 	 */
 	public static function get_prop_array( array $mf, $properties, $args = null ) {
@@ -318,8 +318,8 @@ class Parse_This_MF2 {
 	/**
 	 * Large function for fishing out author of $mf from various possible array elements.
 	 *
-	 * @param array      $item Individual item
-	 * @param array      $mf2 Overall Microformats array
+	 * @param array   $item Individual item
+	 * @param array   $mf2 Overall Microformats array
 	 * @param boolean $follow Follow author arrays
 	 */
 	public static function find_author( $item, $mf2, $follow = false ) {

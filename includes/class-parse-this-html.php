@@ -2,7 +2,6 @@
 /**
  * Parse This HTML class.
  * Originally Derived from the Press This Class with Enhancements.
- *
  */
 class Parse_This_HTML extends Parse_This_Base {
 	/**
@@ -84,7 +83,8 @@ class Parse_This_HTML extends Parse_This_Base {
 			$jf2['audio'] = array_unique( $audios );
 		}
 
-		/* For now do not search every link embed etc
+		/*
+		 For now do not search every link embed etc
 		// Fetch and gather <iframe> data.
 		$embeds = array();
 
@@ -327,7 +327,7 @@ class Parse_This_HTML extends Parse_This_Base {
 		if ( ! isset( $jf2['author'] ) && ! empty( $meta['author'] ) ) {
 			$jf2['author'] = $meta['author'];
 		}
-		//  If Site Name is not set use domain name less www
+		// If Site Name is not set use domain name less www
 		if ( ! isset( $jf2['publication'] ) && isset( $jf2['url'] ) ) {
 			$jf2['publication'] = preg_replace( '/^www\./', '', wp_parse_url( $jf2['url'], PHP_URL_HOST ) );
 		}

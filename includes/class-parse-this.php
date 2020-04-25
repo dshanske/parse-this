@@ -3,7 +3,6 @@
 /**
  * Parse This class.
  * Originally Derived from the Press This Class with Enhancements.
- *
  */
 class Parse_This {
 	private $url = '';
@@ -109,7 +108,8 @@ class Parse_This {
 		}
 	}
 
-	/* Reproduced version of fetch_feed from core which calls bundled SimplePie instead of older version
+	/*
+	 Reproduced version of fetch_feed from core which calls bundled SimplePie instead of older version
 	*/
 	public static function fetch_feed( $url ) {
 		if ( ! class_exists( 'SimplePie', false ) ) {
@@ -206,10 +206,10 @@ class Parse_This {
 
 	/**
 	 * Downloads the source's via server - side call for the given URL .
-	*
-	* @param string $url URL to scan .
-	* @return WP_Error | boolean WP_Error if invalid and true if successful
-	*/
+	 *
+	 * @param string $url URL to scan .
+	 * @return WP_Error | boolean WP_Error if invalid and true if successful
+	 */
 	public function fetch( $url = null ) {
 		if ( ! $url ) {
 			$url = $this->url;

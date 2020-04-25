@@ -80,7 +80,8 @@ if ( ! function_exists( 'mf2_to_jf2' ) ) {
 
 
 if ( ! function_exists( 'jf2_references' ) ) {
-	/* Turns nested properties into references per the jf2 spec
+	/*
+	 Turns nested properties into references per the jf2 spec
 	*/
 	function jf2_references( $data ) {
 		foreach ( $data as $key => $val ) {
@@ -223,7 +224,8 @@ if ( ! function_exists( 'ifset' ) ) {
 }
 
 
-/* Inverse of wp_parse_url
+/*
+ Inverse of wp_parse_url
  *
  * Slightly modified from p3k-utils (https://github.com/aaronpk/p3k-utils)
  * Copyright 2017 Aaron Parecki, used with permission under MIT License

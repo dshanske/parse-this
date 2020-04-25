@@ -1,7 +1,6 @@
 <?php
 /**
  * Parse This YouTube class.
- *
  */
 class Parse_This_YouTube extends Parse_This_Base {
 	/**

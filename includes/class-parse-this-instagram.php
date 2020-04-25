@@ -1,8 +1,6 @@
 <?php
 /**
  * Parse This Instagram class.
- *
- *
  */
 class Parse_This_Instagram extends Parse_This_Base {
 	/**

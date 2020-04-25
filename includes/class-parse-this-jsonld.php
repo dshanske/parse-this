@@ -1,7 +1,6 @@
 <?php
 /**
  * Parse This JSON-LD class.
- *
  */
 class Parse_This_JSONLD extends Parse_This_Base {
 	/**
@@ -235,7 +234,8 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			return false;
 		}
 		if ( self::is_jsonld_type( $image, 'ImageObject' ) ) {
-			/* if ( isset( $image['caption'] ) ) {
+			/*
+			 if ( isset( $image['caption'] ) ) {
 				return array(
 					'value' => $image['url'],
 					'alt' => $image['caption']
