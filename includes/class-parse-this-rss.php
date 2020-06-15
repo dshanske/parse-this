@@ -156,7 +156,8 @@ class Parse_This_RSS {
 	 * @return JF2
 	 */
 	public static function get_item( $item, $title = '' ) {
-		$return = array(
+		$content = Parse_This::clean_content( $item->get_content( true ) );
+		$return  = array(
 			'type'         => 'entry',
 			'name'         => $item->get_title(),
 			'author'       => self::get_authors( $item->get_authors() ),
@@ -165,8 +166,8 @@ class Parse_This_RSS {
 			'summary'      => wp_strip_all_tags( $item->get_description( true ) ),
 			'content'      => array_filter(
 				array(
-					'html' => Parse_This::clean_content( $item->get_content( true ) ),
-					'text' => wp_strip_all_tags( htmlspecialchars_decode( $item->get_content( true ) ) ),
+					'html' => $content,
+					'text' => wp_strip_all_tags( $content ),
 				)
 			),
 			'_source'      => self::get_source( $item ),

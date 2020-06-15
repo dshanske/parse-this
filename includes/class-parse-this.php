@@ -41,7 +41,16 @@ class Parse_This {
 			return $content;
 		}
 		// Decode escaped entities so that they can be stripped
-		$content = html_entity_decode( $content, ENT_COMPAT | ENT_HTML401, 'UTF-8' );
+		$content     = html_entity_decode( $content, ENT_COMPAT | ENT_HTML401, 'UTF-8' );
+		$content     = preg_replace( '/<!--(.|\s)*?-->/', '', $content );
+		$domdocument = pt_load_domdocument( $content );
+		$scripts     = $domdocument->getElementsByTagName( 'script' );
+		foreach ( $scripts as $item ) {
+			$item->parentNode->removeChild( $item );
+		}
+
+		$content = $domdocument->saveHTML();
+
 		$allowed = array(
 			'a'          => array(
 				'href' => array(),
@@ -127,18 +136,11 @@ class Parse_This {
 		require_once ABSPATH . WPINC . '/class-wp-simplepie-sanitize-kses.php';
 		$feed = new SimplePie();
 
-		$feed->set_sanitize_class( 'WP_SimplePie_Sanitize_KSES' );
-
-		// We must manually overwrite $feed->sanitize because SimplePie's
-		// constructor sets it before we have a chance to set the sanitization class
-		$feed->sanitize = new WP_SimplePie_Sanitize_KSES();
-
 		$feed->set_cache_class( 'WP_Feed_Cache' );
 		$feed->set_file_class( 'WP_SimplePie_File' );
 		$feed->enable_cache( false );
-		$feed->strip_htmltags( false );
 		$feed->set_feed_url( $url );
-
+		$feed->strip_htmltags( false );
 		/**
 		 * Fires just before processing the SimplePie feed object.
 		 *
