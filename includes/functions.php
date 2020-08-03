@@ -39,7 +39,7 @@ if ( ! function_exists( 'mf2_to_jf2' ) ) {
 	function mf2_to_jf2( $entry ) {
 
 		// Check if string.
-		if ( is_string( $entry ) ) {
+		if ( ! is_array( $entry ) ) {
 			return $entry;
 		}
 
