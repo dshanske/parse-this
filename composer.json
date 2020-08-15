@@ -41,6 +41,7 @@
 	"lint:phpcpd": "./vendor/bin/phpcpd --fuzzy --exclude .git --exclude vendor --exclude node_modules --exclude lib .",
 	"lint:wpcs": "./vendor/bin/phpcs",
 	"lint:wpcs-fix": "./vendor/bin/phpcbf",
+	"lint": "./vendor/bin/phpcs -n -q",
 	"lint:php": "@php ./vendor/bin/parallel-lint --exclude .git --exclude vendor --exclude node_modules --exclude lib .",
 	"install-codestandards": [
 		"Dealerdirect\\Composer\\Plugin\\Installers\\PHPCodeSniffer\\Plugin::run"
