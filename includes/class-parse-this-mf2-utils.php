@@ -9,6 +9,27 @@
 class Parse_This_MF2_Utils {
 
 	/**
+	 * Verifies if $mf is an array without numeric keys, and has a 'properties' key.
+	 *
+	 * @param $mf
+	 * @return bool
+	 */
+	public static function is_microformat( $mf ) {
+		return ( is_array( $mf ) && ! wp_is_numeric_array( $mf ) && ! empty( $mf['type'] ) && isset( $mf['properties'] ) );
+	}
+
+
+	/**
+	 * Verifies if $mf has an 'items' key which is also an array, returns true.
+	 *
+	 * @param $mf
+	 * @return bool
+	 */
+	public static function is_microformat_array( $mf ) {
+		return ( is_array( $mf ) && isset( $mf['items'] ) && is_array( $mf['items'] ) );
+	}
+
+	/**
 	 * is this what type
 	 *
 	 * @param array  $mf Parsed Microformats Array
@@ -17,6 +38,23 @@ class Parse_This_MF2_Utils {
 	 */
 	public static function is_type( $mf, $type ) {
 		return is_array( $mf ) && ! empty( $mf['type'] ) && is_array( $mf['type'] ) && in_array( $type, $mf['type'], true );
+	}
+
+	/**
+	 * Return Type of a Microformat.
+	 *
+	 * @param array $mf Parsed Microformats Array
+	 * @return string|false Return type if present or false if not a microformat.
+	 */
+	public static function get_type( $mf, $strip = false ) {
+		$type = false;
+		if( self::is_microformat( $mf ) && is_array( $mf['type'] ) ) {
+			$type = $mf['type'][0];
+			if ( $strip ) {
+				$type = str_replace( 'h-', '', $type );
+			} 
+		}
+		return $type;
 	}
 
 	/**
@@ -49,27 +87,6 @@ class Parse_This_MF2_Utils {
 			$data['html'] = $htmlcontent;
 		}
 		return $data;
-	}
-
-	/**
-	 * Verifies if $mf is an array without numeric keys, and has a 'properties' key.
-	 *
-	 * @param $mf
-	 * @return bool
-	 */
-	public static function is_microformat( $mf ) {
-		return ( is_array( $mf ) && ! wp_is_numeric_array( $mf ) && ! empty( $mf['type'] ) && isset( $mf['properties'] ) );
-	}
-
-
-	/**
-	 * Verifies if $mf has an 'items' key which is also an array, returns true.
-	 *
-	 * @param $mf
-	 * @return bool
-	 */
-	public static function is_microformat_collection( $mf ) {
-		return ( is_array( $mf ) && isset( $mf['items'] ) && is_array( $mf['items'] ) );
 	}
 
 	/**
@@ -269,7 +286,7 @@ class Parse_This_MF2_Utils {
 			return $return;
 		} else {
 			try {
-				return new DateTime( $return );
+				return new DateTimeImmutable( $return );
 			} catch ( Exception $e ) {
 				return $fallback;
 			}
@@ -313,124 +330,4 @@ class Parse_This_MF2_Utils {
 	public static function urls_match( $url1, $url2 ) {
 		return ( normalize_url( $url1 ) === normalize_url( $url2 ) );
 	}
-
-	/**
-	 * Flattens microformats. Can intake multiple Microformats including possible MicroformatCollection.
-	 *
-	 * @param array $mfs
-	 * @return array
-	 */
-	public static function flatten_microformat_properties( array $mf ) {
-		$items = array();
-
-		if ( ! self::is_microformat( $mf ) ) {
-			return $items; }
-
-		foreach ( $mf['properties'] as $proparray ) {
-			foreach ( $proparray as $prop ) {
-				if ( self::is_microformat( $prop ) ) {
-					$items[] = $prop;
-					$items   = array_merge( $items, self::flatten_microformat_properties( $prop ) );
-				}
-			}
-		}
-
-		return $items;
-	}
-
-	/**
-	 * Flattens microformats. Can intake multiple Microformats including possible MicroformatCollection.
-	 *
-	 * @param array $mfs
-	 * @return array
-	 */
-	public static function flatten_microformats( array $mfs ) {
-		if ( self::is_microformat_collection( $mfs ) ) {
-			$mfs = $mfs['items']; } elseif ( self::is_microformat( $mfs ) ) {
-			$mfs = array( $mfs ); }
-
-			$items = array();
-
-			foreach ( $mfs as $mf ) {
-				$items[] = $mf;
-
-				$items = array_merge( $items, self::flatten_microformat_properties( $mf ) );
-
-				if ( empty( $mf['children'] ) ) {
-					continue; }
-
-				foreach ( $mf['children'] as $child ) {
-					$items[] = $child;
-					$items   = array_merge( $items, self::flatten_microformat_properties( $child ) );
-				}
-			}
-
-			return $items;
-	}
-
-	/**
-	 *
-	 * @param array $mfs
-	 * @param $name
-	 * @param bool  $flatten
-	 * @return mixed
-	 */
-	public static function find_microformats_by_type( array $mfs, $name, $flatten = true ) {
-		return self::find_microformats_by_callable(
-			$mfs,
-			function ( $mf ) use ( $name ) {
-				return in_array( $name, $mf['type'], true );
-			},
-			$flatten
-		);
-	}
-
-
-	/**
-	 * Can determine if a microformat key with value exists in $mf. Returns true if so.
-	 *
-	 * @param array     $mfs
-	 * @param $propname
-	 * @param $propvalue
-	 * @param bool      $flatten
-	 * @return mixed
-	 * @see findMicroformatsByCallable()
-	 */
-	public static function find_microformats_by_property( array $mfs, $propname, $propvalue, $flatten = true ) {
-		return find_microformats_by_callable(
-			$mfs,
-			function ( $mf ) use ( $propname, $propvalue ) {
-				if ( ! hasProp( $mf, $propname ) ) {
-					return false; }
-
-				if ( in_array( $propvalue, $mf['properties'][ $propname ], true ) ) {
-					return true; }
-
-				return false;
-			},
-			$flatten
-		);
-	}
-
-	/**
-	 * $callable should be a function or an exception will be thrown. $mfs can accept microformat collections.
-	 * If $flatten is true then the result will be flattened.
-	 *
-	 * @param array    $mfs
-	 * @param $callable
-	 * @param bool     $flatten
-	 * @return mixed
-	 * @link http://php.net/manual/en/function.is-callable.php
-	 * @see flattenMicroformats()
-	 */
-	public static function find_microformats_by_callable( array $mfs, $callable, $flatten = true ) {
-		if ( ! is_callable( $callable ) ) {
-			throw new \InvalidArgumentException( '$callable must be callable' ); }
-
-		if ( $flatten && ( self::is_microformat( $mfs ) || self::is_microformat_collection( $mfs ) ) ) {
-			$mfs = self::flatten_microformats( $mfs ); }
-
-		return array_values( array_filter( $mfs, $callable ) );
-	}
-
 }

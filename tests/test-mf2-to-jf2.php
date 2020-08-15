@@ -113,7 +113,7 @@ class MF2_to_JF2_Test extends WP_UnitTestCase {
 			),
 		);
 		$return = mf2_to_jf2( $mf2 );
-		$this->assertEquals( $jf2, mf2_to_jf2( $mf2 ), wp_json_encode( $return ) );
+		$this->assertEquals( $jf2, $return, wp_json_encode( $return ) );
 	}
 
 	public function test_hfeed() {
