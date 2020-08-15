@@ -176,7 +176,7 @@ class Parse_This_MF2_Utils {
 	 */
 	public static function get_plaintext_array( array $mf, $propname, $fallback = null ) {
 		if ( ! empty( $mf['properties'][ $propname ] ) && is_array( $mf['properties'][ $propname ] ) ) {
-			return array_map( array( 'Parse_Mf2', 'to_plaintext' ), $mf['properties'][ $propname ] ); }
+			return array_map( array( static::class, 'to_plaintext' ), $mf['properties'][ $propname ] ); }
 		return $fallback;
 	}
 
