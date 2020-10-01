@@ -8,6 +8,10 @@ class Parse_This_Twitter extends Parse_This_Base {
 	 * @access public
 	 */
 	public static function parse( $url, $args ) {
+		if ( false === strpos( $url, 'status' ) ) {
+			return array();
+		}
+
 		$args     = array(
 			'timeout'             => 15,
 			'limit_response_size' => 1048576,
