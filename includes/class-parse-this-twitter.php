@@ -23,11 +23,14 @@ class Parse_This_Twitter extends Parse_This_Base {
 			$jf2['url'] = $oembed['url'];
 		}
 		if ( array_key_exists( 'html', $oembed ) ) {
-			$html     = $oembed['html'];
-			$text     = wp_strip_all_tags( $html );
-			$text     = explode( '&mdash;', $text );
-			$text     = $text[0];
-			$dom      = pt_load_domdocument( $html );
+			$html = $oembed['html'];
+			$dom  = pt_load_domdocument( $html );
+			$html = explode( '&mdash;', $html );
+			$html = $html[0];
+			$text = wp_strip_all_tags( $html );
+			$text = explode( '&mdash;', $text );
+			$text = $text[0];
+
 			$links    = $dom->getElementsByTagName( 'a' );
 			$names    = array();
 			$category = array();
@@ -51,7 +54,7 @@ class Parse_This_Twitter extends Parse_This_Base {
 			$jf2['links']    = $names;
 			$jf2['category'] = $category;
 			$jf2['content']  = array(
-				'html'  => $html,
+				'html'  => Parse_This::clean_content( $html ),
 				'value' => $text,
 			);
 		}
