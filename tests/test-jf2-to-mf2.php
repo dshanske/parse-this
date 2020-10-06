@@ -1,6 +1,6 @@
 <?php
 
-class MF2_to_JF2_Test extends WP_UnitTestCase {
+class JF2_to_MF2_Test extends WP_UnitTestCase {
 	public function test_single_hentry() {
 		$mf2    = array(
 			'type'       => array( 'h-entry' ),
@@ -12,8 +12,8 @@ class MF2_to_JF2_Test extends WP_UnitTestCase {
 			'type' => 'entry',
 			'url'  => 'http://www.example.org',
 		);
-		$return = mf2_to_jf2( $mf2 );
-		$this->assertEquals( $jf2, mf2_to_jf2( $mf2 ), wp_json_encode( $return ) );
+		$return = jf2_to_mf2( $jf2 );
+		$this->assertEquals( $mf2, $return, wp_json_encode( $return ) );
 	}
 	public function test_nested_property() {
 		$mf2    = array(
@@ -40,8 +40,8 @@ class MF2_to_JF2_Test extends WP_UnitTestCase {
 				'url'  => 'http://www.example.org/author/smith',
 			),
 		);
-		$return = mf2_to_jf2( $mf2 );
-		$this->assertEquals( $jf2, mf2_to_jf2( $mf2 ), wp_json_encode( $return ) );
+		$return = jf2_to_mf2( $jf2 );
+		$this->assertEqualsCanonicalizing( $mf2, $return, wp_json_encode( $return, JSON_PRETTY_PRINT ) . wp_json_encode( $mf2, JSON_PRETTY_PRINT ) );
 	}
 
 	public function test_double_nested_property() {
@@ -55,11 +55,13 @@ class MF2_to_JF2_Test extends WP_UnitTestCase {
 						'properties' => array(
 							'label' => array( 'Sunshine Street' ),
 							'geo'   => array(
-								'type'       => 'h-geo',
-								'properties' => array(
-									'latitude'  => array( '40.11' ),
-									'longitude' => array( '41.11' ),
-								),
+									array(
+										'type'       => array( 'h-geo' ),
+										'properties' => array(
+											'latitude'  => array( '40.11' ),
+											'longitude' => array( '41.11' ),
+										),
+									)
 							),
 						),
 					),
@@ -79,8 +81,8 @@ class MF2_to_JF2_Test extends WP_UnitTestCase {
 				),
 			),
 		);
-		$return = mf2_to_jf2( $mf2 );
-		$this->assertEquals( $jf2, mf2_to_jf2( $mf2 ), wp_json_encode( $return ) );
+		$return = jf2_to_mf2( $jf2 );
+		$this->assertEqualsCanonicalizing( $mf2, $return, wp_json_encode( $return, JSON_PRETTY_PRINT ) . wp_json_encode( $mf2, JSON_PRETTY_PRINT ) );
 	}
 
 	public function test_items() {
@@ -112,8 +114,8 @@ class MF2_to_JF2_Test extends WP_UnitTestCase {
 				),
 			),
 		);
-		$return = mf2_to_jf2( $mf2 );
-		$this->assertEquals( $jf2, $return, wp_json_encode( $return ) );
+		$return = jf2_to_mf2( $jf2 );
+		$this->assertEquals( $mf2, $return, wp_json_encode( $return ) );
 	}
 
 	public function test_hfeed() {
@@ -165,8 +167,8 @@ class MF2_to_JF2_Test extends WP_UnitTestCase {
 				),
 			),
 		);
-		$return = mf2_to_jf2( $mf2 );
-		$this->assertEquals( $jf2, mf2_to_jf2( $mf2 ), wp_json_encode( $return ) );
+		$return = jf2_to_mf2( $jf2 );
+		$this->assertEquals( $mf2, $return, wp_json_encode( $return ) );
 	}
 }
 
