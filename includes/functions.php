@@ -50,7 +50,7 @@ if ( ! function_exists( 'jf2_to_mf2' ) ) {
 if ( ! function_exists( 'mf2_to_jf2' ) ) {
 
 	function mf2_to_jf2( $mf2 ) {
-		if ( empty( $mf2 ) || is_string( $mf2 ) ) {
+		if ( empty( $mf2 ) || is_string( $mf2 ) || is_object( $mf2 ) ) {
 			return $mf2;
 		}
 
