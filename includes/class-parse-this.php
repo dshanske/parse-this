@@ -232,7 +232,7 @@ class Parse_This {
 		$response = wp_safe_remote_get( $url, $args );
 
 		$raw = wp_remote_retrieve_header( $response, 'link' );
-		if ( is_array( $raw ) && 1 <= count( raw ) ) {
+		if ( is_array( $raw ) && 1 <= count( $raw ) ) {
 			foreach ( $raw as $link ) {
 				$pieces              = explode( '; ', $link );
 				$uri                 = trim( array_shift( $pieces ), '<>' );
