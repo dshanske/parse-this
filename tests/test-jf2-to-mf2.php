@@ -41,7 +41,11 @@ class JF2_to_MF2_Test extends WP_UnitTestCase {
 			),
 		);
 		$return = jf2_to_mf2( $jf2 );
-		$this->assertEqualsCanonicalizing( $mf2, $return, wp_json_encode( $return, JSON_PRETTY_PRINT ) . wp_json_encode( $mf2, JSON_PRETTY_PRINT ) );
+		if ( method_exists( $this, 'assertEqualsCanonicalizing' ) ) {
+			$this->assertEqualsCanonicalizing( $mf2, $return, wp_json_encode( $return, JSON_PRETTY_PRINT ) . wp_json_encode( $mf2, JSON_PRETTY_PRINT ) );
+		} else {
+			$this->assertEquals( $mf2, $return, wp_json_encode( $return, JSON_PRETTY_PRINT ) . wp_json_encode( $mf2, JSON_PRETTY_PRINT ) );
+		}
 	}
 
 	public function test_double_nested_property() {
