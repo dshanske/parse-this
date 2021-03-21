@@ -17,7 +17,7 @@
 		"installer-name": "parse-this"
      },
     "require": {
-	"php": ">=5.4.0",
+	"php": ">=5.6.0",
 	"composer/installers": "~1.0"
     },
     "require-dev": {
@@ -26,12 +26,12 @@
 	"squizlabs/php_codesniffer": "*",
         "phpcompatibility/php-compatibility": "*",
         "wp-coding-standards/wpcs": "*",
-      "phpcompatibility/phpcompatibility-wp": "*",
-      "wpreadme2markdown/wp2md": "*",
-      "php-parallel-lint/php-parallel-lint": "^1.2",
-      "sebastian/phpcpd": "^5.0",
-      "phpunit/phpunit": "^7.0",
-      "simplepie/simplepie": "*",
+        "phpcompatibility/phpcompatibility-wp": "*",
+        "wpreadme2markdown/wp2md": "*",
+        "php-parallel-lint/php-parallel-lint": "^1.2",
+        "sebastian/phpcpd": "^3.0 || ^5.0 || ^6.0",
+        "phpunit/phpunit": "^5.0 || ^6.0 || ^7.5",
+        "simplepie/simplepie": "*",
       "masterminds/html5": "*",
       "symfony/polyfill-mbstring": "*"
     },

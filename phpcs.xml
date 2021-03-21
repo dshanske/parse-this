@@ -9,14 +9,13 @@
 	<rule ref="PHPCompatibility"/>
 	<config name="testVersion" value="5.6-"/>
 	<rule ref="PHPCompatibilityWP"/>
-	<config name="minimum_supported_wp_version" value="4.7"/>
+	<config name="minimum_supported_wp_version" value="4.9"/>
 	<rule ref="WordPress.WP.DeprecatedFunctions" />
 
 	<rule ref="WordPress-Extra">
 		<exclude name="WordPress.Security.ValidatedSanitizedInput" />
 		<exclude name="WordPress.Security.NonceVerification" />
 	</rule>
-	<rule ref="WordPress-Docs" />
 	<rule ref="WordPress.Files.FileName">
 	<properties>
 	<property name="strict_class_file_names" value="false" />
