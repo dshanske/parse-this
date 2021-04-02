@@ -428,6 +428,8 @@ class Parse_This {
 				}
 			}
 		}
-
+		if ( isset( $this->jf2['location'] ) && $args['location'] ) {
+			$this->jf2 = jf2_location( $this->jf2 );
+		}
 	}
 }

@@ -3,7 +3,7 @@
  * Plugin Name: Parse This
  * Plugin URI: https://github.com/dshanske/parse-this
  * Description:
- * Version: 1.0
+ * Version: 1.0.1
  * Author: David Shanske
  * Author URI: https://david.shanske.com
  * Text Domain: parse-this
