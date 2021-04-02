@@ -162,14 +162,7 @@ class Parse_This {
 	public static function fetch_feed( $url ) {
 		$url = pt_secure_rewrite( $url );
 		if ( ! class_exists( 'SimplePie', false ) ) {
-			// Try to use bundled SimplePie if not WordPress older SimplePie
-			$file = plugin_dir_path( __DIR__ ) . 'lib/simplepie/autoloader.php';
-			// SimplePie was updated to the latest version in WordPress 5.5. Use the bundled version for older installs only.
-			if ( version_compare( get_bloginfo( 'version' ), '5.5', '<' ) && file_exists( $file ) ) {
-				require_once $file;
-			} else {
-				require_once ABSPATH . WPINC . '/class-simplepie.php';
-			}
+			require_once ABSPATH . WPINC . '/class-simplepie.php';
 		}
 		require_once ABSPATH . WPINC . '/class-wp-feed-cache.php';
 		require_once ABSPATH . WPINC . '/class-wp-feed-cache-transient.php';
