@@ -353,6 +353,7 @@ class Parse_This {
 			'jsonld'     => true,  // Try JSON-LD parsing
 			'html'       => true, // If mf2 parsing does not work look for html parsing which includes OGP, meta tags, and title tags
 			'references' => true, // Store nested citations as references per the JF2 spec
+			'location' => false, // Collapse location parameters in jf2. Specifically, location will be a string and latitude, longitude, and altitude will be set as h-entry properties.
 		);
 		$args     = wp_parse_args( $args, $defaults );
 		// If not an option then revert to single

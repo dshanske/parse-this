@@ -31,9 +31,7 @@
         "php-parallel-lint/php-parallel-lint": "^1.2",
         "sebastian/phpcpd": "^3.0 || ^5.0 || ^6.0",
         "phpunit/phpunit": "^5.0 || ^6.0 || ^7.5",
-        "simplepie/simplepie": "*",
-      "masterminds/html5": "*",
-      "symfony/polyfill-mbstring": "*"
+      "masterminds/html5": "*"
     },
     "prefer-stable" : true,
     "scripts": {
@@ -53,12 +51,9 @@
 	"copy-files": [
 		"cp -u -r vendor/mf2/mf2/Mf2/Parser.php lib/mf2",
 		"cp -u -r vendor/mf2/mf2/*.md lib/mf2",
-		"cp -u -r vendor/simplepie/simplepie/library lib/simplepie",
-		"cp -u -r vendor/simplepie/simplepie/autoloader.php lib/simplepie",
 		"cp -u -r vendor/masterminds/html5/src/HTML5.php lib/html5",
 		"cp -u -r vendor/masterminds/html5/*.md lib/html5",
-		"cp -u -r vendor/masterminds/html5/src/HTML5 lib/html5",
-		"cp -u -r vendor/symfony/polyfill-mbstring lib"
+		"cp -u -r vendor/masterminds/html5/src/HTML5 lib/html5"
 
 	],
 	"post-update-cmd": [
