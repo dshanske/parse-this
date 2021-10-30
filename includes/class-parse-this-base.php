@@ -39,6 +39,10 @@ class Parse_This_Base {
 		return $return->format( DATE_W3C );
 	}
 
+	public static function validate_email( $email ) {
+		return filter_var( $email, FILTER_VALIDATE_EMAIL );
+	}
+
 	/**
 	 *
 	 */
