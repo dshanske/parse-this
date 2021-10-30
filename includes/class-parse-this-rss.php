@@ -20,16 +20,35 @@ class Parse_This_RSS {
 		}
 		return array_filter(
 			array(
-				'type'       => 'feed',
-				'_feed_type' => self::get_type( $feed ),
-				'summary'    => $feed->get_description(),
-				'author'     => self::get_authors( $feed->get_author() ),
-				'name'       => htmlspecialchars_decode( $title, ENT_QUOTES ),
-				'url'        => $feed->get_permalink(),
-				'photo'      => $feed->get_image_url(),
-				'items'      => $items,
+				'type'          => 'feed',
+				'_feed_type'    => self::get_type( $feed ),
+				'_last_updated' => self::last_updated( $feed ),
+				'summary'       => $feed->get_description(),
+				'author'        => self::get_authors( $feed->get_author() ),
+				'name'          => htmlspecialchars_decode( $title, ENT_QUOTES ),
+				'url'           => $feed->get_permalink(),
+				'photo'         => $feed->get_image_url(),
+				'items'         => $items,
 			)
 		);
+	}
+
+	public static function last_updated( $feed ) {
+		$type    = self::get_type( $feed );
+		$updated = null;
+		if ( 'RSS' === $type ) {
+			$updated = $feed->get_channel_tags( SIMPLEPIE_NAMESPACE_RSS_20, 'lastBuildDate' );
+		} elseif ( 'atom' === $type ) {
+			$updated = $feed->get_channel_tags( SIMPLEPIE_NAMESPACE_ATOM_10, 'updated' );
+		}
+		if ( $updated && isset( $updated[0]['data'] ) ) {
+			$datetime = new DateTime( $updated[0]['data'] );
+			if ( $datetime ) {
+				return $datetime->format( DATE_W3C );
+			}
+		}
+
+		return null;
 	}
 
 	public static function get_type( $feed ) {
