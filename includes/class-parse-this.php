@@ -341,8 +341,9 @@ class Parse_This {
 			// We do not yet know how to cope with this
 			return true;
 		}
-						$this->set( $content, $url, ( 'application/jf2+json' === $content_type ) );
-						return true;
+
+		$this->set( $content, $url, ( 'application/jf2+json' === $content_type ) );
+		return true;
 	}
 
 	public function parse( $args = array() ) {
@@ -354,7 +355,7 @@ class Parse_This {
 			'jsonld'     => true,  // Try JSON-LD parsing
 			'html'       => true, // If mf2 parsing does not work look for html parsing which includes OGP, meta tags, and title tags
 			'references' => true, // Store nested citations as references per the JF2 spec
-			'location' => false, // Collapse location parameters in jf2. Specifically, location will be a string and latitude, longitude, and altitude will be set as h-entry properties.
+			'location'   => false, // Collapse location parameters in jf2. Specifically, location will be a string and latitude, longitude, and altitude will be set as h-entry properties.
 		);
 		$args     = wp_parse_args( $args, $defaults );
 		// If not an option then revert to single
@@ -363,6 +364,7 @@ class Parse_This {
 		}
 		if ( class_exists( 'Parse_This_RSS' ) && $this->content instanceof SimplePie ) {
 			$this->jf2 = Parse_This_RSS::parse( $this->content, $this->url );
+
 			return;
 		} elseif ( $this->doc instanceof DOMDocument ) {
 			$content = $this->doc;

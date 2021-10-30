@@ -3,7 +3,7 @@
  * Helpers for Turning RSS/Atom into JF2
  **/
 
-class Parse_This_RSS {
+class Parse_This_RSS extends Parse_This_Base {
 
 	/*
 	 * Parse RSS/Atom into JF2
@@ -20,15 +20,17 @@ class Parse_This_RSS {
 		}
 		return array_filter(
 			array(
-				'type'          => 'feed',
-				'_feed_type'    => self::get_type( $feed ),
-				'_last_updated' => self::last_updated( $feed ),
-				'summary'       => $feed->get_description(),
-				'author'        => self::get_authors( $feed->get_author() ),
-				'name'          => htmlspecialchars_decode( $title, ENT_QUOTES ),
-				'url'           => $feed->get_permalink(),
-				'photo'         => $feed->get_image_url(),
-				'items'         => $items,
+				'type'            => 'feed',
+				'_feed_type'      => self::get_type( $feed ),
+				'_last_updated'   => self::last_updated( $feed ),
+				'_last_published' => self::find_last_published( $items ),
+				'_last_updated'   => self::find_last_updated( $items ),
+				'summary'         => $feed->get_description(),
+				'author'          => self::get_authors( $feed->get_author() ),
+				'name'            => htmlspecialchars_decode( $title, ENT_QUOTES ),
+				'url'             => $feed->get_permalink(),
+				'photo'           => $feed->get_image_url(),
+				'items'           => $items,
 			)
 		);
 	}
