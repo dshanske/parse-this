@@ -273,10 +273,12 @@ class Parse_This {
 		$response = wp_safe_remote_get( $url, $args );
 
 		$raw = wp_remote_retrieve_header( $response, 'link' );
+		$raw = explode( ',', $raw );
+
 		if ( is_array( $raw ) && 1 <= count( $raw ) ) {
 			foreach ( $raw as $link ) {
 				$pieces              = explode( '; ', $link );
-				$uri                 = trim( array_shift( $pieces ), '<>' );
+				$uri                 = trim( array_shift( $pieces ), '<> ' );
 				$this->links[ $uri ] = array();
 				foreach ( $pieces as $p ) {
 					$elements                            = explode( '=', $p );
@@ -441,5 +443,7 @@ class Parse_This {
 		if ( isset( $this->jf2['location'] ) && $args['location'] ) {
 			$this->jf2 = jf2_location( $this->jf2 );
 		}
+
+		$this->jf2['_links'] = $this->links;
 	}
 }
