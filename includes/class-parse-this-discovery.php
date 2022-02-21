@@ -7,8 +7,9 @@ class Parse_This_Discovery {
 	private function get_feed_type( $type ) {
 		switch ( $type ) {
 			case 'application/feed+json':
+				return 'jsonfeed'
 			case 'application/json':
-				return 'jsonfeed';
+				return 'json';
 			case 'text/xml':
 			case 'application/rss+xml':
 				return 'rss';

@@ -21,9 +21,13 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			$jsonld[] = json_decode( $content, true );
 		}
 		$jsonld = array_filter( $jsonld );
-		if ( 1 === count( $jsonld ) && wp_is_numeric_array( $jsonld[0] ) ) {
+		if ( 1 === count( $jsonld ) && wp_is_numeric_array( $jsonld ) ) {
 			$jsonld = $jsonld[0];
 		}
+		if ( ! wp_is_numeric_array( $jsonld ) && ! self::is_jsonld( $jsonld ) && self::is_jsonld_graph( $jsonld ) ) {
+			$jsonld = $jsonld['@graph'];
+		}
+
 		$jf2 = self::jsonld_to_jf2( $jsonld );
 		if ( WP_DEBUG ) {
 			$jf2['_jsonld'] = $jsonld;
@@ -459,6 +463,10 @@ class Parse_This_JSONLD extends Parse_This_Base {
 
 	public static function is_jsonld( $jsonld ) {
 		return ( is_array( $jsonld ) && array_key_exists( '@type', $jsonld ) );
+	}
+
+	public static function is_jsonld_graph( $jsonld ) {
+		return ( is_array( $jsonld ) && array_key_exists( '@graph', $jsonld ) );
 	}
 
 	public static function is_jsonld_type( $jsonld, $type ) {
