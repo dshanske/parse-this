@@ -209,7 +209,11 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 		}
 
 		if ( 1 === $count ) {
-			return self::parse_item( $input['items'][0], $input, $args );
+			$return = self::parse_item( $input['items'][0], $input, $args );
+			if ( self::has_rel( $input, 'alternate' ) ) {
+				$return['_alternate'] = self::get_rel( $input, 'alternate' );
+				return $return;
+			}
 		}
 
 		$return = array();
@@ -230,6 +234,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 			}
 			$return[] = $parsed;
 		}
+
 		return $return;
 	}
 
@@ -300,9 +305,9 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 				}
 				$data['items'][ $key ] = $item;
 			}
+			$data['_last_published'] = self::find_last_published( $data['items'] );
+			$data['_last_updated']   = self::find_last_updated( $data['items'] );
 		}
-		$data['_last_published'] = self::find_last_published( $data['items'] );
-		$data['_last_updated']   = self::find_last_updated( $data['items'] );
 		return $data;
 	}
 
