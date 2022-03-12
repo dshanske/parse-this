@@ -72,13 +72,16 @@ class Parse_This_RESTAPI {
 		);
 
 		$response      = wp_safe_remote_get( $url, $args );
-		$response_code = wp_remote_retrieve_response_code( $response );
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+		$response_code = (int) wp_remote_retrieve_response_code( $response );
 		$content_type  = wp_remote_retrieve_header( $response, 'content-type' );
-		if ( in_array( $response_code, array( 403, 415 ), true ) ) {
+		if ( in_array( $response_code, array( 404, 403, 415 ), true ) ) {
 			$args['user-agent'] = $user_agent;
 			$response           = wp_safe_remote_get( $url, $args );
 			$response_code      = wp_remote_retrieve_response_code( $response );
-			if ( in_array( $response_code, array( 403, 415 ), true ) ) {
+			if ( in_array( $response_code, array( 404, 403, 415 ), true ) ) {
 				return new WP_Error( 'source_error', 'Unable to Retrieve' );
 			}
 		}
@@ -168,7 +171,7 @@ class Parse_This_RESTAPI {
 			'note'  => self::ifset( 'description', $json ),
 			'photo' => $avatar_urls,
 		);
-		return $return;
+		return array_filter( $return );
 	}
 
 
