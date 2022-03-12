@@ -14,6 +14,8 @@ class Parse_This {
 
 	private $content = '';
 
+	private $content_type = '';
+
 	/**
 	 * Constructor.
 	 *
@@ -273,23 +275,16 @@ class Parse_This {
 		$response = wp_safe_remote_get( $url, $args );
 
 		$raw = wp_remote_retrieve_header( $response, 'link' );
-		$raw = explode( ',', $raw );
-
-		if ( is_array( $raw ) && 1 <= count( $raw ) ) {
-			foreach ( $raw as $link ) {
-				$pieces              = explode( '; ', $link );
-				$uri                 = trim( array_shift( $pieces ), '<> ' );
-				$this->links[ $uri ] = array();
-				foreach ( $pieces as $p ) {
-					$elements                            = explode( '=', $p );
-					$this->links[ $uri ][ $elements[0] ] = trim( $elements[1], '"' );
-				}
-			}
-			ksort( $this->links );
+		if ( is_string( $raw ) ) {
+			$raw = explode( ',', $raw );
 		}
 
-		$response_code = wp_remote_retrieve_response_code( $response );
-		$content_type  = wp_remote_retrieve_header( $response, 'content-type' );
+		if ( is_array( $raw ) && 1 <= count( $raw ) ) {
+			$this->links = pt_parse_header_links( $raw );
+		}
+
+		$response_code      = wp_remote_retrieve_response_code( $response );
+		$this->content_type = wp_remote_retrieve_header( $response, 'content-type' );
 		if ( in_array( $response_code, array( 403, 415 ), true ) ) {
 			$args['user-agent'] = $user_agent;
 			$response           = wp_safe_remote_get( $url, $args );
@@ -298,23 +293,24 @@ class Parse_This {
 				return new WP_Error( 'source_error', 'Unable to Retrieve' );
 			}
 		}
-		if ( is_array( $content_type ) ) {
-			$content_type = array_pop( $content_type );
+		if ( is_array( $this->content_type ) ) {
+			$this->content_type = array_pop( $this->content_type );
 		}
 						// Strip any character set off the content type
-						$ct = explode( ';', $content_type );
+						$ct = explode( ';', $this->content_type );
 		if ( is_array( $ct ) ) {
-			$content_type = array_shift( $ct );
+			$this->content_type = array_shift( $ct );
 		}
-						$content_type = trim( $content_type );
+						$this->content_type = trim( $this->content_type );
 						// List of content types we know how to handle
-		if ( ! self::supported_content( $content_type ) ) {
+		if ( ! self::supported_content( $this->content_type ) ) {
 			return new WP_Error( 'content-type', 'Content Type is Not Supported', array( 'content-type' => $content_type ) );
 		}
 
-						$content = wp_remote_retrieve_body( $response );
-						// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway
-		if ( class_exists( 'Parse_This_RSS' ) && ( in_array( $content_type, array( 'application/rss+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/xml' ), true ) ) ) {
+		$content = wp_remote_retrieve_body( $response );
+
+		// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway
+		if ( class_exists( 'Parse_This_RSS' ) && ( in_array( $this->content_type, array( 'application/rss+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/xml' ), true ) ) ) {
 			// Get a SimplePie feed object from the specified feed source.
 			$content = self::fetch_feed( $url );
 			if ( is_wp_error( $content ) ) {
@@ -325,26 +321,28 @@ class Parse_This {
 			return true;
 		}
 
-		if ( in_array( $content_type, array( 'application/mf2+json', 'application/jf2+json', 'application/jf2feed+json' ), true ) ) {
+		if ( in_array( $this->content_type, array( 'application/mf2+json', 'application/jf2+json', 'application/jf2feed+json' ), true ) ) {
 			$content = json_decode( $content, true );
-			return true;
-		}
-		if ( in_array( $content_type, array( 'application/feed+json', 'application/json' ), true ) ) {
-			$content = json_decode( $content, true );
-			if ( class_exists( 'Parse_This_JSONFeed' ) && $content && isset( $content['version'] ) && false !== strpos( $content['version'], 'https://jsonfeed.org/version/' ) ) {
-				$content = Parse_This_JSONFeed::to_jf2( $content, $url );
-				$this->set( $content, $url, true );
-			}
-			// This header indicates we are probing the WordPress REST API
-			if ( wp_remote_retrieve_header( $response, 'x-wp-total' ) ) {
-				$content = Parse_This_RESTAPI::to_jf2( $content, $url );
-				$this->set( $content, $url, true );
-			}
-			// We do not yet know how to cope with this
 			return true;
 		}
 
-		$this->set( $content, $url, ( 'application/jf2+json' === $content_type ) );
+		if ( in_array( $this->content_type, array( 'application/feed+json', 'application/json' ), true ) ) {
+			$content = json_decode( $content, true );
+
+			if ( class_exists( 'Parse_This_JSONFeed' ) && isset( $content['version'] ) && false !== strpos( $content['version'], 'https://jsonfeed.org/version/' ) ) {
+				$content = Parse_This_JSONFeed::to_jf2( $content, $url );
+				$this->set( $content, $url, true );
+				// This means we are probing a specific REST Endpoint as they return this.
+			} elseif ( wp_remote_retrieve_header( $response, 'x-wp-total' ) ) {
+				$content           = Parse_This_RESTAPI::posts_to_feed( $content, $url );
+				$content['_total'] = wp_remote_retrieve_header( $response, 'x-wp-total' );
+				$content['_pages'] = wp_remote_retrieve_header( $response, 'x-wp-totalpages' );
+
+				$this->set( $content, $url, true );
+			}
+		}
+
+		$this->set( $content, $url, ( 'application/jf2+json' === $this->content_type ) );
 		return true;
 	}
 
@@ -377,6 +375,14 @@ class Parse_This {
 			return new WP_Error( 'Missing Content' );
 		}
 
+		if ( 'application/json' === $this->content_type ) {
+			$this->jf2 = Parse_This_RESTAPI::parse( $content, $this->url, $args );
+			if ( ! empty( $this->jf2 ) ) {
+				$this->jf2['_rest'] = $content;
+				return;
+			}
+		}
+
 		if ( ! is_array( $this->jf2 ) ) {
 			$this->jf2 = array(
 				'raw' => $this->jf2,
@@ -401,7 +407,19 @@ class Parse_This {
 			$alt = null;
 			$jf2 = $this->jf2;
 
-			if ( $args['jsonld'] ) {
+			if ( ! empty( $this->links ) ) {
+				$endpoint = pt_find_rest_endpoint( $this->links );
+				$rest     = pt_find_rest_alternate( $this->links );
+				if ( $rest ) {
+					$empty        = false;
+					$path         = Parse_This_RESTAPI::get_rest_path( $endpoint, $rest );
+					$fetch        = Parse_This_RESTAPI::fetch( $endpoint, $path );
+					$alt          = Parse_This_RESTAPI::parse( $fetch, $endpoint, $args );
+					$alt['_rest'] = $fetch;
+				}
+			}
+
+			if ( $empty && $args['jsonld'] ) {
 				$alt = Parse_This_JSONLD::parse( $this->doc, $this->url, $args );
 			}
 
@@ -410,7 +428,7 @@ class Parse_This {
 			} elseif ( is_countable( $alt ) && 1 === count( $alt ) && array_key_exists( '_jsonld', $alt ) ) {
 				$empty = true;
 			} else {
-					$empty = false;
+				$empty = false;
 			}
 			if ( $empty && $args['html'] ) {
 				$args['alternate'] = true;
@@ -424,14 +442,13 @@ class Parse_This {
 				if ( ! $alt ) {
 					$alt = Parse_This_HTML::parse( $content, $this->url, $args );
 				}
-				
 			}
 			$this->jf2 = array_merge( $this->jf2, $alt );
 			if ( ! empty( $jf2 ) ) {
 				if ( isset( $jf2['author'] ) ) {
 					if ( isset( $this->jf2['author'] ) && is_string( $this->jf2['author'] ) ) {
 						$jf2['author']['name'] = $this->jf2['author'];
-						$this->jf2['author'] = $jf2['author'];
+						$this->jf2['author']   = $jf2['author'];
 					}
 				}
 			}

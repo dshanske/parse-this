@@ -206,11 +206,11 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 					$author = array_pop( $author );
 				}
 				return array(
-						'author' => array(
-							'type' => 'card',
-							'url' => $author
-						)
-					);
+					'author' => array(
+						'type' => 'card',
+						'url'  => $author,
+					),
+				);
 			}
 			return array();
 		}
@@ -383,7 +383,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 
 	public static function parse_hunknown( $unknown, $mf, $args ) {
 		// Parse unknown h property
-		$data         = self::parse_h( $unknown, $mf, $args );
+		$data = self::parse_h( $unknown, $mf, $args );
 		if ( empty( $data ) ) {
 			return array();
 		}
