@@ -484,35 +484,38 @@ if ( ! function_exists( 'pt_secure_rewrite' ) ) {
  *
  * @return array
  */
-function pt_parse_header_links( $links ) {
-	$items = array();
 
-	if ( is_array( $links ) && 1 <= count( $links ) ) {
-		foreach ( $links as $link ) {
-			$item   = array();
-			$pieces = explode( ';', $link );
-			$uri    = array_shift( $pieces );
-			foreach ( $pieces as $p ) {
-				$elements = explode( '=', $p );
+if ( ! function_exists( 'pt_parse_header_links' ) ) {
+	function pt_parse_header_links( $links ) {
+		$items = array();
 
-				$item[ trim( $elements[0] ) ] = trim( $elements[1], '"\'' );
-			}
+		if ( is_array( $links ) && 1 <= count( $links ) ) {
+			foreach ( $links as $link ) {
+				$item   = array();
+				$pieces = explode( ';', $link );
+				$uri    = array_shift( $pieces );
+				foreach ( $pieces as $p ) {
+					$elements = explode( '=', $p );
 
-			$item['uri'] = trim( trim( $uri ), '<>' );
-
-			if ( isset( $item['rel'] ) ) {
-				$rels = explode( ' ', $item['rel'] );
-				foreach ( $rels as $rel ) {
-					$item['rel'] = $rel;
-					$items[]     = $item;
+					$item[ trim( $elements[0] ) ] = trim( $elements[1], '"\'' );
 				}
-			} else {
-				$items[] = $item;
+
+				$item['uri'] = trim( trim( $uri ), '<>' );
+
+				if ( isset( $item['rel'] ) ) {
+					$rels = explode( ' ', $item['rel'] );
+					foreach ( $rels as $rel ) {
+						$item['rel'] = $rel;
+						$items[]     = $item;
+					}
+				} else {
+					$items[] = $item;
+				}
 			}
 		}
-	}
 
-	return $items;
+		return $items;
+	}
 }
 
 /**
@@ -521,14 +524,17 @@ function pt_parse_header_links( $links ) {
  *
  * @return string|false
  */
-function pt_find_rest_alternate( $links ) {
-	foreach ( $links as $link ) {
-		if ( 'alternate' === ifset( $link['rel'] ) && 'application/json' === ifset( $link['type'] ) ) {
-			return $link['uri'];
-		}
-	}
 
-	return false;
+if ( ! function_exists( 'pt_find_rest_alternate' ) ) {
+	function pt_find_rest_alternate( $links ) {
+		foreach ( $links as $link ) {
+			if ( 'alternate' === ifset( $link['rel'] ) && 'application/json' === ifset( $link['type'] ) ) {
+				return $link['uri'];
+			}
+		}
+
+		return false;
+	}
 }
 
 /**
@@ -537,11 +543,14 @@ function pt_find_rest_alternate( $links ) {
  *
  * @return string|false
  */
-function pt_find_rest_endpoint( $links ) {
-	foreach ( $links as $link ) {
-		if ( 'https://api.w.org/' === ifset( $link['rel'] ) ) {
-			return $link['uri'];
+
+if ( ! function_exists( 'pt_find_rest_endpoint' ) ) {
+	function pt_find_rest_endpoint( $links ) {
+		foreach ( $links as $link ) {
+			if ( 'https://api.w.org/' === ifset( $link['rel'] ) ) {
+				return $link['uri'];
+			}
 		}
+		return false;
 	}
-	return false;
 }
