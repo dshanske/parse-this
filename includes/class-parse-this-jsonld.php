@@ -46,6 +46,7 @@ class Parse_This_JSONLD extends Parse_This_Base {
 					case 'WebPage':
 					case 'Article':
 					case 'NewsArticle':
+					case 'BlogPosting':
 						$jf2['entry'] = self::article_to_hentry( $json );
 						break;
 					case 'Person':
@@ -231,6 +232,9 @@ class Parse_This_JSONLD extends Parse_This_Base {
 
 
 	public static function image_to_photo( $image ) {
+		if ( wp_is_numeric_array( $image ) ) {
+			$image = array_pop( $image );
+		}
 		if ( is_string( $image ) ) {
 			return $image;
 		}
@@ -393,7 +397,7 @@ class Parse_This_JSONLD extends Parse_This_Base {
 				'type'      => 'card',
 				'name'      => ifset( $person['name'] ),
 				'email'     => ifset( $person['email'] ),
-				'photo'     => ifset( $person['image'] ),
+				'photo'     => self::image_to_photo( ifset( $person['image'] ) ),
 				'url'       => ifset( $person['url'] ),
 				'me'        => ifset( $person['sameAs'] ),
 				'email'     => ifset( $person['email'] ),
@@ -503,7 +507,7 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			$jf2['featured'] = self::image_to_photo( $newsarticle['image'] );
 		}
 		if ( isset( $newsarticle['keywords'] ) ) {
-			$jf2['category'] = $newsarticle['keywords'];
+			$jf2['category'] = array_map( 'trim', explode( ',', $newsarticle['keywords'] ) );
 		}
 
 		if ( isset( $newsarticle['articleBody'] ) ) {

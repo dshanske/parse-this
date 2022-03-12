@@ -399,6 +399,7 @@ class Parse_This {
 		}
 		if ( empty( $more ) ) {
 			$alt = null;
+			$jf2 = $this->jf2;
 
 			if ( $args['jsonld'] ) {
 				$alt = Parse_This_JSONLD::parse( $this->doc, $this->url, $args );
@@ -423,8 +424,17 @@ class Parse_This {
 				if ( ! $alt ) {
 					$alt = Parse_This_HTML::parse( $content, $this->url, $args );
 				}
+				
 			}
-				$this->jf2 = array_merge( $this->jf2, $alt );
+			$this->jf2 = array_merge( $this->jf2, $alt );
+			if ( ! empty( $jf2 ) ) {
+				if ( isset( $jf2['author'] ) ) {
+					if ( isset( $this->jf2['author'] ) && is_string( $this->jf2['author'] ) ) {
+						$jf2['author']['name'] = $this->jf2['author'];
+						$this->jf2['author'] = $jf2['author'];
+					}
+				}
+			}
 		}
 		if ( ! isset( $this->jf2['url'] ) ) {
 			$this->jf2['url'] = $this->url;

@@ -200,6 +200,18 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 
 		$count = count( $input['items'] );
 		if ( 0 === $count ) {
+			if ( self::has_rel( $input, 'author' ) ) {
+				$author = self::get_rel( $input, 'author' );
+				if ( is_array( $author ) ) {
+					$author = array_pop( $author );
+				}
+				return array(
+						'author' => array(
+							'type' => 'card',
+							'url' => $author
+						)
+					);
+			}
 			return array();
 		}
 
@@ -235,7 +247,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 			$return[] = $parsed;
 		}
 
-		return $return;
+		return array_filter( $return );
 	}
 
 	// Tries to normalize a set of items into a feed
@@ -372,7 +384,11 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 	public static function parse_hunknown( $unknown, $mf, $args ) {
 		// Parse unknown h property
 		$data         = self::parse_h( $unknown, $mf, $args );
+		if ( empty( $data ) ) {
+			return array();
+		}
 		$data['type'] = $unknown['type'][0];
+
 		return $data;
 	}
 

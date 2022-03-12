@@ -296,6 +296,9 @@ class Parse_This_HTML extends Parse_This_Base {
 			if ( ! isset( $jf2['featured'] ) && isset( $parsely['pub_date'] ) ) {
 				$jf2['featured'] = esc_url_raw( $parsely['image_url'] );
 			}
+			if ( empty( $jf2['category'] ) && isset( $parsely['tags'] ) ) {
+				$jf2['category'] = $parsely['tags'];
+			}
 		}
 		if ( ! isset( $jf2['author'] ) && isset( $meta['citation_author'] ) ) {
 			if ( is_string( $meta['citation_author'] ) ) {
