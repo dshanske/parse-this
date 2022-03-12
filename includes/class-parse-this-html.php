@@ -330,6 +330,10 @@ class Parse_This_HTML extends Parse_This_Base {
 		if ( ! isset( $jf2['author'] ) && ! empty( $meta['author'] ) ) {
 			$jf2['author'] = $meta['author'];
 		}
+
+		if ( ! isset( $jf2['author'] ) && ! empty( $meta['parsely-author'] ) ) {
+			$jf2['author'] = $meta['parsely-author'];
+		}
 		// If Site Name is not set use domain name less www
 		if ( ! isset( $jf2['publication'] ) && isset( $jf2['url'] ) ) {
 			$jf2['publication'] = preg_replace( '/^www\./', '', wp_parse_url( $jf2['url'], PHP_URL_HOST ) );

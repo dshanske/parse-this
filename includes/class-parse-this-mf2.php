@@ -382,6 +382,11 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 	}
 
 	public static function parse_hunknown( $unknown, $mf, $args ) {
+		$type = $unknown['type'][0];
+		$type = explode( '-', $type );
+		if ( 1 !== count( $type ) ) {
+			return array();
+		}
 		// Parse unknown h property
 		$data = self::parse_h( $unknown, $mf, $args );
 		if ( empty( $data ) ) {

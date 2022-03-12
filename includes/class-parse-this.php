@@ -407,6 +407,8 @@ class Parse_This {
 			$alt = null;
 			$jf2 = $this->jf2;
 
+			$empty = true;
+
 			if ( ! empty( $this->links ) ) {
 				$endpoint = pt_find_rest_endpoint( $this->links );
 				$rest     = pt_find_rest_alternate( $this->links );
