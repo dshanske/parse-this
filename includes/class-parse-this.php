@@ -454,6 +454,9 @@ class Parse_This {
 					}
 				}
 			}
+			if ( isset( $alt['author'] ) && is_array( $this->jf2['author'] ) && ! isset( $this->jf2['author']['name'] ) ) {
+				$this->jf2['author']['name'] = $alt['author'];
+			}
 		}
 		if ( ! isset( $this->jf2['url'] ) ) {
 			$this->jf2['url'] = $this->url;
