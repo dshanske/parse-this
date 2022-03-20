@@ -28,6 +28,10 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			$jsonld = $jsonld['@graph'];
 		}
 
+		if ( self::is_jsonld( $jsonld ) ) {
+			$jsonld = array( $jsonld );
+		}
+
 		$jf2 = self::jsonld_to_jf2( $jsonld );
 		if ( WP_DEBUG ) {
 			$jf2['_jsonld'] = $jsonld;
@@ -41,50 +45,49 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		}
 		$jf2 = array();
 		foreach ( $jsonld as $json ) {
-			if ( self::is_jsonld( $json ) ) {
-				switch ( $json['@type'] ) {
-					case 'WebPage':
-					case 'Article':
-					case 'NewsArticle':
-					case 'BlogPosting':
+			$type = self::get_type( $json );
+			switch ( $type ) {
+				case 'entry':
+					if ( ! array_key_exists( 'entry', $jf2 ) ) {
 						$jf2['entry'] = self::article_to_hentry( $json );
-						break;
-					case 'Person':
-						$jf2['person'] = self::person_to_hcard( $json );
-						break;
-					case 'Organization':
-					case 'NGO':
-					case 'MusicGroup':
+					} else {
+						$jf2['entry'] = array_merge( $jf2['entry'], self::article_to_hentry( $json ) );
+					}
+					break;
+				case 'person':
+					$jf2['person'] = self::person_to_hcard( $json );
+					break;
+				case 'org':
+					if ( ! array_key_exists( 'org', $jf2 ) ) {
 						$jf2['org'] = self::organization_to_hcard( $json );
-						break;
-					case 'WebSite':
-						$jf2['site'] = self::website_to_hcard( $json );
-						break;
-					case 'Event':
-					case 'BusinessEvent':
-						$jf2['event'] = self::event_to_hevent( $json );
-						break;
-					case 'ImageObject':
-						$jf2['image'] = self::image_to_photo( $json );
-						break;
-					case 'AudioObject':
-						$jf2['audio'] = self::audio_to_audio( $json );
-						break;
-					case 'VideoObject':
-						$jf2['video'] = self::video_to_video( $json );
-						break;
-					case 'MusicRelease':
-						$jf2['music'] = self::music_to_hcite( $json );
-						break;
-					case 'Movie':
-					case 'TVSeries':
-					case 'TVEpisode':
-						$jf2['media'] = self::media_to_hcite( $json );
-						break;
-					case 'Place':
-						$jf2['place'] = self::place_to_hcard( $json );
-						break;
-				}
+					} else {
+						$jf2['org'] = array_merge( $jf2['org'], self::organization_to_hcard( $json ) );
+					}
+					break;
+				case 'site':
+					$jf2['site'] = self::site_to_hcard( $json );
+					break;
+				case 'event':
+					$jf2['event'] = self::event_to_hevent( $json );
+					break;
+				case 'image':
+					$jf2['image'] = self::image_to_photo( $json );
+					break;
+				case 'audio':
+					$jf2['audio'] = self::audio_to_audio( $json );
+					break;
+				case 'video':
+					$jf2['video'] = self::video_to_video( $json );
+					break;
+				case 'music':
+					$jf2['music'] = self::music_to_hcite( $json );
+					break;
+				case 'media':
+					$jf2['media'] = self::media_to_hcite( $json );
+					break;
+				case 'place':
+					$jf2['place'] = self::place_to_hcard( $json );
+					break;
 			}
 		}
 		$return = null;
@@ -98,6 +101,9 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			}
 			if ( array_key_exists( 'person', $jf2 ) ) {
 				$return['author'] = $jf2['person'];
+			}
+			if ( array_key_exists( 'org', $jf2 ) ) {
+				$return['org'] = $jf2['org'];
 			}
 		} elseif ( array_key_exists( 'event', $jf2 ) ) {
 			$return = $jf2['event'];
@@ -123,111 +129,96 @@ class Parse_This_JSONLD extends Parse_This_Base {
 	}
 
 	public static function music_to_hcite( $music ) {
-		if ( ! self::is_jsonld( $music ) ) {
+		if ( 'music' !== self::get_type( $music ) ) {
 			return false;
 		}
-		if ( self::is_jsonld_type( $music, 'MusicRelease' ) ) {
-			$return = array(
-				'type'      => 'cite',
-				'name'      => ifset( $music['name'] ),
-				'url'       => ifset( $music['url'] ),
-				'summary'   => ifset( $music['description'] ),
-				'duration'  => ifset( $music['duration'] ),
-				'category'  => ifset( $music['genre'] ),
-				'published' => normalize_iso8601( ifset( $music['datePublished'] ) ),
-				'featured'  => self::image_to_photo( ifset( $music['image'] ) ),
-			);
-			if ( isset( $music['releaseOf'] ) ) {
-				if ( isset( $music['releaseOf']['byArtist'] ) ) {
-					$return['author'] = array();
-					foreach ( $music['releaseOf']['byArtist'] as $artist ) {
-						$return['author'][] = array(
-							array_filter(
-								array(
-									'type' => 'card',
-									'name' => ifset( $artist['name'] ),
-									'url'  => ifset( $artist['@id'] ),
-								)
-							),
-						);
-					}
-				}
-			}
-			if ( isset( $music['tracks'] ) ) {
-				$return['tracks'] = array();
-				foreach ( $music['tracks'] as $track ) {
-					$return['tracks'][] = self::music_to_hcite( $track );
-				}
-			}
-			return array_filter( $return );
-		}
-		if ( self::is_jsonld_type( $music, 'MusicRecording' ) ) {
-			$return = array(
-				'name'     => ifset( $music['name'] ),
-				'duration' => ifset( $music['duration'] ),
-			);
-			return array_filter( $return );
-		}
 
-		return false;
+		$return = array(
+			'type'      => 'cite',
+			'name'      => ifset( $music['name'] ),
+			'url'       => ifset( $music['url'] ),
+			'summary'   => ifset( $music['description'] ),
+			'duration'  => ifset( $music['duration'] ),
+			'category'  => ifset( $music['genre'] ),
+			'published' => normalize_iso8601( ifset( $music['datePublished'] ) ),
+			'featured'  => self::image_to_photo( ifset( $music['image'] ) ),
+		);
+		if ( isset( $music['releaseOf'] ) ) {
+			if ( isset( $music['releaseOf']['byArtist'] ) ) {
+				$return['author'] = array();
+				foreach ( $music['releaseOf']['byArtist'] as $artist ) {
+					$return['author'][] = array(
+						array_filter(
+							array(
+								'type' => 'card',
+								'name' => ifset( $artist['name'] ),
+								'url'  => ifset( $artist['@id'] ),
+							)
+						),
+					);
+				}
+			}
+		}
+		if ( isset( $music['tracks'] ) ) {
+			$return['tracks'] = array();
+			foreach ( $music['tracks'] as $track ) {
+				$return['tracks'][] = self::music_to_hcite( $track );
+			}
+		}
+		return array_filter( $return );
 	}
 
-
-
 	public static function media_to_hcite( $movie ) {
-		if ( ! self::is_jsonld( $movie ) ) {
+		if ( 'media' !== self::get_type( $movie ) ) {
 			return false;
 		}
-		if ( self::is_jsonld_type( $movie, 'Movie' ) || self::is_jsonld_type( $movie, 'TVSeries' ) || self::is_jsonld_type( $movie, 'TVEpisode' ) ) {
-			$return = array(
-				'type'      => 'cite',
-				'name'      => ifset( $movie['name'] ),
-				'url'       => ifset( $movie['url'] ),
-				'summary'   => ifset( $movie['description'] ),
-				'duration'  => ifset( $movie['duration'] ),
-				'category'  => ifset( $movie['genre'] ),
-				'published' => normalize_iso8601( ifset( $movie['datePublished'] ) ),
-				'featured'  => self::image_to_photo( ifset( $movie['image'] ) ),
-				'video'     => self::video_to_video( ifset( $movie['trailer'] ) ),
-			);
-			if ( empty( $return['duration'] ) && isset( $movie['timeRequired'] ) ) {
-				$return['duration'] = $movie['timeRequired'];
-			}
-			foreach ( array( 'actor', 'director', 'creator' ) as $type ) {
-				if ( isset( $movie[ $type ] ) ) {
-					if ( ! wp_is_numeric_array( $movie[ $type ] ) ) {
-						$movie[ $type ] = array( $movie[ $type ] );
-					}
-					$return[ $type ] = array();
-					foreach ( $movie[ $type ] as $person ) {
-						$return[ $type ][] = self::person_to_hcard( $person );
-					}
+
+		$return = array(
+			'type'      => 'cite',
+			'name'      => ifset( $movie['name'] ),
+			'url'       => ifset( $movie['url'] ),
+			'summary'   => ifset( $movie['description'] ),
+			'duration'  => ifset( $movie['duration'] ),
+			'category'  => ifset( $movie['genre'] ),
+			'published' => normalize_iso8601( ifset( $movie['datePublished'] ) ),
+			'featured'  => self::image_to_photo( ifset( $movie['image'] ) ),
+			'video'     => self::video_to_video( ifset( $movie['trailer'] ) ),
+		);
+
+		if ( empty( $return['duration'] ) && isset( $movie['timeRequired'] ) ) {
+			$return['duration'] = $movie['timeRequired'];
+		}
+		foreach ( array( 'actor', 'director', 'creator' ) as $type ) {
+			if ( isset( $movie[ $type ] ) ) {
+				if ( ! wp_is_numeric_array( $movie[ $type ] ) ) {
+					$movie[ $type ] = array( $movie[ $type ] );
+				}
+				$return[ $type ] = array();
+				foreach ( $movie[ $type ] as $person ) {
+					$return[ $type ][] = self::person_to_hcard( $person );
 				}
 			}
-			return array_filter( $return );
 		}
-		return false;
+		return array_filter( $return );
 	}
 
 	public static function event_to_hevent( $event ) {
-		if ( ! self::is_jsonld( $event ) ) {
+		if ( 'event' !== self::get_type( $event ) ) {
 			return false;
 		}
-		if ( self::is_jsonld_type( $event, 'Event' ) || self::is_jsonld_type( $event, 'BusinessEvent' ) ) {
-			$return = array(
-				'type'      => 'event',
-				'name'      => ifset( $event['name'] ),
-				'url'       => ifset( $event['url'] ),
-				'summary'   => ifset( $event['description'] ),
-				'organizer' => self::organization_to_hcard( ifset( $event['organizer'] ) ),
-				'location'  => self::place_to_hcard( ifset( $event['location'] ) ),
-				'start'     => normalize_iso8601( ifset( $event['startDate'] ) ),
-				'end'       => normalize_iso8601( ifset( $event['endDate'] ) ),
-				'featured'  => self::image_to_photo( ifset( $event['image'] ) ),
-			);
-			return array_filter( $return );
-		}
-		return false;
+		$return = array(
+			'type'      => 'event',
+			'name'      => ifset( $event['name'] ),
+			'url'       => ifset( $event['url'] ),
+			'summary'   => ifset( $event['description'] ),
+			'organizer' => self::organization_to_hcard( ifset( $event['organizer'] ) ),
+			'location'  => self::place_to_hcard( ifset( $event['location'] ) ),
+			'start'     => normalize_iso8601( ifset( $event['startDate'] ) ),
+			'end'       => normalize_iso8601( ifset( $event['endDate'] ) ),
+			'featured'  => self::image_to_photo( ifset( $event['image'] ) ),
+		);
+
+		return array_filter( $return );
 	}
 
 
@@ -238,80 +229,74 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		if ( is_string( $image ) ) {
 			return $image;
 		}
-		if ( ! self::is_jsonld( $image ) ) {
+		if ( 'image' !== self::get_type( $image ) ) {
 			return false;
 		}
-		if ( self::is_jsonld_type( $image, 'ImageObject' ) ) {
-			/*
-			 if ( isset( $image['caption'] ) ) {
-				return array(
-					'value' => $image['url'],
-					'alt' => $image['caption']
-				);
-			} */
-			return $image['url'];
-		}
-		return false;
+
+		/*
+		 if ( isset( $image['caption'] ) ) {
+			return array(
+				'value' => $image['url'],
+				'alt' => $image['caption']
+			);
+		} */
+		return $image['url'];
 	}
 
 	public static function audio_to_audio( $audio ) {
 		if ( is_string( $audio ) ) {
 			return $audio;
 		}
-		if ( ! self::is_jsonld( $audio ) ) {
+		if ( 'audio' !== self::get_type( $audio ) ) {
 			return false;
 		}
-		if ( self::is_jsonld_type( $audio, 'AudioObject' ) ) {
-			$return = array(
-				'name'      => ifset( $audio['name'] ),
-				'summary'   => ifset( $audio['description'] ),
-				'featured'  => ifset( $audio['thumbnailUrl'] ),
-				'audio'     => ifset( $audio['contentUrl'] ),
-				'published' => normalize_iso8601( ifset( $audio['uploadDate'] ) ),
-				'duration'  => ifset( $audio['duration'] ),
+
+		$return = array(
+			'name'      => ifset( $audio['name'] ),
+			'summary'   => ifset( $audio['description'] ),
+			'featured'  => ifset( $audio['thumbnailUrl'] ),
+			'audio'     => ifset( $audio['contentUrl'] ),
+			'published' => normalize_iso8601( ifset( $audio['uploadDate'] ) ),
+			'duration'  => ifset( $audio['duration'] ),
+		);
+		if ( isset( $audio['transcript'] ) ) {
+			$return['content'] = array(
+				'html'  => Parse_This::clean_content( $audio['transcript'] ),
+				'value' => wp_strip_all_tags( $audio['transcript'] ),
 			);
-			if ( isset( $audio['transcript'] ) ) {
-				$return['content'] = array(
-					'html'  => Parse_This::clean_content( $audio['transcript'] ),
-					'value' => wp_strip_all_tags( $audio['transcript'] ),
-				);
-			}
-			if ( isset( $audio['publisher'] ) ) {
-				$return['publication'] = self::organization_to_hcard( $audio['publisher'] );
-			}
-			return array_filter( $return );
 		}
-		return false;
+		if ( isset( $audio['publisher'] ) ) {
+			$return['publication'] = self::organization_to_hcard( $audio['publisher'] );
+		}
+		return array_filter( $return );
 	}
 
 	public static function video_to_video( $video ) {
 		if ( is_string( $video ) ) {
 			return $video;
 		}
-		if ( ! self::is_jsonld( $video ) ) {
+		if ( 'video' !== self::get_type( $video ) ) {
 			return false;
 		}
-		if ( self::is_jsonld_type( $video, 'VideoObject' ) ) {
-			$return = array(
-				'name'      => ifset( $video['name'] ),
-				'summary'   => ifset( $video['description'] ),
-				'featured'  => ifset( $video['thumbnailUrl'] ),
-				'video'     => ifset( $video['contentUrl'] ),
-				'published' => normalize_iso8601( ifset( $video['uploadDate'] ) ),
-				'duration'  => ifset( $video['duration'] ),
+		$return = array(
+			'name'      => ifset( $video['name'] ),
+			'summary'   => ifset( $video['description'] ),
+			'featured'  => ifset( $video['thumbnailUrl'] ),
+			'video'     => ifset( $video['contentUrl'] ),
+			'published' => normalize_iso8601( ifset( $video['uploadDate'] ) ),
+			'duration'  => ifset( $video['duration'] ),
+		);
+
+		if ( isset( $vidio['transcript'] ) ) {
+			$return['content'] = array(
+				'html'  => Parse_This::clean_content( $vidio['transcript'] ),
+				'value' => wp_strip_all_tags( $vidio['transcript'] ),
 			);
-			if ( isset( $vidio['transcript'] ) ) {
-				$return['content'] = array(
-					'html'  => Parse_This::clean_content( $vidio['transcript'] ),
-					'value' => wp_strip_all_tags( $vidio['transcript'] ),
-				);
-			}
-			if ( isset( $video['publisher'] ) ) {
-				$return['publication'] = self::organization_to_hcard( $video['publisher'] );
-			}
-			return array_filter( $return );
 		}
-		return false;
+		if ( isset( $video['publisher'] ) ) {
+			$return['publication'] = self::organization_to_hcard( $video['publisher'] );
+		}
+		return array_filter( $return );
 	}
 
 	public static function geocoordinates_to_geo( $geo ) {
@@ -330,12 +315,10 @@ class Parse_This_JSONLD extends Parse_This_Base {
 	}
 
 	public static function postaladdress_to_address( $address ) {
-		if ( ! self::is_jsonld( $address ) ) {
-			return false;
-		}
 		if ( ! self::is_jsonld_type( $address, 'PostalAddress' ) ) {
 			return false;
 		}
+
 		$return = array(
 			'locality'       => ifset( $address['addressLocality'] ),
 			'region'         => ifset( $address['addressRegion'] ),
@@ -350,7 +333,7 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		if ( ! self::is_jsonld( $place ) ) {
 			return false;
 		}
-		if ( ! self::is_jsonld_type( $place, 'Place' ) ) {
+		if ( 'place' !== self::get_type( $place ) ) {
 			return false;
 		}
 		$hcard = array(
@@ -380,7 +363,7 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		if ( ! self::is_jsonld( $person ) ) {
 			return false;
 		}
-		if ( ! self::is_jsonld_type( $person, 'Person' ) ) {
+		if ( ! 'person' === self::get_type( $person ) ) {
 			return false;
 		}
 		if ( isset( $person['name'] ) && is_array( $person['name'] ) ) {
@@ -409,11 +392,8 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		return array_filter( $author );
 	}
 
-	public static function website_to_hcard( $website ) {
-		if ( ! self::is_jsonld( $website ) ) {
-			return false;
-		}
-		if ( ! self::is_jsonld_type( $website, 'WebSite' ) ) {
+	public static function site_to_hcard( $website ) {
+		if ( 'site' !== self::get_type( $website ) ) {
 			return false;
 		}
 
@@ -428,10 +408,7 @@ class Parse_This_JSONLD extends Parse_This_Base {
 	}
 
 	public static function organization_to_hcard( $organization ) {
-		if ( ! self::is_jsonld( $organization ) ) {
-			return false;
-		}
-		if ( ! self::is_jsonld_type( $organization, 'Organization' ) && ! self::is_jsonld_type( $organization, 'NGO' ) && ! self::is_jsonld_type( $organization, 'MusicGroup' ) ) {
+		if ( 'org' !== self::get_type( $organization ) ) {
 			return false;
 		}
 
@@ -460,6 +437,8 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			$address = self::postaladdress_to_address( $organization['address'] );
 			if ( is_array( $address ) ) {
 				$publication = array_merge( $publication, $address );
+			} else {
+				$publication['_address'] = $address;
 			}
 		}
 		return array_filter( $publication );
@@ -474,11 +453,49 @@ class Parse_This_JSONLD extends Parse_This_Base {
 	}
 
 	public static function is_jsonld_type( $jsonld, $type ) {
-		return ( array_key_exists( '@type', $jsonld ) && $type === $jsonld['@type'] );
+		if ( ! self::is_jsonld( $jsonld ) ) {
+			return false;
+		}
+
+		if ( is_string( $type ) ) {
+			$type = array( $type );
+		}
+		return ( in_array( $jsonld['@type'], $type, true ) );
 	}
 
+	public static function get_type( $jsonld ) {
+		if ( self::is_jsonld_type( $jsonld, array( 'WebPage', 'Article', 'NewsArticle', 'BlogPosting' ) ) ) {
+			return 'entry';
+		} elseif ( self::is_jsonld_type( $jsonld, array( 'Organization', 'NewsMediaOrganization', 'NGO', 'MusicGroup' ) ) ) {
+			return 'org';
+		} elseif ( self::is_jsonld_type( $jsonld, array( 'Person' ) ) ) {
+			return 'person';
+		} elseif ( self::is_jsonld_type( $jsonld, array( 'WebSite' ) ) ) {
+			return 'site';
+		} elseif ( self::is_jsonld_type( $jsonld, array( 'Event', 'BusinessEvent' ) ) ) {
+			return 'event';
+		} elseif ( self::is_jsonld_type( $jsonld, array( 'ImageObject' ) ) ) {
+			return 'image';
+		} elseif ( self::is_jsonld_type( $jsonld, array( 'AudioObject' ) ) ) {
+			return 'audio';
+		} elseif ( self::is_jsonld_type( $jsonld, array( 'VideoObject' ) ) ) {
+			return 'video';
+		} elseif ( self::is_jsonld_type( $jsonld, array( 'MusicRelease' ) ) ) {
+			return 'music';
+		} elseif ( self::is_jsonld_type( $jsonld, array( 'Movie', 'TVSeries', 'TVEpisode' ) ) ) {
+			return 'media';
+		} elseif ( self::is_jsonld_type( $jsonld, array( 'Place' ) ) ) {
+			return 'place';
+		} elseif ( self::is_jsonld_type( $jsonld, array( 'PostalAddress' ) ) ) {
+			return 'address';
+		}
+
+		return false;
+	}
+
+
 	public static function article_to_hentry( $newsarticle ) {
-		if ( ! self::is_jsonld( $newsarticle ) ) {
+		if ( 'entry' !== self::get_type( $newsarticle ) ) {
 			return false;
 		}
 		$jf2          = array();
@@ -524,7 +541,14 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			foreach ( $newsarticle['author'] as $author ) {
 				$jf2['author'][] = self::person_to_hcard( $author );
 			}
-		} elseif ( isset( $newsarticle['creator'] ) ) {
+			$jf2['author'] = array_filter( $jf2['author'] );
+			if ( 0 === count( $jf2['author'] ) ) {
+				unset( $jf2['author'] );
+			} elseif ( 1 === count( $jf2['author'] ) ) {
+				$jf2['author'] = array_pop( $jf2['author'] );
+			}
+		}
+		if ( isset( $newsarticle['creator'] ) ) {
 			if ( ! wp_is_numeric_array( $newsarticle['creator'] ) ) {
 				$newsarticle['creator'] = array( $newsarticle['creator'] );
 			}
@@ -532,10 +556,6 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			foreach ( $newsarticle['creator'] as $creator ) {
 				$jf2['author'][] = self::person_to_hcard( $creator );
 			}
-		}
-
-		if ( isset( $jf2['author'] ) && wp_is_numeric_array( $jf2['author'] ) && 1 === count( $jf2['author'] ) ) {
-			$jf2['author'] = $jf2['author'][0];
 		}
 
 		if ( isset( $newsarticle['video'] ) ) {
