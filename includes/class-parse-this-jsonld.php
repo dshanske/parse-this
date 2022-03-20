@@ -524,7 +524,12 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			$jf2['featured'] = self::image_to_photo( $newsarticle['image'] );
 		}
 		if ( isset( $newsarticle['keywords'] ) ) {
-			$jf2['category'] = array_map( 'trim', explode( ',', $newsarticle['keywords'] ) );
+			if ( ! is_array( $newsarticle['keywords'] ) ) {
+				$newsarticle['keywords'] = explode( ',', $newsarticle['keywords'] );
+			} elseif ( is_string( $newsarticle['keywords'] ) ) {
+				$newsarticle['keywords'] = array( $newsarticle['keywords'] );
+			}
+			$jf2['category'] = array_map( 'trim', $newsarticle['keywords'] );
 		}
 
 		if ( isset( $newsarticle['articleBody'] ) ) {
