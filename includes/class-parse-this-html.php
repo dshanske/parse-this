@@ -314,7 +314,7 @@ class Parse_This_HTML extends Parse_This_Base {
 			}
 		}
 
-		if ( isset( $jf2['author'] && is_array( $jf2['author'] ) && 1 === count( $jf2['author'] ) ) {
+		if ( isset( $jf2['author'] ) && is_array( $jf2['author'] ) && 1 === count( $jf2['author'] ) ) {
 			$jf2['author'] = array_pop( $jf2['author'] );
 		}
 
