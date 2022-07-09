@@ -36,7 +36,8 @@
         "wpreadme2markdown/wp2md": "*",
         "php-parallel-lint/php-parallel-lint": "^1.3",
         "sebastian/phpcpd": "^3.0 || ^5.0 || ^6.0",
-      	"masterminds/html5": "*"
+      	"masterminds/html5": "*",
+        "yoast/phpunit-polyfills": "^1.0"
     },
     "prefer-stable" : true,
     "scripts": {
