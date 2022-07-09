@@ -450,7 +450,7 @@ class Parse_This {
 					$alt = Parse_This_HTML::parse( $content, $this->url, $args );
 				}
 			}
-			$json = Parse_This_JSON::parse( $this->doc, $this->url, $args );
+			$json      = Parse_This_JSON::parse( $this->doc, $this->url, $args );
 			$this->jf2 = array_merge( $this->jf2, $json );
 			$this->jf2 = array_merge( $this->jf2, $alt );
 			if ( ! empty( $jf2 ) ) {

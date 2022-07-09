@@ -71,7 +71,7 @@ class Parse_This_RESTAPI {
 			// Use an explicit user-agent for Parse This
 		);
 
-		$response      = wp_safe_remote_get( $url, $args );
+		$response = wp_safe_remote_get( $url, $args );
 		if ( is_wp_error( $response ) ) {
 			return $response;
 		}
