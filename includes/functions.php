@@ -509,12 +509,12 @@ if ( ! function_exists( 'pt_parse_header_links' ) ) {
 						$items[]     = $item;
 					}
 				} else {
-					$items[] = $item;
+					$items[] = array_filter( $item );
 				}
 			}
 		}
 
-		return $items;
+		return array_filter( $items );
 	}
 }
 
