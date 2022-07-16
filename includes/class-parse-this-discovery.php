@@ -69,30 +69,28 @@ class Parse_This_Discovery {
 		$response      = wp_safe_remote_get( $url, $args );
 		$response_code = wp_remote_retrieve_response_code( $response );
 		$content_type  = wp_remote_retrieve_header( $response, 'content-type' );
-		$wprest        = false;
+		$wprest        = array();
 		$linkheaders   = wp_remote_retrieve_header( $response, 'link' );
 		if ( $linkheaders ) {
 			if ( is_array( $linkheaders ) ) {
 				foreach ( $linkheaders as $link ) {
 					if ( preg_match( '/<(.[^>]+)>;\s+rel\s?=\s?[\"\']?(https:\/\/)?api.w.org?\/?[\"\']?/i', $link, $result ) ) {
-						$links[] = array(
+						$wprest[] = array(
 							'url'        => untrailingslashit( pt_make_absolute_url( $result[1], $url ) ),
 							'type'       => 'feed',
 							'_feed_type' => 'wordpress',
 							'name'       => 'WordPress REST API',
 						);
 					}
-					$wprest = true;
 				}
 			} else {
 				if ( preg_match( '/<(.[^>]+)>;\s+rel\s?=\s?[\"\']?(https:\/\/)?api.w.org?\/?[\"\']?/i', $linkheaders, $result ) ) {
-						$links[] = array(
+						$wprest[] = array(
 							'url'        => untrailingslashit( pt_make_absolute_url( $result[1], $url ) ),
 							'type'       => 'feed',
 							'_feed_type' => 'wordpress',
 							'name'       => 'WordPress REST API',
 						);
-						$wprest  = true;
 				}
 			}
 		}
@@ -164,7 +162,7 @@ class Parse_This_Discovery {
 					if ( 'microformats' === $type ) {
 						$mf2 = true;
 					}
-						
+
 					if ( in_array( $rel, array( 'alternate', 'feed' ), true ) && ! empty( $type ) ) {
 						$links[] = array_filter(
 							array(
@@ -173,12 +171,12 @@ class Parse_This_Discovery {
 								'_feed_type' => $type,
 								'name'       => $title,
 								'_mime-type' => $link->getAttribute( 'type' ),
-								'_rel' => $rel
+								'_rel'       => $rel,
 							)
 						);
 					}
-					if ( 'https://api.w.org/' === $rel && ! $wprest ) {
-						$links[] = array_filter(
+					if ( 'https://api.w.org/' === $rel && empty( $wprest ) ) {
+						$wprest[] = array_filter(
 							array(
 								'url'        => untrailingslashit( pt_make_absolute_url( $href, $url ) ),
 								'type'       => 'feed',
@@ -186,7 +184,6 @@ class Parse_This_Discovery {
 								'name'       => 'WordPress REST API',
 							)
 						);
-						$wprest  = true;
 					}
 				}
 
@@ -231,6 +228,11 @@ class Parse_This_Discovery {
 					}
 				}
 			}
+
+			if ( ! empty( $wprest ) ) {
+				$links = array_merge( $wprest, $links );
+			}
+
 			// Sort feeds by priority
 			$rank = array(
 				'jf2feed'      => 0,
