@@ -420,7 +420,7 @@ class Parse_This {
 			if ( ! empty( $this->links ) ) {
 				$endpoint = pt_find_rest_endpoint( $this->links );
 				$rest     = pt_find_rest_alternate( $this->links );
-				if ( $rest ) {
+				if ( $endpoint && $rest ) {
 					$empty        = false;
 					$path         = Parse_This_RESTAPI::get_rest_path( $endpoint, $rest );
 					$fetch        = Parse_This_RESTAPI::fetch( $endpoint, $path );

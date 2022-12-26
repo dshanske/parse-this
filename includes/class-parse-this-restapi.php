@@ -60,6 +60,10 @@ class Parse_This_RESTAPI {
 
 
 	public static function fetch( $rest_url, $path, $cache = false ) {
+		if ( empty( $rest_url ) || ! $rest_url ) {
+			return new WP_Error( 'no_url', __( 'No URL provided', 'parse-this' ) );
+		}
+
 		$url = self::get_rest_url( $rest_url, $path );
 		$key = 'pt_rest_' . self::base64url_encode( $url );
 		if ( $cache ) {
@@ -124,6 +128,10 @@ class Parse_This_RESTAPI {
 	}
 
 	public static function parse( $content, $rest_url, $args ) {
+		if ( ! is_wp_error( $content ) ) {
+			return $content;
+		}
+
 		// This is the REST URL itself if it has this.
 		if ( array_key_exists( 'namespaces', $content ) ) {
 			// Return site data if single otherwise feed data.
