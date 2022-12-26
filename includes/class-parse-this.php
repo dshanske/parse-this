@@ -402,7 +402,7 @@ class Parse_This {
 		if ( isset( $this->jf2['type'] ) && 'card' === $this->jf2['type'] ) {
 			$more = array_intersect( array_keys( $this->jf2 ), array( 'name', 'url', 'photo' ) );
 		} else {
-			$more = array_intersect( array_keys( $this->jf2 ), array( 'summary', 'content', 'refs', 'items', 'author' ) );
+			$more = array_intersect( array_keys( $this->jf2 ), array( 'summary', 'content', 'refs', 'items' ) );
 			if ( empty( $more ) ) {
 				$this->set( array( '_jf2' => $this->jf2 ), $this->url, true );
 			}
@@ -413,7 +413,7 @@ class Parse_This {
 
 		if ( empty( $more ) ) {
 			$alt = null;
-			$jf2 = $this->jf2;
+			$jf2 = $this->jf2['_jf2'];
 
 			$empty = true;
 
