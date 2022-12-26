@@ -215,7 +215,14 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 				}
 				$author = self::get_rel_urls( $input, $author );
 				$author['type'] = 'card';
-				return $author;
+				if ( $url !== $author['url'] ) {
+					return array(
+						'author' => $author
+					);
+				} else {
+					return $author;
+				}
+
 			}
 			return array();
 		}
