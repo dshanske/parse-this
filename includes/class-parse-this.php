@@ -402,7 +402,7 @@ class Parse_This {
 		if ( isset( $this->jf2['type'] ) && 'card' === $this->jf2['type'] ) {
 			$more = array_intersect( array_keys( $this->jf2 ), array( 'name', 'url', 'photo' ) );
 		} else {
-			$more = array_intersect( array_keys( $this->jf2 ), array( 'summary', 'content', 'refs', 'items' ) );
+			$more = array_intersect( array_keys( $this->jf2 ), array( 'summary', 'content', 'refs', 'items', 'author' ) );
 			if ( empty( $more ) ) {
 				$this->set( array( '_jf2' => $this->jf2 ), $this->url, true );
 			}
@@ -460,14 +460,14 @@ class Parse_This {
 				if ( isset( $jf2['author'] ) ) {
 					if ( isset( $this->jf2['author'] ) && is_string( $this->jf2['author'] ) ) {
 						$jf2['author']['name'] = $this->jf2['author'];
-						$this->jf2['author']   = $jf2['author'];
 					}
+					$this->jf2['author']   = $jf2['author'];
 				}
 			}
 			if ( isset( $alt['author'] ) && is_array( $this->jf2['author'] ) && ! wp_is_numeric_array( $this->jf2['author'] ) && ! isset( $this->jf2['author']['name'] ) ) {
 				$this->jf2['author']['name'] = $alt['author'];
-			}
-		}
+			}  
+		} 
 		if ( ! isset( $this->jf2['url'] ) ) {
 			$this->jf2['url'] = $this->url;
 		}
