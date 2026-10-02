@@ -6,6 +6,8 @@
  * Version: 1.0.1
  * Author: David Shanske
  * Author URI: https://david.shanske.com
+ * Requires at least: 6.2
+ * Requires PHP: 7.4
  * Text Domain: parse-this
  * Domain Path:  /languages
  */
