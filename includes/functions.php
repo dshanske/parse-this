@@ -312,7 +312,7 @@ if ( ! function_exists( __NAMESPACE__ . '\\url_to_user' ) ) {
 			if ( class_exists( 'Indieweb_Plugin' ) && ( get_option( 'iw_single_author' ) || ! is_multi_author() ) ) {
 				return get_user_by( 'id', get_option( 'iw_default_author' ) );
 			}
-			$users = get_users( array( 'who' => 'authors' ) );
+			$users = get_users( array( 'capability' => array( 'edit_posts' ) ) );
 			if ( 1 === count( $users ) ) {
 				return $users[0];
 			}
