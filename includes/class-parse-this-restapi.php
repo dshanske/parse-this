@@ -26,14 +26,14 @@ class Parse_This_RESTAPI {
 		$path  = '/' . ltrim( $path, '/' );
 		$query = wp_parse_url( $rest_url, PHP_URL_QUERY );
 		if ( ! empty( $query ) ) {
-			$query = explode( '=', $query );
-			if ( array_key_exists( 'rest_route' ) ) {
+			wp_parse_str( $query, $params );
+			if ( isset( $params['rest_route'] ) ) {
 				return add_query_arg(
 					array(
 						'rest_route' => $path,
 						'_embed'     => 1,
 					),
-					trailingslashit( $rest_url )
+					$rest_url
 				);
 			}
 			return false;
@@ -49,9 +49,11 @@ class Parse_This_RESTAPI {
 		}
 		$query = wp_parse_url( $rest_url, PHP_URL_QUERY );
 		if ( ! empty( $query ) ) {
-			$query = explode( '=', $query );
-			if ( array_key_exists( 'rest_route' ) ) {
-				return $query['rest_route'];
+			wp_parse_str( $query, $params );
+			if ( isset( $params['rest_route'] ) ) {
+				// Plain permalinks: the route is in the rest_route parameter of the URL itself.
+				wp_parse_str( (string) wp_parse_url( $url, PHP_URL_QUERY ), $url_params );
+				return isset( $url_params['rest_route'] ) ? $url_params['rest_route'] : false;
 			}
 		}
 		$path = str_replace( $rest_url, '', $url );
