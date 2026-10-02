@@ -1,14 +1,18 @@
 <?php
 /**
- * Global helper functions.
+ * Helper functions.
  *
- * Each function is wrapped in function_exists() because several plugins
- * bundle their own copy of Parse This; the first copy loaded wins.
+ * All functions are in the ParseThis namespace. Each is wrapped in
+ * function_exists() because several plugins bundle their own copy of Parse
+ * This; the first copy loaded wins. Deprecated global names for some of them
+ * are defined in aliases.php.
  *
  * @package Parse_This
  */
 
-if ( ! function_exists( 'jf2_to_mf2' ) ) {
+namespace ParseThis;
+
+if ( ! function_exists( __NAMESPACE__ . '\\jf2_to_mf2' ) ) {
 	/**
 	 * Converts jf2 into microformats2 JSON.
 	 *
@@ -28,7 +32,7 @@ if ( ! function_exists( 'jf2_to_mf2' ) ) {
 		}
 		if ( 1 === count( $jf2 ) && array_key_exists( 'items', $jf2 ) ) {
 			return array(
-				'items' => array_map( 'jf2_to_mf2', $jf2['items'] ),
+				'items' => array_map( __NAMESPACE__ . '\\jf2_to_mf2', $jf2['items'] ),
 			);
 		}
 
@@ -42,7 +46,7 @@ if ( ! function_exists( 'jf2_to_mf2' ) ) {
 			unset( $jf2['type'] );
 		}
 		if ( array_key_exists( 'children', $jf2 ) ) {
-			$mf2['children'] = array_map( 'jf2_to_mf2', $jf2['children'] );
+			$mf2['children'] = array_map( __NAMESPACE__ . '\\jf2_to_mf2', $jf2['children'] );
 			unset( $jf2['children'] );
 		}
 
@@ -56,7 +60,7 @@ if ( ! function_exists( 'jf2_to_mf2' ) ) {
 			if ( ! wp_is_numeric_array( $value ) && is_array( $value ) && array_key_exists( 'type', $value ) ) {
 				$value = array( jf2_to_mf2( $value ) );
 			} elseif ( wp_is_numeric_array( $value ) ) {
-				$value = array_map( 'jf2_to_mf2', $value );
+				$value = array_map( __NAMESPACE__ . '\\jf2_to_mf2', $value );
 			} elseif ( ! wp_is_numeric_array( $value ) ) {
 				$value = array( $value );
 			}
@@ -66,7 +70,7 @@ if ( ! function_exists( 'jf2_to_mf2' ) ) {
 	}
 }
 
-if ( ! function_exists( 'mf2_to_jf2' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\mf2_to_jf2' ) ) {
 
 	/**
 	 * Converts microformats2 JSON into jf2.
@@ -92,7 +96,7 @@ if ( ! function_exists( 'mf2_to_jf2' ) ) {
 
 		// If it is a numeric array, run this function through each item.
 		if ( wp_is_numeric_array( $mf2 ) ) {
-			$jf2 = array_map( 'mf2_to_jf2', $mf2 );
+			$jf2 = array_map( __NAMESPACE__ . '\\mf2_to_jf2', $mf2 );
 			if ( 1 === count( $jf2 ) ) {
 				return array_pop( $jf2 );
 			}
@@ -100,11 +104,11 @@ if ( ! function_exists( 'mf2_to_jf2' ) ) {
 		}
 
 		if ( isset( $mf2['items'] ) ) {
-			$jf2['items'] = array_map( 'mf2_to_jf2', $mf2['items'] );
+			$jf2['items'] = array_map( __NAMESPACE__ . '\\mf2_to_jf2', $mf2['items'] );
 		}
 
 		if ( isset( $mf2['children'] ) ) {
-			$jf2['children'] = array_map( 'mf2_to_jf2', $mf2['children'] );
+			$jf2['children'] = array_map( __NAMESPACE__ . '\\mf2_to_jf2', $mf2['children'] );
 		}
 
 		if ( isset( $mf2['type'] ) ) {
@@ -115,7 +119,7 @@ if ( ! function_exists( 'mf2_to_jf2' ) ) {
 			foreach ( $mf2['properties'] as $key => $value ) {
 				if ( is_array( $value ) ) {
 					if ( wp_is_numeric_array( $value ) ) {
-						$value = array_map( 'mf2_to_jf2', $value );
+						$value = array_map( __NAMESPACE__ . '\\mf2_to_jf2', $value );
 						if ( is_countable( $value ) && 1 === count( $value ) ) {
 							$value = array_pop( $value );
 						}
@@ -131,7 +135,7 @@ if ( ! function_exists( 'mf2_to_jf2' ) ) {
 }
 
 
-if ( ! function_exists( 'jf2_location' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\jf2_location' ) ) {
 	/**
 	 * Flattens a nested jf2 location.
 	 *
@@ -176,7 +180,7 @@ if ( ! function_exists( 'jf2_location' ) ) {
 }
 
 
-if ( ! function_exists( 'jf2_references' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\jf2_references' ) ) {
 	/**
 	 * Moves nested citations into refs, per the jf2 spec.
 	 *
@@ -231,7 +235,7 @@ if ( ! function_exists( 'jf2_references' ) ) {
 	}
 }
 
-if ( ! function_exists( 'url_to_author' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\url_to_author' ) ) {
 	/**
 	 * Returns the local user that an author archive URL belongs to.
 	 *
@@ -279,7 +283,7 @@ if ( ! function_exists( 'url_to_author' ) ) {
 	}
 }
 
-if ( ! function_exists( 'url_to_user' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\url_to_user' ) ) {
 	/**
 	 * Returns the local user associated with a URL.
 	 *
@@ -316,7 +320,7 @@ if ( ! function_exists( 'url_to_user' ) ) {
 		}
 		// Check if this is a author post URL.
 		$user = url_to_author( $url );
-		if ( $user instanceof WP_User ) {
+		if ( $user instanceof \WP_User ) {
 			return $user;
 		}
 		$args  = array(
@@ -332,7 +336,7 @@ if ( ! function_exists( 'url_to_user' ) ) {
 	}
 }
 
-if ( ! function_exists( 'ifset' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\ifset' ) ) {
 	/**
 	 * Returns a variable if it is set, otherwise a default.
 	 *
@@ -352,7 +356,7 @@ if ( ! function_exists( 'ifset' ) ) {
 }
 
 
-if ( ! function_exists( 'build_url' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\build_url' ) ) {
 	/**
 	 * Builds a URL from its parts; the inverse of wp_parse_url().
 	 *
@@ -383,7 +387,7 @@ if ( ! function_exists( 'build_url' ) ) {
 }
 
 
-if ( ! function_exists( 'normalize_url' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\normalize_url' ) ) {
 	/**
 	 * Normalizes a URL for comparison.
 	 *
@@ -410,7 +414,7 @@ if ( ! function_exists( 'normalize_url' ) ) {
 	}
 }
 
-if ( ! function_exists( 'normalize_iso8601' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\normalize_iso8601' ) ) {
 	/**
 	 * Normalizes a date string to W3C (ISO 8601) format.
 	 *
@@ -425,15 +429,15 @@ if ( ! function_exists( 'normalize_iso8601' ) ) {
 			return null;
 		}
 		try {
-			$date = new DateTime( $string );
-		} catch ( Exception $e ) {
+			$date = new \DateTime( $string );
+		} catch ( \Exception $e ) {
 			return $string;
 		}
 		return $date->format( DATE_W3C );
 	}
 }
 
-if ( ! function_exists( 'post_type_discovery' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\post_type_discovery' ) ) {
 	/**
 	 * Determines the IndieWeb post type of a jf2 or mf2 entry.
 	 *
@@ -513,7 +517,7 @@ if ( ! function_exists( 'post_type_discovery' ) ) {
 	}
 }
 
-if ( ! function_exists( 'seconds_to_iso8601' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\seconds_to_iso8601' ) ) {
 	/**
 	 * Converts a number of seconds into an ISO 8601 duration.
 	 *
@@ -542,7 +546,7 @@ if ( ! function_exists( 'seconds_to_iso8601' ) ) {
 	}
 }
 
-if ( ! function_exists( 'pt_load_domdocument' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\pt_load_domdocument' ) ) {
 	/**
 	 * Parses HTML into a DOMDocument.
 	 *
@@ -565,9 +569,9 @@ if ( ! function_exists( 'pt_load_domdocument' ) ) {
 			$doc = new \Masterminds\HTML5( array( 'disable_html_ns' => true ) );
 			$doc = $doc->loadHTML( $content );
 		} else {
-			$doc = new DOMDocument();
+			$doc = new \DOMDocument();
 			libxml_use_internal_errors( true );
-			if ( function_exists( 'mb_convert_encoding' ) ) {
+			if ( function_exists( __NAMESPACE__ . '\\mb_convert_encoding' ) ) {
 				$content = mb_convert_encoding( $content, 'HTML-ENTITIES', mb_detect_encoding( $content ) );
 			}
 			$doc->loadHTML( $content );
@@ -576,7 +580,7 @@ if ( ! function_exists( 'pt_load_domdocument' ) ) {
 		return $doc;
 	}
 }
-if ( ! function_exists( 'pt_remote_get' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\pt_remote_get' ) ) {
 	/**
 	 * Retrieves a remote URL, retrying once with a browser user agent if the site rejects the request.
 	 *
@@ -609,13 +613,13 @@ if ( ! function_exists( 'pt_remote_get' ) ) {
 			return $response;
 		}
 		if ( in_array( (int) wp_remote_retrieve_response_code( $response ), $retry_codes, true ) ) {
-			return new WP_Error( 'source_error', 'Unable to Retrieve' );
+			return new \WP_Error( 'source_error', 'Unable to Retrieve' );
 		}
 		return $response;
 	}
 }
 
-if ( ! function_exists( 'pt_secure_rewrite' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\pt_secure_rewrite' ) ) {
 	/**
 	 * Upgrades http:// URLs to https:// for hosts known to support HTTPS.
 	 *
@@ -671,7 +675,7 @@ if ( ! function_exists( 'pt_secure_rewrite' ) ) {
 }
 
 
-if ( ! function_exists( 'pt_parse_header_links' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\pt_parse_header_links' ) ) {
 	/**
 	 * Parses HTTP Link headers.
 	 *
@@ -734,7 +738,7 @@ if ( ! function_exists( 'pt_parse_header_links' ) ) {
 	}
 }
 
-if ( ! function_exists( 'pt_find_rest_alternate' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\pt_find_rest_alternate' ) ) {
 	/**
 	 * Finds the application/json alternate link among parsed Link headers.
 	 *
@@ -756,7 +760,7 @@ if ( ! function_exists( 'pt_find_rest_alternate' ) ) {
 	}
 }
 
-if ( ! function_exists( 'pt_find_rest_endpoint' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\pt_find_rest_endpoint' ) ) {
 	/**
 	 * Finds the WordPress REST API root among parsed Link headers.
 	 *
@@ -775,7 +779,7 @@ if ( ! function_exists( 'pt_find_rest_endpoint' ) ) {
 	}
 }
 
-if ( ! function_exists( 'pt_make_absolute_url' ) ) {
+if ( ! function_exists( __NAMESPACE__ . '\\pt_make_absolute_url' ) ) {
 	/**
 	 * Resolves a relative URL against a base URL.
 	 *
