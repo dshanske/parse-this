@@ -18,8 +18,8 @@ namespace ParseThis;
  *     $jf2 = $parse->get();
  *
  * Microformats2 are tried first. If they don't yield content, a WordPress
- * REST API alternate, JSON-LD, a site-specific parser (YouTube, Instagram,
- * Twitter) and finally meta tags are tried in turn. RSS, Atom, JSON Feed,
+ * REST API alternate, JSON-LD, a site-specific parser (YouTube, X/Twitter)
+ * and finally meta tags are tried in turn. RSS, Atom, JSON Feed,
  * jf2 and mf2 JSON responses are handled directly. Originally derived from
  * the Press This code removed from WordPress core.
  *
@@ -547,8 +547,6 @@ class Parser {
 				$args['alternate'] = true;
 				if ( in_array( wp_parse_url( $this->url, PHP_URL_HOST ), array( 'youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be' ), true ) ) {
 					$alt = YouTube::parse( $this->content, $this->url, $args );
-				} elseif ( in_array( wp_parse_url( $this->url, PHP_URL_HOST ), array( 'www.instagram.com', 'instagram.com' ), true ) ) {
-					$alt = Instagram::parse( $this->doc, $this->url, $args );
 				} elseif ( in_array( wp_parse_url( $this->url, PHP_URL_HOST ), array( 'x.com', 'www.x.com', 'mobile.x.com', 'twitter.com', 'www.twitter.com', 'mobile.twitter.com' ), true ) ) {
 					$alt = Twitter::parse( $this->url, $args );
 				}

@@ -21,7 +21,7 @@ It also runs on ClassicPress 2.x.
 = What it parses =
 
 * **Microformats2.** When a page is marked up with microformats, they are used first.
-* **Other metadata.** If microformats don't yield content, it tries, in order: the page's WordPress REST API version (if the site advertises one), JSON-LD, a site-specific parser for YouTube, Instagram or Twitter, and finally Open Graph, Dublin Core and other meta tags.
+* **Other metadata.** If microformats don't yield content, it tries, in order: the page's WordPress REST API version (if the site advertises one), JSON-LD, a site-specific parser for YouTube or X (Twitter), and finally Open Graph, Dublin Core and other meta tags.
 * **Feeds.** RSS and Atom (through WordPress's SimplePie), JSON Feed 1 and 1.1, jf2 and mf2 JSON, and WordPress REST API post collections.
 * **Feed discovery.** It can list the feeds a page offers.
 
@@ -125,6 +125,7 @@ Yes. It is tested with ClassicPress 2.7 on PHP 7.4 to 8.3.
 * Parse HTTP Link headers that contain several links, or commas inside URLs.
 * Move all classes and functions into the `ParseThis` namespace, with the `Parse_This_` prefix dropped from class names. The old names used by Post Kinds and Yarns remain as deprecated aliases; see "Upgrading from 1.x".
 * Add `ParseThis\pt_remote_get()`, used for all remote requests.
+* Remove the Instagram parser. Instagram stopped embedding the data it read; Instagram pages are now parsed from their Open Graph tags like any other page.
 * Use the `parse-this` text domain throughout.
 * Document every function, class and filter in the source, following the WordPress documentation standards.
 * Test against WordPress 6.2, the latest WordPress and ClassicPress 2.7.
