@@ -344,11 +344,14 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			'tel'   => ifset( $place['telephone'] ),
 			'photo' => self::image_to_photo( ifset( $place['image'] ) ),
 			'me'    => ifset( $place['sameAs'] ),
-			'geo'   => self::geocoordinates_to_geo( $place['geo'] ),
+			'geo'   => self::geocoordinates_to_geo( ifset( $place['geo'] ) ),
 		);
 
 		if ( isset( $place['address'] ) ) {
-			$hcard = array_merge( $hcard, self::postaladdress_to_address( $place['address'] ) );
+			$address = self::postaladdress_to_address( $place['address'] );
+			if ( is_array( $address ) ) {
+				$hcard = array_merge( $hcard, $address );
+			}
 		}
 		return array_filter( $hcard );
 	}
