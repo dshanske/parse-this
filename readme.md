@@ -18,7 +18,7 @@ It also runs on ClassicPress 2.x.
 
 ### Using it from PHP
 
-    $parse = new Parse_This( 'https://example.com/a-post/' );
+    $parse = new ParseThis\Parser( 'https://example.com/a-post/' );
     $result = $parse->fetch();
     if ( ! is_wp_error( $result ) ) {
         $parse->parse( array( 'return' => 'single' ) );
@@ -26,7 +26,7 @@ It also runs on ClassicPress 2.x.
         $mf2 = $parse->get( 'mf2' );   // Or the same result as mf2.
     }
 
-`Parse_This::parse()` accepts these arguments:
+`ParseThis\Parser::parse()` accepts these arguments:
 
 * `return`: `single` for one item (default) or `feed` for a list of items.
 * `follow`: fetch and parse external author pages. Default false.
@@ -37,7 +37,7 @@ It also runs on ClassicPress 2.x.
 * `location`: flatten a nested location into `latitude`, `longitude` and `altitude` properties, with `location` as a plain string. Default false.
 * `alternate`: use a `rel=alternate` jf2 or mf2 version of the page if it has one. Default false.
 
-To list a page's feeds instead, use `( new Parse_This_Discovery() )->fetch( $url )`.
+To list a page's feeds instead, use `( new ParseThis\Discovery() )->fetch( $url )`.
 
 ### REST API
 
@@ -57,15 +57,37 @@ The endpoint is available to any logged-in user. Administrators can try it from 
 
 ### Helper functions
 
-* `mf2_to_jf2()` and `jf2_to_mf2()` convert between the two formats.
-* `post_type_discovery()` returns the IndieWeb post type (note, article, reply, like, photo, ...) of a jf2 or mf2 entry.
-* `jf2_references()` and `jf2_location()` apply the `references` and `location` transformations to any jf2 object.
+All classes and functions are in the `ParseThis` namespace.
+
+* `ParseThis\mf2_to_jf2()` and `ParseThis\jf2_to_mf2()` convert between the two formats.
+* `ParseThis\post_type_discovery()` returns the IndieWeb post type (note, article, reply, like, photo, ...) of a jf2 or mf2 entry.
+* `ParseThis\jf2_references()` and `ParseThis\jf2_location()` apply the `references` and `location` transformations to any jf2 object.
 
 Every function and class is documented in the source.
 
+### Upgrading from 1.x
+
+Version 2.0.0 moved everything into the `ParseThis` namespace and dropped the `Parse_This_` prefix from class names (for example `Parse_This_MF2` is now `ParseThis\MF2`, and `Parse_This` is `ParseThis\Parser`). The old names that Post Kinds and Yarns use still work for now, as deprecated aliases:
+
+* Classes: `Parse_This`, `Parse_This_Discovery`, `Parse_This_MF2`, `Parse_This_MF2_Utils` and `REST_Parse_This`.
+* Functions: `mf2_to_jf2()`, `jf2_to_mf2()`, `post_type_discovery()`, `pt_load_domdocument()` and `seconds_to_iso8601()`.
+
+Other old global names are no longer defined. Please switch to the namespaced names.
+
 ### Bundling Parse This in another plugin
 
-Copy the plugin into your plugin (for example under `lib/parse-this/`) and load its files on `plugins_loaded` at a priority later than 9. Every function is wrapped in `function_exists()`, and classes are loaded by an autoloader, so whichever copy loads first is used. The standalone plugin loads at priority 9, so when it is active it takes precedence over bundled copies.
+Copy the plugin into your plugin (for example under `lib/parse-this/`) and load it only if the standalone plugin hasn't already, from `plugins_loaded` at priority 10 or later:
+
+    add_action( 'plugins_loaded', function () {
+        if ( ! function_exists( 'parse_this_loader' ) ) {
+            require_once __DIR__ . '/lib/parse-this/parse-this.php';
+            parse_this_loader();
+        }
+    }, 11 );
+
+The standalone plugin loads at priority 9, so when it is active it is used instead of your copy. Every function is also wrapped in `function_exists()` and classes are loaded by an autoloader, so if two copies do load, the first one wins.
+
+Copies of Parse This 1.x bundled in other plugins keep working alongside 2.0: when the standalone plugin is active, their calls to the old names listed under "Upgrading from 1.x" are served by the standalone plugin.
 
 ## Frequently Asked Questions
 
@@ -91,9 +113,10 @@ Yes. It is tested with ClassicPress 2.7 on PHP 7.4 to 8.3.
 
 * Requires PHP 7.4 and WordPress 6.2 (or ClassicPress 2.x). Tested up to WordPress 7.1.
 * Fix more than 30 bugs, many of them fatal errors on PHP 8. Affected: RSS feeds and dates, the WordPress REST API on plain-permalink sites, JSON-LD, the HTML meta-tag parser, microformats (h-resume, h-leg, h-geo, h-feed authors), JSON Feed, Twitter, YouTube and feed discovery.
-* Fix `Parse_This::get()` so that keys other than `jf2` and `mf2` work.
+* Fix `get()` on the parser so that keys other than `jf2` and `mf2` work.
 * Parse HTTP Link headers that contain several links, or commas inside URLs.
-* Add `pt_remote_get()`, used for all remote requests.
+* Move all classes and functions into the `ParseThis` namespace, with the `Parse_This_` prefix dropped from class names. The old names used by Post Kinds and Yarns remain as deprecated aliases; see "Upgrading from 1.x".
+* Add `ParseThis\pt_remote_get()`, used for all remote requests.
 * Use the `parse-this` text domain throughout.
 * Document every function, class and filter in the source, following the WordPress documentation standards.
 * Test against WordPress 6.2, the latest WordPress and ClassicPress 2.7.
