@@ -1,9 +1,11 @@
 <?php
 /**
- * Parse_This_OPML class.
+ * OPML class.
  *
  * @package Parse_This
  */
+
+namespace ParseThis;
 
 /**
  * Fetches and converts OPML subscription lists.
@@ -12,7 +14,7 @@
  *
  * @since 1.0.0
  */
-class Parse_This_OPML {
+class OPML {
 	/**
 	 * Returns an array value if the key is set.
 	 *
@@ -38,7 +40,7 @@ class Parse_This_OPML {
 	 */
 	public function fetch( $url ) {
 		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
-			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'parse-this' ) );
+			return new \WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'parse-this' ) );
 		}
 
 		$response = pt_remote_get( $url );

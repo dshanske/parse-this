@@ -1,9 +1,11 @@
 <?php
 /**
- * REST_Parse_This class.
+ * REST_Endpoint class.
  *
  * @package Parse_This
  */
+
+namespace ParseThis;
 
 /**
  * Provides the parse REST endpoint and the Tools > Parse This debug page.
@@ -12,7 +14,7 @@
  *
  * @since 1.0.0
  */
-class REST_Parse_This {
+class REST_Endpoint {
 	/**
 	 * Hooks the route registration and the admin menu item.
 	 *
@@ -143,7 +145,7 @@ class REST_Parse_This {
 			'/parse',
 			array(
 				array(
-					'methods'             => WP_REST_Server::READABLE,
+					'methods'             => \WP_REST_Server::READABLE,
 					'callback'            => array( $cls, 'read' ),
 					'args'                => array(
 						'url' => array(
@@ -165,7 +167,7 @@ class REST_Parse_This {
 	 *
 	 * Accepted parameters: url (required); mf2, to return mf2 instead of jf2;
 	 * discovery, to list the URL's feeds instead of parsing it; and return,
-	 * references, location and follow, which are passed to Parse_This::parse().
+	 * references, location and follow, which are passed to Parser::parse().
 	 *
 	 * @since 1.0.0
 	 *
@@ -182,10 +184,10 @@ class REST_Parse_This {
 		$location  = $request->get_param( 'location' );
 		$follow    = $request->get_param( 'follow' );
 		if ( $discovery ) {
-			$parse = new Parse_This_Discovery();
+			$parse = new Discovery();
 			return $parse->fetch( $url );
 		}
-		$parse = new Parse_This( $url );
+		$parse = new Parser( $url );
 		$r     = $parse->fetch();
 
 		if ( is_wp_error( $r ) ) {
@@ -233,5 +235,3 @@ class REST_Parse_This {
 		return wp_parse_url( $url, PHP_URL_SCHEME ) === null ? $scheme . $url : $url;
 	}
 }
-
-new REST_Parse_This();

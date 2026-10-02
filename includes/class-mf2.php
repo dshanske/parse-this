@@ -1,9 +1,11 @@
 <?php
 /**
- * Parse_This_MF2 class.
+ * MF2 class.
  *
  * @package Parse_This
  */
+
+namespace ParseThis;
 
 /**
  * Converts microformats2 into jf2.
@@ -18,7 +20,7 @@
  * @link https://github.com/aaronpk/XRay/blob/master/lib/Formats/Mf2.php
  * @link https://github.com/pfefferle/wordpress-semantic-linkbacks/blob/master/includes/class-linkbacks-mf2-handler.php
  */
-class Parse_This_MF2 extends Parse_This_MF2_Utils {
+class MF2 extends MF2_Utils {
 
 	/**
 	 * Finds the h-feeds in a document.
@@ -38,7 +40,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 					require_once plugin_dir_path( __DIR__ ) . 'lib/mf2/Parser.php';
 		}
 		if ( is_string( $input ) || is_a( $input, 'DOMDocument' ) ) {
-			$parser = new Mf2\Parser( $input, $url );
+			$parser = new \Mf2\Parser( $input, $url );
 			$input  = $parser->parse();
 		}
 
@@ -134,7 +136,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 		// 7. "if there is an author-page URL" ...
 		if ( $authorpage ) {
 			if ( $follow && ! self::urls_match( $authorpage, self::get_plaintext( $mf2, 'url' ) ) ) {
-				$parse = new Parse_This( $authorpage );
+				$parse = new Parser( $authorpage );
 				$parse->fetch();
 				$parse->parse();
 				return $parse->get();
@@ -203,7 +205,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 	 * @param string|DOMDocument|array $input HTML, a parsed DOM document, or parsed mf2.
 	 * @param string                   $url   URL of the document.
 	 * @param array                    $args {
-	 *     Optional. Parse arguments; see Parse_This::parse() for the full set.
+	 *     Optional. Parse arguments; see Parser::parse() for the full set.
 	 *
 	 *     @type bool   $alternate Whether to use a rel=alternate jf2/mf2 version.
 	 *                             Default true.
@@ -229,7 +231,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 			require_once plugin_dir_path( __DIR__ ) . 'lib/mf2/Parser.php';
 		}
 		if ( is_string( $input ) || is_a( $input, 'DOMDocument' ) ) {
-			$parser = new Mf2\Parser( $input, $url );
+			$parser = new \Mf2\Parser( $input, $url );
 			$input  = $parser->parse();
 			if ( $args['alternate'] ) {
 				// Check for rel-alternate jf2 or mf2 feed.
@@ -238,17 +240,17 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 						if ( isset( $info['rels'] ) && in_array( 'alternate', $info['rels'], true ) ) {
 							if ( isset( $info['type'] ) ) {
 								if ( 'application/jf2feed+json' === $info['type'] ) {
-									$parse = new Parse_This( $rel );
+									$parse = new Parser( $rel );
 									$parse->fetch();
 									return $parse->get();
 								}
 								if ( 'application/jf2+json' === $info['type'] ) {
-									$parse = new Parse_This( $rel );
+									$parse = new Parser( $rel );
 									$parse->fetch();
 									return $parse->get();
 								}
 								if ( 'application/mf2+json' === $info['type'] ) {
-									$parse = new Parse_This( $rel );
+									$parse = new Parser( $rel );
 									$parse->fetch();
 									$input = $parse->get( 'content' );
 									break;
@@ -376,7 +378,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 	 *
 	 * @param array $entry h-feed microformat.
 	 * @param array $mf    Parsed mf2 document.
-	 * @param array $args  Parse arguments (see Parse_This::parse()).
+	 * @param array $args  Parse arguments (see Parser::parse()).
 	 * @return array jf2 feed with name, author, uid, items and the items'
 	 *               '_last_published'/'_last_updated' dates.
 	 */
@@ -431,7 +433,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 	 *
 	 * @param array $children Child microformats.
 	 * @param array $mf       Parsed mf2 document.
-	 * @param array $args  Parse arguments (see Parse_This::parse()).
+	 * @param array $args  Parse arguments (see Parser::parse()).
 	 * @return array jf2 items that have a type.
 	 */
 	public static function parse_children( $children, $mf, $args ) {
@@ -461,7 +463,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 	 *
 	 * @param array $item Microformat.
 	 * @param array $mf   Parsed mf2 document.
-	 * @param array $args  Parse arguments (see Parse_This::parse()).
+	 * @param array $args  Parse arguments (see Parser::parse()).
 	 * @return array|null jf2 for the item.
 	 */
 	public static function parse_item( $item, $mf, $args ) {
@@ -525,7 +527,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 	 *
 	 * @param array $unknown Microformat.
 	 * @param array $mf      Parsed mf2 document.
-	 * @param array $args  Parse arguments (see Parse_This::parse()).
+	 * @param array $args  Parse arguments (see Parser::parse()).
 	 * @return array jf2 with the generic properties from parse_h() and the original type,
 	 *               or an empty array.
 	 */
@@ -556,7 +558,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 	 *
 	 * @param array $entry Microformat.
 	 * @param array $mf    Parsed mf2 document.
-	 * @param array $args  Parse arguments (see Parse_This::parse()).
+	 * @param array $args  Parse arguments (see Parser::parse()).
 	 * @return array jf2 properties.
 	 */
 	public static function parse_h( $entry, $mf, $args ) {
@@ -647,7 +649,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 
 		foreach ( array( 'departure', 'arrival' ) as $property ) {
 			$datetime = self::get_datetime_property( $property, $leg, true, null );
-			if ( $datetime instanceof DateTimeInterface ) {
+			if ( $datetime instanceof \DateTimeInterface ) {
 				$data[ $property ] = $datetime->format( DATE_W3C );
 			}
 		}
@@ -667,7 +669,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 	 *
 	 * @param array $entry h-entry or h-cite microformat.
 	 * @param array $mf    Parsed mf2 document.
-	 * @param array $args  Parse arguments (see Parse_This::parse()).
+	 * @param array $args  Parse arguments (see Parser::parse()).
 	 * @return array jf2 with type 'entry' or 'cite'.
 	 */
 	public static function parse_hentry( $entry, $mf, $args ) {
@@ -725,7 +727,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 	 *
 	 * @param array       $hcard h-card microformat.
 	 * @param array       $mf    Parsed mf2 document.
-	 * @param array       $args  Parse arguments (see Parse_This::parse()).
+	 * @param array       $args  Parse arguments (see Parser::parse()).
 	 * @param string|bool $url   Optional. Unused.
 	 * @return array|null jf2 card (or feed, see above), or null if $hcard is not a
 	 *                     microformat.
@@ -792,7 +794,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 	 *
 	 * @param array $event h-event microformat.
 	 * @param array $mf    Parsed mf2 document.
-	 * @param array $args  Parse arguments (see Parse_This::parse()).
+	 * @param array $args  Parse arguments (see Parser::parse()).
 	 * @return array|null jf2 properties, or null if the input is not a microformat.
 	 */
 	public static function parse_hevent( $event, $mf, $args ) {
@@ -817,7 +819,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 	 *
 	 * @param array $entry h-review microformat.
 	 * @param array $mf    Parsed mf2 document.
-	 * @param array $args  Parse arguments (see Parse_This::parse()).
+	 * @param array $args  Parse arguments (see Parser::parse()).
 	 * @return array|null jf2 properties, or null if the input is not a microformat.
 	 */
 	public static function parse_hreview( $entry, $mf, $args ) {
@@ -852,7 +854,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 	 *
 	 * @param array $entry h-product microformat.
 	 * @param array $mf    Parsed mf2 document.
-	 * @param array $args  Parse arguments (see Parse_This::parse()).
+	 * @param array $args  Parse arguments (see Parser::parse()).
 	 * @return array|null jf2 properties, or null if the input is not a microformat.
 	 */
 	public static function parse_hproduct( $entry, $mf, $args ) {
@@ -887,7 +889,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 	 *
 	 * @param array $entry h-resume microformat.
 	 * @param array $mf    Parsed mf2 document.
-	 * @param array $args  Parse arguments (see Parse_This::parse()).
+	 * @param array $args  Parse arguments (see Parser::parse()).
 	 * @return array|null jf2 properties, or null if the input is not a microformat.
 	 */
 	public static function parse_hresume( $entry, $mf, $args ) {
@@ -921,7 +923,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 	 *
 	 * @param array $entry h-listing microformat.
 	 * @param array $mf    Parsed mf2 document.
-	 * @param array $args  Parse arguments (see Parse_This::parse()).
+	 * @param array $args  Parse arguments (see Parser::parse()).
 	 * @return array|null jf2 properties, or null if the input is not a microformat.
 	 */
 	public static function parse_hlisting( $entry, $mf, $args ) {
@@ -955,7 +957,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 	 *
 	 * @param array $recipe h-recipe microformat.
 	 * @param array $mf     Parsed mf2 document.
-	 * @param array $args   Parse arguments (see Parse_This::parse()).
+	 * @param array $args   Parse arguments (see Parser::parse()).
 	 * @return array|null jf2 properties, or null if the input is not a microformat.
 	 */
 	public static function parse_hrecipe( $recipe, $mf, $args ) {
@@ -989,7 +991,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 	 *
 	 * @param array $item h-item microformat.
 	 * @param array $mf   Parsed mf2 document.
-	 * @param array $args Parse arguments (see Parse_This::parse()).
+	 * @param array $args Parse arguments (see Parser::parse()).
 	 * @return array|null jf2 properties, or null if the input is not a microformat.
 	 */
 	public static function parse_hitem( $item, $mf, $args ) {

@@ -1,20 +1,22 @@
 <?php
 /**
- * Parse_This_YouTube class.
+ * YouTube class.
  *
  * @package Parse_This
  */
+
+namespace ParseThis;
 
 /**
  * Extracts video metadata from YouTube watch pages.
  *
  * Reads the ytInitialPlayerResponse JSON that YouTube embeds in the page.
- * Used by Parse_This::parse() as the alternate parser for youtube.com and
+ * Used by Parser::parse() as the alternate parser for youtube.com and
  * youtu.be URLs when the page has no usable microformats or JSON-LD.
  *
  * @since 1.0.0
  */
-class Parse_This_YouTube extends Parse_This_Base {
+class YouTube extends Base {
 	/**
 	 * Parses a YouTube watch page into jf2.
 	 *
@@ -22,7 +24,7 @@ class Parse_This_YouTube extends Parse_This_Base {
 	 *
 	 * @param string $content Raw HTML of the watch page.
 	 * @param string $url     URL of the page.
-	 * @param array  $args    Parse arguments (see Parse_This::parse()). Unused.
+	 * @param array  $args    Parse arguments (see Parser::parse()). Unused.
 	 * @return array jf2 properties for the video (name, summary, author, published,
 	 *               duration, category, featured, video), or an empty array if the
 	 *               player data could not be found.

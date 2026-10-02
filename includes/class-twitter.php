@@ -1,16 +1,18 @@
 <?php
 /**
- * Parse_This_Twitter class.
+ * Twitter class.
  *
  * @package Parse_This
  */
+
+namespace ParseThis;
 
 /**
  * Builds jf2 for individual tweets from Twitter's public oEmbed endpoint.
  *
  * @since 1.0.0
  */
-class Parse_This_Twitter extends Parse_This_Base {
+class Twitter extends Base {
 	/**
 	 * Parses a tweet URL into jf2 using publish.twitter.com/oembed.
 	 *
@@ -21,7 +23,7 @@ class Parse_This_Twitter extends Parse_This_Base {
 	 * @since 1.0.0
 	 *
 	 * @param string $url  URL of the tweet.
-	 * @param array  $args Parse arguments (see Parse_This::parse()). Unused.
+	 * @param array  $args Parse arguments (see Parser::parse()). Unused.
 	 * @return array jf2 properties for the tweet, or an empty array if $url is
 	 *               not a status URL or the oEmbed request fails.
 	 */
@@ -77,7 +79,7 @@ class Parse_This_Twitter extends Parse_This_Base {
 			$jf2['links']    = $names;
 			$jf2['category'] = $category;
 			$jf2['content']  = array(
-				'html'  => Parse_This::clean_content( $html, array( 'blockquote' => array() ) ),
+				'html'  => Parser::clean_content( $html, array( 'blockquote' => array() ) ),
 				'value' => $text,
 			);
 			$jf2['summary']  = $jf2['content']['html'];

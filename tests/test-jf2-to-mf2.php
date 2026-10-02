@@ -12,7 +12,7 @@ class JF2_to_MF2_Test extends WP_UnitTestCase {
 			'type' => 'entry',
 			'url'  => 'http://www.example.org',
 		);
-		$return = jf2_to_mf2( $jf2 );
+		$return = \ParseThis\jf2_to_mf2( $jf2 );
 		$this->assertEquals( $mf2, $return, wp_json_encode( $return ) );
 	}
 	public function test_nested_property() {
@@ -40,7 +40,7 @@ class JF2_to_MF2_Test extends WP_UnitTestCase {
 				'url'  => 'http://www.example.org/author/smith',
 			),
 		);
-		$return = jf2_to_mf2( $jf2 );
+		$return = \ParseThis\jf2_to_mf2( $jf2 );
 		if ( method_exists( $this, 'assertEqualsCanonicalizing' ) ) {
 			$this->assertEqualsCanonicalizing( $mf2, $return, wp_json_encode( $return, JSON_PRETTY_PRINT ) . wp_json_encode( $mf2, JSON_PRETTY_PRINT ) );
 		} else {
@@ -85,7 +85,7 @@ class JF2_to_MF2_Test extends WP_UnitTestCase {
 				),
 			),
 		);
-		$return = jf2_to_mf2( $jf2 );
+		$return = \ParseThis\jf2_to_mf2( $jf2 );
 		if ( method_exists( $this, 'assertEqualsCanonicalizing' ) ) {
 			$this->assertEqualsCanonicalizing( $mf2, $return, wp_json_encode( $return, JSON_PRETTY_PRINT ) . wp_json_encode( $mf2, JSON_PRETTY_PRINT ) );
 		} else {
@@ -122,7 +122,7 @@ class JF2_to_MF2_Test extends WP_UnitTestCase {
 				),
 			),
 		);
-		$return = jf2_to_mf2( $jf2 );
+		$return = \ParseThis\jf2_to_mf2( $jf2 );
 		$this->assertEquals( $mf2, $return, wp_json_encode( $return ) );
 	}
 
@@ -175,7 +175,7 @@ class JF2_to_MF2_Test extends WP_UnitTestCase {
 				),
 			),
 		);
-		$return = jf2_to_mf2( $jf2 );
+		$return = \ParseThis\jf2_to_mf2( $jf2 );
 		$this->assertEquals( $mf2, $return, wp_json_encode( $return ) );
 	}
 }

@@ -1,9 +1,11 @@
 <?php
 /**
- * Parse_This_Instagram class.
+ * Instagram class.
  *
  * @package Parse_This
  */
+
+namespace ParseThis;
 
 /**
  * Extracts posts and locations from Instagram pages.
@@ -14,7 +16,7 @@
  *
  * @since 1.0.0
  */
-class Parse_This_Instagram extends Parse_This_Base {
+class Instagram extends Base {
 	/**
 	 * Parses an Instagram post or location page into jf2.
 	 *
@@ -22,7 +24,7 @@ class Parse_This_Instagram extends Parse_This_Base {
 	 *
 	 * @param DOMDocument|null $doc  Parsed HTML document.
 	 * @param string           $url  URL of the page.
-	 * @param array            $args Parse arguments (see Parse_This::parse()). Unused.
+	 * @param array            $args Parse arguments (see Parser::parse()). Unused.
 	 * @return array jf2 properties, or an empty array if no shared data was found or
 	 *               the page is a login wall.
 	 */
@@ -30,7 +32,7 @@ class Parse_This_Instagram extends Parse_This_Base {
 		if ( ! $doc ) {
 			return array();
 		}
-		$xpath = new DOMXPath( $doc );
+		$xpath = new \DOMXPath( $doc );
 		foreach ( $xpath->query( '//script' ) as $script ) {
 			if ( preg_match( '/window\._sharedData = ({.+});/', $script->textContent, $match ) ) { // phpcs:ignore
 				$data = json_decode( $match[1], true );
@@ -203,7 +205,7 @@ class Parse_This_Instagram extends Parse_This_Base {
 
 		// Published date.
 		if ( isset( $data['taken_at_timestamp'] ) ) {
-			$published = new DateTime();
+			$published = new \DateTime();
 			$published->setTimestamp( (int) $data['taken_at_timestamp'] );
 			$entry['published'] = $published->format( DATE_W3C );
 		} elseif ( isset( $data['date'] ) ) {

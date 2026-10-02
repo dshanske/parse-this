@@ -1,16 +1,18 @@
 <?php
 /**
- * Parse_This class.
+ * Parser class.
  *
  * @package Parse_This
  */
+
+namespace ParseThis;
 
 /**
  * Fetches a URL and converts it into jf2.
  *
  * Typical use:
  *
- *     $parse = new Parse_This( $url );
+ *     $parse = new Parser( $url );
  *     $parse->fetch();
  *     $parse->parse( array( 'return' => 'feed' ) );
  *     $jf2 = $parse->get();
@@ -23,7 +25,7 @@
  *
  * @since 1.0.0
  */
-class Parse_This {
+class Parser {
 	/**
 	 * URL being parsed.
 	 *
@@ -262,11 +264,11 @@ class Parse_This {
 		require_once ABSPATH . WPINC . '/class-wp-feed-cache-transient.php';
 		require_once ABSPATH . WPINC . '/class-wp-simplepie-file.php';
 		require_once ABSPATH . WPINC . '/class-wp-simplepie-sanitize-kses.php';
-		$feed = new SimplePie();
+		$feed = new \SimplePie();
 
 		// Register the cache handler using the recommended method for SimplePie 1.3 or later.
 		if ( method_exists( 'SimplePie_Cache', 'register' ) ) {
-			SimplePie_Cache::register( 'wp_transient', 'WP_Feed_Cache_Transient' );
+			\SimplePie_Cache::register( 'wp_transient', 'WP_Feed_Cache_Transient' );
 			$feed->set_cache_location( 'wp_transient' );
 		} else {
 			// Back-compat for SimplePie 1.2.x. Not reached on WordPress 6.2+, which bundles 1.5 or later.
@@ -284,7 +286,7 @@ class Parse_This {
 		$feed->set_output_encoding( get_option( 'blog_charset' ) );
 
 		if ( $feed->error() ) {
-			return new WP_Error( 'simplepie-error', $feed->error() );
+			return new \WP_Error( 'simplepie-error', $feed->error() );
 		}
 
 		return $feed;
@@ -333,7 +335,7 @@ class Parse_This {
 	 */
 	public static function redirect( $url, $allowlist = true ) {
 		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
-			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'parse-this' ) );
+			return new \WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'parse-this' ) );
 		}
 		$url        = pt_secure_rewrite( $url );
 		$domain     = wp_parse_url( $url, PHP_URL_HOST );
@@ -370,7 +372,7 @@ class Parse_This {
 			$url = $this->url;
 		}
 		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
-			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'parse-this' ) );
+			return new \WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'parse-this' ) );
 		}
 		$response = pt_remote_get( $url );
 		if ( is_wp_error( $response ) ) {
@@ -394,13 +396,13 @@ class Parse_This {
 						$this->content_type = trim( $this->content_type );
 						// List of content types we know how to handle.
 		if ( ! self::supported_content( $this->content_type ) ) {
-			return new WP_Error( 'content-type', 'Content Type is Not Supported', array( 'content-type' => $this->content_type ) );
+			return new \WP_Error( 'content-type', 'Content Type is Not Supported', array( 'content-type' => $this->content_type ) );
 		}
 
 		$content = wp_remote_retrieve_body( $response );
 
 		// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway.
-		if ( class_exists( 'Parse_This_RSS' ) && ( in_array( $this->content_type, array( 'application/rss+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/xml' ), true ) ) ) {
+		if ( class_exists( RSS::class ) && ( in_array( $this->content_type, array( 'application/rss+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/xml' ), true ) ) ) {
 			// Get a SimplePie feed object from the specified feed source.
 			$content = self::fetch_feed( $url );
 			if ( is_wp_error( $content ) ) {
@@ -421,12 +423,12 @@ class Parse_This {
 		if ( in_array( $this->content_type, array( 'application/feed+json', 'application/json' ), true ) ) {
 			$content = json_decode( $content, true );
 
-			if ( class_exists( 'Parse_This_JSONFeed' ) && isset( $content['version'] ) && false !== strpos( $content['version'], 'https://jsonfeed.org/version/' ) ) {
-				$content = Parse_This_JSONFeed::to_jf2( $content, $url );
+			if ( class_exists( JSONFeed::class ) && isset( $content['version'] ) && false !== strpos( $content['version'], 'https://jsonfeed.org/version/' ) ) {
+				$content = JSONFeed::to_jf2( $content, $url );
 				$this->set( $content, $url, true );
 				// This means we are probing a specific REST Endpoint as they return this.
 			} elseif ( wp_remote_retrieve_header( $response, 'x-wp-total' ) ) {
-				$content           = Parse_This_RESTAPI::posts_to_feed( array( 'items' => $content ), $url );
+				$content           = RESTAPI::posts_to_feed( array( 'items' => $content ), $url );
 				$content['_total'] = wp_remote_retrieve_header( $response, 'x-wp-total' );
 				$content['_pages'] = wp_remote_retrieve_header( $response, 'x-wp-totalpages' );
 
@@ -481,21 +483,21 @@ class Parse_This {
 		if ( ! in_array( $args['return'], array( 'single', 'feed' ), true ) ) {
 			$args['return'] = 'single';
 		}
-		if ( class_exists( 'Parse_This_RSS' ) && $this->content instanceof SimplePie ) {
-			$this->jf2 = Parse_This_RSS::parse( $this->content, $this->url );
+		if ( class_exists( RSS::class ) && $this->content instanceof \SimplePie ) {
+			$this->jf2 = RSS::parse( $this->content, $this->url );
 
 			return;
-		} elseif ( $this->doc instanceof DOMDocument ) {
+		} elseif ( $this->doc instanceof \DOMDocument ) {
 			$content = $this->doc;
 		} else {
 			$content = $this->content;
 		}
 		if ( ! $content ) {
-			return new WP_Error( 'Missing Content' );
+			return new \WP_Error( 'Missing Content' );
 		}
 
 		if ( 'application/json' === $this->content_type ) {
-			$this->jf2 = Parse_This_RESTAPI::parse( $content, $this->url, $args );
+			$this->jf2 = RESTAPI::parse( $content, $this->url, $args );
 			if ( ! empty( $this->jf2 ) ) {
 				$this->jf2['_rest'] = $content;
 				return;
@@ -512,7 +514,7 @@ class Parse_This {
 
 		// Ensure not already preparsed.
 		if ( empty( $this->jf2 ) ) {
-			$this->jf2 = Parse_This_MF2::parse( $content, $this->url, $args );
+			$this->jf2 = MF2::parse( $content, $this->url, $args );
 		}
 
 		$more = array();
@@ -541,9 +543,9 @@ class Parse_This {
 				$rest     = pt_find_rest_alternate( $this->links );
 				if ( $endpoint && $rest ) {
 					$empty        = false;
-					$path         = Parse_This_RESTAPI::get_rest_path( $endpoint, $rest );
-					$fetch        = Parse_This_RESTAPI::fetch( $endpoint, $path );
-					$alt          = Parse_This_RESTAPI::parse( $fetch, $endpoint, $args );
+					$path         = RESTAPI::get_rest_path( $endpoint, $rest );
+					$fetch        = RESTAPI::fetch( $endpoint, $path );
+					$alt          = RESTAPI::parse( $fetch, $endpoint, $args );
 					if ( is_array( $alt ) ) {
 						$alt['_rest'] = $fetch;
 					}
@@ -551,7 +553,7 @@ class Parse_This {
 			}
 
 			if ( $empty && $args['jsonld'] ) {
-				$alt = Parse_This_JSONLD::parse( $this->doc, $this->url, $args );
+				$alt = JSONLD::parse( $this->doc, $this->url, $args );
 			}
 
 			if ( empty( $alt ) || ! is_array( $alt ) ) {
@@ -565,17 +567,17 @@ class Parse_This {
 			if ( $empty && $args['html'] ) {
 				$args['alternate'] = true;
 				if ( in_array( wp_parse_url( $this->url, PHP_URL_HOST ), array( 'youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be' ), true ) ) {
-					$alt = Parse_This_YouTube::parse( $this->content, $this->url, $args );
+					$alt = YouTube::parse( $this->content, $this->url, $args );
 				} elseif ( in_array( wp_parse_url( $this->url, PHP_URL_HOST ), array( 'www.instagram.com', 'instagram.com' ), true ) ) {
-					$alt = Parse_This_Instagram::parse( $this->doc, $this->url, $args );
+					$alt = Instagram::parse( $this->doc, $this->url, $args );
 				} elseif ( in_array( wp_parse_url( $this->url, PHP_URL_HOST ), array( 'twitter.com', 'mobile.twitter.com' ), true ) ) {
-					$alt = Parse_This_Twitter::parse( $this->url, $args );
+					$alt = Twitter::parse( $this->url, $args );
 				}
 				if ( ! $alt ) {
-					$alt = Parse_This_HTML::parse( $content, $this->url, $args );
+					$alt = HTML::parse( $content, $this->url, $args );
 				}
 			}
-			$json = Parse_This_JSON::parse( $this->doc, $this->url, $args );
+			$json = JSON::parse( $this->doc, $this->url, $args );
 			if ( is_array( $json ) ) {
 				$this->jf2 = array_merge( $this->jf2, $json );
 			}

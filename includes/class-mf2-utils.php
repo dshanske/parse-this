@@ -1,9 +1,11 @@
 <?php
 /**
- * Parse_This_MF2_Utils class.
+ * MF2_Utils class.
  *
  * @package Parse_This
  */
+
+namespace ParseThis;
 
 /**
  * Helpers for reading parsed microformats2 structures.
@@ -17,7 +19,7 @@
  * @link https://github.com/aaronpk/XRay/blob/master/lib/Formats/Mf2.php
  * @link https://github.com/pfefferle/wordpress-semantic-linkbacks/blob/master/includes/class-linkbacks-mf2-handler.php
  */
-class Parse_This_MF2_Utils extends Parse_This_Base {
+class MF2_Utils extends Base {
 
 	/**
 	 * Checks whether a value is a microformat object.
@@ -94,7 +96,7 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 	/**
 	 * Returns the text and sanitized HTML of an e-* property.
 	 *
-	 * The HTML is cleaned with Parse_This::clean_content() and only included
+	 * The HTML is cleaned with Parser::clean_content() and only included
 	 * when it differs from the text.
 	 *
 	 * @since 1.0.0
@@ -115,7 +117,7 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 			$textcontent = $content;
 		} elseif ( ! is_string( $content ) && is_array( $content ) && array_key_exists( 'value', $content ) ) {
 			if ( array_key_exists( 'html', $content ) ) {
-				$htmlcontent = trim( Parse_This::clean_content( $content['html'] ) );
+				$htmlcontent = trim( Parser::clean_content( $content['html'] ) );
 				$textcontent = wp_strip_all_tags( $content['value'] );
 			} else {
 				$textcontent = trim( $content['value'] );
@@ -383,7 +385,7 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 	 */
 	public static function get_published( array $mf, $ensurevalid = false, $fallback = null ) {
 		$date = self::get_datetime_property( 'published', $mf, $ensurevalid, $fallback );
-		if ( $date instanceof DateTimeImmutable ) {
+		if ( $date instanceof \DateTimeImmutable ) {
 			return $date->format( DATE_W3C );
 		}
 		return null;
@@ -402,7 +404,7 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 	 */
 	public static function get_updated( array $mf, $ensurevalid = false, $fallback = null ) {
 		$date = self::get_datetime_property( 'updated', $mf, $ensurevalid, $fallback );
-		if ( $date instanceof DateTimeImmutable ) {
+		if ( $date instanceof \DateTimeImmutable ) {
 			return $date->format( DATE_W3C );
 		}
 		return null;
@@ -437,8 +439,8 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 			return $return;
 		} else {
 			try {
-				return new DateTimeImmutable( $return );
-			} catch ( Exception $e ) {
+				return new \DateTimeImmutable( $return );
+			} catch ( \Exception $e ) {
 				return $fallback;
 			}
 		}

@@ -1,9 +1,11 @@
 <?php
 /**
- * Parse_This_Discovery class.
+ * Discovery class.
  *
  * @package Parse_This
  */
+
+namespace ParseThis;
 
 /**
  * Discovers the feeds a URL offers.
@@ -14,7 +16,7 @@
  *
  * @since 1.0.0
  */
-class Parse_This_Discovery {
+class Discovery {
 	/**
 	 * Maps a feed MIME type to the plugin's feed type name.
 	 *
@@ -84,7 +86,7 @@ class Parse_This_Discovery {
 	 */
 	public function fetch( $url ) {
 		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
-			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'parse-this' ) );
+			return new \WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'parse-this' ) );
 		}
 
 		$links = array();
@@ -136,15 +138,15 @@ class Parse_This_Discovery {
 		}
 		// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway.
 		if ( ( in_array( $content_type, array( 'application/rss+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/xml' ), true ) ) ) {
-			$content = Parse_This::fetch_feed( $url );
+			$content = Parser::fetch_feed( $url );
 			if ( is_wp_error( $content ) ) {
 				return $content;
 			}
-			if ( class_exists( 'Parse_This_RSS' ) ) {
+			if ( class_exists( RSS::class ) ) {
 				$links[] = array(
 					'url'        => $url,
 					'type'       => 'feed',
-					'_feed_type' => Parse_This_RSS::get_type( $content ),
+					'_feed_type' => RSS::get_type( $content ),
 					'name'       => $content->get_title(),
 				);
 			}
@@ -167,8 +169,8 @@ class Parse_This_Discovery {
 		}
 		if ( 'text/html' === $content_type ) {
 			$doc = pt_load_domdocument( $content );
-			if ( $doc instanceof DOMDocument ) {
-				$xpath = new DOMXPath( $doc );
+			if ( $doc instanceof \DOMDocument ) {
+				$xpath = new \DOMXPath( $doc );
 				// Fetch and gather <link> data.
 				$mf2 = false;
 				foreach ( $xpath->query( '(//link|//a)[@rel and @href]' ) as $link ) {
@@ -207,9 +209,9 @@ class Parse_This_Discovery {
 				// If an mf2 feed was found, do not check to see if this page is also one.
 				if ( ! $mf2 ) {
 					// Check to see if the current page is an h-feed.
-					$feeds = Parse_This_MF2::find_hfeed( $doc, $url );
+					$feeds = MF2::find_hfeed( $doc, $url );
 					foreach ( $feeds as $key => $feed ) {
-						if ( ! Parse_This_MF2::is_microformat( $feed ) ) {
+						if ( ! MF2::is_microformat( $feed ) ) {
 							continue;
 						}
 						if ( array_key_exists( 'children', $feed ) ) {

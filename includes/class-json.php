@@ -1,9 +1,11 @@
 <?php
 /**
- * Parse_This_JSON class.
+ * JSON class.
  *
  * @package Parse_This
  */
+
+namespace ParseThis;
 
 /**
  * Extracts entry data from application/json script blocks in HTML pages.
@@ -13,7 +15,7 @@
  *
  * @since 2.0.0
  */
-class Parse_This_JSON extends Parse_This_Base {
+class JSON extends Base {
 	/**
 	 * Parses embedded application/json script blocks into jf2.
 	 *
@@ -21,7 +23,7 @@ class Parse_This_JSON extends Parse_This_Base {
 	 *
 	 * @param DOMDocument|null $doc  Parsed HTML document.
 	 * @param string           $url  URL of the page.
-	 * @param array            $args Parse arguments (see Parse_This::parse()). Unused.
+	 * @param array            $args Parse arguments (see Parser::parse()). Unused.
 	 * @return array jf2 properties found (type, name, published, category). When
 	 *               WP_DEBUG is on, the decoded JSON is included under '_json'.
 	 */
@@ -29,7 +31,7 @@ class Parse_This_JSON extends Parse_This_Base {
 		if ( ! $doc ) {
 			return array();
 		}
-		$xpath = new DOMXPath( $doc );
+		$xpath = new \DOMXPath( $doc );
 
 		$json    = array();
 		$content = '';

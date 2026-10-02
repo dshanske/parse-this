@@ -1,9 +1,11 @@
 <?php
 /**
- * Parse_This_RESTAPI class.
+ * RESTAPI class.
  *
  * @package Parse_This
  */
+
+namespace ParseThis;
 
 /**
  * Reads posts and site data from the WordPress REST API of remote sites.
@@ -14,7 +16,7 @@
  *
  * @since 1.0.0
  */
-class Parse_This_RESTAPI {
+class RESTAPI {
 	/**
 	 * Returns an array value if the key is set.
 	 *
@@ -143,7 +145,7 @@ class Parse_This_RESTAPI {
 	 */
 	public static function fetch( $rest_url, $path, $cache = false ) {
 		if ( empty( $rest_url ) || ! $rest_url ) {
-			return new WP_Error( 'no_url', __( 'No URL provided', 'parse-this' ) );
+			return new \WP_Error( 'no_url', __( 'No URL provided', 'parse-this' ) );
 		}
 
 		$url = self::get_rest_url( $rest_url, $path );
@@ -169,7 +171,7 @@ class Parse_This_RESTAPI {
 		$content_type = trim( $content_type );
 		// List of content types we know how to handle.
 		if ( 'application/json' !== $content_type ) {
-			return new WP_Error( 'content-type', 'Retrieved incorrect page', array( 'content-type' => $content_type ) );
+			return new \WP_Error( 'content-type', 'Retrieved incorrect page', array( 'content-type' => $content_type ) );
 		}
 
 		$content = wp_remote_retrieve_body( $response );
@@ -202,7 +204,7 @@ class Parse_This_RESTAPI {
 	 *
 	 * @param array|WP_Error $content  Decoded REST API response.
 	 * @param string         $rest_url REST API root URL.
-	 * @param array          $args     Parse arguments (see Parse_This::parse()).
+	 * @param array          $args     Parse arguments (see Parser::parse()).
 	 * @return array|WP_Error|false jf2 data, the WP_Error passed in or from fetching
 	 *                              posts, or false if $content is not recognized.
 	 */
@@ -322,11 +324,11 @@ class Parse_This_RESTAPI {
 			return null;
 		}
 		try {
-			$datetime = new DateTime( $time );
+			$datetime = new \DateTime( $time );
 			if ( 'UTC' === $datetime->getTimeZone()->getName() ) {
-				$datetime = new DateTime( $time, $timezone );
+				$datetime = new \DateTime( $time, $timezone );
 			}
-		} catch ( Exception $e ) {
+		} catch ( \Exception $e ) {
 			return null;
 		}
 		return $datetime->format( DATE_W3C );
@@ -362,7 +364,7 @@ class Parse_This_RESTAPI {
 	public static function timezone( $fetch ) {
 		$timezone_string = self::ifset( 'timezone_string', $fetch );
 		if ( $timezone_string ) {
-				return new DateTimeZone( $timezone_string );
+				return new \DateTimeZone( $timezone_string );
 		}
 
 		$offset  = (float) self::ifset( 'gmt_offset', $fetch );
@@ -373,7 +375,7 @@ class Parse_This_RESTAPI {
 		$abs_hour  = abs( $hours );
 		$abs_mins  = abs( $minutes * 60 );
 		$tz_offset = sprintf( '%s%02d:%02d', $sign, $abs_hour, $abs_mins );
-		return new DateTimeZone( $tz_offset );
+		return new \DateTimeZone( $tz_offset );
 	}
 
 	/**
@@ -396,7 +398,7 @@ class Parse_This_RESTAPI {
 				'name'      => self::get_rendered( 'title', $item ),
 				'content'   => array_filter(
 					array(
-						'html' => Parse_This::clean_content( self::get_rendered( 'content', $item ) ),
+						'html' => Parser::clean_content( self::get_rendered( 'content', $item ) ),
 						'text' => wp_strip_all_tags( self::get_rendered( 'content', $item ) ),
 					)
 				),
@@ -458,7 +460,7 @@ class Parse_This_RESTAPI {
 					'name'      => self::get_rendered( 'title', $item ),
 					'content'   => array_filter(
 						array(
-							'html' => Parse_This::clean_content( self::get_rendered( 'content', $item ) ),
+							'html' => Parser::clean_content( self::get_rendered( 'content', $item ) ),
 							'text' => wp_strip_all_tags( self::get_rendered( 'content', $item ) ),
 						)
 					),
