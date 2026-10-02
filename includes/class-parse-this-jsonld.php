@@ -577,11 +577,25 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			}
 		}
 
-		if ( isset( $newsarticle['video'] ) ) {
-			$jf2['video'] = $newsarticle['video'][0]['@id'];
-		}
-		if ( isset( $newsarticle['audio'] ) ) {
-			$jf2['audio'] = $newsarticle['audio'][0]['@id'];
+		foreach ( array( 'video', 'audio' ) as $media ) {
+			if ( ! isset( $newsarticle[ $media ] ) ) {
+				continue;
+			}
+			// May be a URL, a single object or a list of objects.
+			$value = $newsarticle[ $media ];
+			if ( wp_is_numeric_array( $value ) ) {
+				$value = reset( $value );
+			}
+			if ( is_array( $value ) ) {
+				if ( isset( $value['@id'] ) ) {
+					$value = $value['@id'];
+				} elseif ( isset( $value['contentUrl'] ) ) {
+					$value = $value['contentUrl'];
+				}
+			}
+			if ( is_string( $value ) ) {
+				$jf2[ $media ] = $value;
+			}
 		}
 
 		if ( isset( $newsarticle['publisher'] ) ) {
