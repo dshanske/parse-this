@@ -1,33 +1,50 @@
 <?php
 /**
- * Provides REST Endpoint to Retrieve the Parsed Data
+ * REST_Parse_This class.
+ *
+ * @package Parse_This
  */
 
+/**
+ * Provides the parse REST endpoint and the Tools > Parse This debug page.
+ *
+ * Endpoint: GET /wp-json/parse-this/1.0/parse?url=...
+ *
+ * @since 1.0.0
+ */
 class REST_Parse_This {
+	/**
+	 * Hooks the route registration and the admin menu item.
+	 *
+	 * @since 1.0.0
+	 */
 	public function __construct() {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
 		add_action( 'admin_menu', array( $this, 'admin_menu' ) );
 	}
 
-		/**
-		 * Adds Options Page for Plugin Options.
-		 *
-		 * @access public
-		 */
+	/**
+	 * Adds the Tools > Parse This page for users who can manage options.
+	 *
+	 * @since 1.0.0
+	 */
 	public function admin_menu() {
 		add_management_page(
-			__( 'Parse This', 'parse-this' ), // page title
-			__( 'Parse This', 'parse-this' ), // menu title
-			'manage_options', // access capability
+			__( 'Parse This', 'parse-this' ), // Page title.
+			__( 'Parse This', 'parse-this' ), // Menu title.
+			'manage_options', // Capability.
 			'parse_this',
 			array( $this, 'debug' )
 		);
 	}
 
 	/**
-	 * Generate Debug Tool
+	 * Renders the debug page.
 	 *
-	 * @access public
+	 * The form submits directly to the parse endpoint, with a wp_rest nonce for
+	 * cookie authentication.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function debug() {
 		?>
@@ -113,7 +130,11 @@ class REST_Parse_This {
 
 
 	/**
-	 * Register the Route.
+	 * Registers the parse-this/1.0/parse route.
+	 *
+	 * Any logged-in user with the read capability may call it.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function register_routes() {
 		$cls = get_called_class();
@@ -139,6 +160,19 @@ class REST_Parse_This {
 		);
 	}
 
+	/**
+	 * Handles a parse request.
+	 *
+	 * Accepted parameters: url (required); mf2, to return mf2 instead of jf2;
+	 * discovery, to list the URL's feeds instead of parsing it; and return,
+	 * references, location and follow, which are passed to Parse_This::parse().
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return array|WP_Error Parsed jf2 (or mf2), discovery results, or WP_Error if
+	 *                        the URL cannot be fetched.
+	 */
 	public static function read( $request ) {
 		$url       = $request->get_param( 'url' );
 		$mf2       = $request->get_param( 'mf2' );
@@ -172,17 +206,29 @@ class REST_Parse_This {
 	}
 
 	/**
-	 * Returns if valid URL for REST validation
+	 * Validates the url parameter.
 	 *
-	 * @param string $url
+	 * @since 1.0.0
 	 *
-	 * @return boolean
+	 * @param string               $url     URL to validate.
+	 * @param WP_REST_Request|null $request Optional. Request object. Unused.
+	 * @param string|null          $key     Optional. Parameter name. Unused.
+	 * @return string|false The URL if valid, false otherwise.
 	 */
 	public static function is_valid_url( $url, $request = null, $key = null ) {
 		return wp_http_validate_url( $url );
 	}
 
 
+	/**
+	 * Adds a scheme to a URL that lacks one.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $url    URL.
+	 * @param string $scheme Optional. Scheme to prepend. Default 'http://'.
+	 * @return string The URL with a scheme.
+	 */
 	public static function addscheme( $url, $scheme = 'http://' ) {
 		return wp_parse_url( $url, PHP_URL_SCHEME ) === null ? $scheme . $url : $url;
 	}
