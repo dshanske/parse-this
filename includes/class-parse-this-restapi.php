@@ -1,10 +1,42 @@
 <?php
+/**
+ * Parse_This_RESTAPI class.
+ *
+ * @package Parse_This
+ */
 
+/**
+ * Reads posts and site data from the WordPress REST API of remote sites.
+ *
+ * Used when a page advertises its REST API (Link: rel="https://api.w.org/")
+ * and an application/json alternate, and when the URL being parsed is itself
+ * a REST API URL.
+ *
+ * @since 1.0.0
+ */
 class Parse_This_RESTAPI {
+	/**
+	 * Returns an array value if the key is set.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string|int $key   Key to look up.
+	 * @param array      $array Array to look in.
+	 * @return mixed The value, or null if the key is not set.
+	 */
 	private static function ifset( $key, $array ) {
 		return isset( $array[ $key ] ) ? $array[ $key ] : null;
 	}
 
+	/**
+	 * Returns the rendered form of a REST API field such as title or content.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $key  Field name.
+	 * @param array  $item REST API object.
+	 * @return string|null The field's 'rendered' value, or null if absent.
+	 */
 	public static function get_rendered( $key, $item ) {
 		if ( ! array_key_exists( $key, $item ) ) {
 			return null;
@@ -15,10 +47,31 @@ class Parse_This_RESTAPI {
 		return null;
 	}
 
+	/**
+	 * Encodes data as URL-safe base64 without padding.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $data Data to encode.
+	 * @return string Encoded data.
+	 */
 	public static function base64url_encode( $data ) {
 		return rtrim( strtr( base64_encode( $data ), '+/', '-_' ), '=' );
 	}
 
+	/**
+	 * Builds the URL of a REST API route, with _embed=1 added.
+	 *
+	 * Supports both pretty permalinks (/wp-json/...) and plain permalinks
+	 * (?rest_route=...).
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $rest_url REST API root URL.
+	 * @param string $path     Route, for example /wp/v2/posts.
+	 * @return string|false The route URL, or false if $rest_url is invalid or has a
+	 *                      query string without rest_route.
+	 */
 	public static function get_rest_url( $rest_url, $path ) {
 		if ( ! wp_http_validate_url( $rest_url ) ) {
 			return false;
@@ -43,6 +96,17 @@ class Parse_This_RESTAPI {
 		return add_query_arg( '_embed', 1, $rest_url . $path );
 	}
 
+	/**
+	 * Returns the route part of a REST API URL relative to the API root.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $rest_url REST API root URL.
+	 * @param string $url      Full REST API URL.
+	 * @return string|false The route (for example /wp/v2/posts/5), or false if
+	 *                      $rest_url is invalid or a plain-permalink $url has no
+	 *                      rest_route.
+	 */
 	public static function get_rest_path( $rest_url, $url ) {
 		if ( ! wp_http_validate_url( $rest_url ) ) {
 			return false;
@@ -61,6 +125,22 @@ class Parse_This_RESTAPI {
 	}
 
 
+	/**
+	 * Fetches and decodes a REST API route.
+	 *
+	 * Retries with a browser user agent on 403, 404 and 415 responses.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $rest_url REST API root URL.
+	 * @param string $path     Route to fetch.
+	 * @param bool   $cache    Optional. Whether to cache the raw response in a
+	 *                         transient for a week. Default false.
+	 * @return array|WP_Error The decoded response. Collection responses are wrapped
+	 *                        as array( 'items' => ..., '_total' => ..., '_pages' => ... )
+	 *                        from the X-WP-Total headers. WP_Error if the request
+	 *                        fails or the response is not application/json.
+	 */
 	public static function fetch( $rest_url, $path, $cache = false ) {
 		if ( empty( $rest_url ) || ! $rest_url ) {
 			return new WP_Error( 'no_url', __( 'No URL provided', 'parse-this' ) );
@@ -81,13 +161,13 @@ class Parse_This_RESTAPI {
 		}
 		$content_type = wp_remote_retrieve_header( $response, 'content-type' );
 
-		// Strip any character set off the content type
+		// Strip any character set off the content type.
 		$ct = explode( ';', $content_type );
 		if ( is_array( $ct ) ) {
 			$content_type = array_shift( $ct );
 		}
 		$content_type = trim( $content_type );
-		// List of content types we know how to handle
+		// List of content types we know how to handle.
 		if ( 'application/json' !== $content_type ) {
 			return new WP_Error( 'content-type', 'Retrieved incorrect page', array( 'content-type' => $content_type ) );
 		}
@@ -111,6 +191,21 @@ class Parse_This_RESTAPI {
 		return false;
 	}
 
+	/**
+	 * Converts a REST API response into jf2.
+	 *
+	 * A single post becomes an entry. The API root becomes a card for the site
+	 * when $args['return'] is 'single', or the site's latest posts as a feed when
+	 * it is 'feed'.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array|WP_Error $content  Decoded REST API response.
+	 * @param string         $rest_url REST API root URL.
+	 * @param array          $args     Parse arguments (see Parse_This::parse()).
+	 * @return array|WP_Error|false jf2 data, the WP_Error passed in or from fetching
+	 *                              posts, or false if $content is not recognized.
+	 */
 	public static function parse( $content, $rest_url, $args ) {
 		if ( is_wp_error( $content ) ) {
 			return $content;
@@ -160,6 +255,15 @@ class Parse_This_RESTAPI {
 		return false;
 	}
 
+	/**
+	 * Returns the embedded author of a REST API post as a jf2 card.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array $item REST API post requested with _embed.
+	 * @return array|null Card with name, url, note, photo and me, or null if no
+	 *                    author is embedded or it is an error object.
+	 */
 	public static function get_author( $item ) {
 		if ( ! isset( $item['_embedded']['author'][0] ) || ! is_array( $item['_embedded']['author'][0] ) ) {
 			return null;
@@ -181,6 +285,14 @@ class Parse_This_RESTAPI {
 		return array_filter( $return );
 	}
 
+	/**
+	 * Converts a REST API user object into a jf2 card.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array $json REST API user object.
+	 * @return array Card with name, url, note and photo (the largest avatar).
+	 */
 	public static function format_author( $json ) {
 		$avatar_urls = self::ifset( 'avatar_urls', $json );
 		$avatar_urls = is_array( $avatar_urls ) ? end( $avatar_urls ) : null;
@@ -194,6 +306,17 @@ class Parse_This_RESTAPI {
 		return $return;
 	}
 
+	/**
+	 * Converts a REST API date into W3C format.
+	 *
+	 * Dates without a timezone are interpreted in the remote site's timezone.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string            $time     Date from the REST API.
+	 * @param DateTimeZone|null $timezone Optional. The site's timezone.
+	 * @return string|null The date in W3C format, or null if empty or unparseable.
+	 */
 	public static function get_datetime( $time, $timezone = null ) {
 		if ( empty( $time ) || ! is_string( $time ) ) {
 			return null;
@@ -209,6 +332,17 @@ class Parse_This_RESTAPI {
 		return $datetime->format( DATE_W3C );
 	}
 
+	/**
+	 * Returns a site's name, URL, timezone and description from its REST API root.
+	 *
+	 * The response is cached for a week.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $rest_url REST API root URL.
+	 * @return array Any of name, url, timezone_string, gmt_offset and description
+	 *               that are present, or an empty array if the request fails.
+	 */
 	public static function site_data( $rest_url ) {
 		$fetch = self::fetch( $rest_url, '', true );
 		if ( is_wp_error( $fetch ) || ! is_array( $fetch ) ) {
@@ -217,6 +351,14 @@ class Parse_This_RESTAPI {
 		return wp_array_slice_assoc( $fetch, array( 'name', 'url', 'timezone_string', 'gmt_offset', 'description' ) );
 	}
 
+	/**
+	 * Returns a site's timezone from its REST API root data.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array $fetch Site data with timezone_string and/or gmt_offset.
+	 * @return DateTimeZone The named timezone, or a fixed offset from gmt_offset.
+	 */
 	public static function timezone( $fetch ) {
 		$timezone_string = self::ifset( 'timezone_string', $fetch );
 		if ( $timezone_string ) {
@@ -234,6 +376,16 @@ class Parse_This_RESTAPI {
 		return new DateTimeZone( $tz_offset );
 	}
 
+	/**
+	 * Converts a single REST API post into a jf2 entry.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array  $item     REST API post object.
+	 * @param string $rest_url REST API root URL.
+	 * @return array jf2 entry with uid, url, name, content, summary, published,
+	 *               updated, kind, featured, category and author where available.
+	 */
 	public static function get_post( $item, $rest_url ) {
 		$site_data = self::site_data( $rest_url );
 		$timezone  = self::timezone( $site_data );
@@ -273,6 +425,17 @@ class Parse_This_RESTAPI {
 		return array_filter( $newitem );
 	}
 
+	/**
+	 * Converts a list of REST API posts into a jf2 feed.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array  $input Array with 'items' (REST API posts) and optionally
+	 *                      '_total' and '_pages'.
+	 * @param string $url   REST API root URL, used to look up site data.
+	 * @return array jf2 feed with '_feed_type' => 'wordpress', the site's name,
+	 *               summary and url, and 'items'.
+	 */
 	public static function posts_to_feed( $input, $url ) {
 		$return            = array_filter(
 			array(
