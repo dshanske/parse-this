@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+<channel>
+	<title>Example Podcast</title>
+	<link>https://example.com/podcast/</link>
+	<description>An example podcast feed.</description>
+	<item>
+		<title>Episode Two</title>
+		<link>https://example.com/podcast/2/</link>
+		<guid>https://example.com/podcast/2/</guid>
+		<pubDate>Wed, 02 Sep 2026 10:00:00 +0000</pubDate>
+		<description>The second episode.</description>
+		<category>Audio</category>
+		<enclosure url="https://example.com/podcast/2.mp3" length="1000" type="audio/mpeg"/>
+		<itunes:duration>3725</itunes:duration>
+	</item>
+	<item>
+		<title>Episode One</title>
+		<link>https://example.com/podcast/1/</link>
+		<guid>https://example.com/podcast/1/</guid>
+		<pubDate>Tue, 01 Sep 2026 10:00:00 +0000</pubDate>
+		<description>The first episode.</description>
+		<enclosure url="https://example.com/podcast/1.mp3" length="1000" type="audio/mpeg"/>
+	</item>
+</channel>
+</rss>

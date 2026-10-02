@@ -1,0 +1,25 @@
+{
+	"version": "https://jsonfeed.org/version/1.1",
+	"title": "Example JSON Feed",
+	"home_page_url": "https://example.com/",
+	"description": "A JSON Feed for testing.",
+	"authors": [ { "name": "Jane Doe", "url": "https://example.com/", "avatar": "https://example.com/jane.jpg" } ],
+	"items": [
+		{
+			"id": "2",
+			"url": "https://example.com/json/2/",
+			"title": "Second item",
+			"content_html": "<p>Second <script>bad()</script>item.</p>",
+			"date_published": "2026-09-02T10:00:00+00:00",
+			"tags": [ "json", "feed" ],
+			"attachments": [ { "url": "https://example.com/json/2.mp3", "mime_type": "audio/mpeg", "duration_in_seconds": 90 } ]
+		},
+		{
+			"id": "1",
+			"url": "https://example.com/json/1/",
+			"content_text": "First item.",
+			"date_published": "2026-09-01T10:00:00+00:00",
+			"authors": []
+		}
+	]
+}
