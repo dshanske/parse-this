@@ -32,7 +32,7 @@ class Parse_This {
 		if ( 'mf2' === $key ) {
 			return jf2_to_mf2( $this->jf2 );
 		}
-		if ( ! in_array( $key, get_object_vars( $this ), true ) ) {
+		if ( ! property_exists( $this, $key ) ) {
 			$key = 'jf2';
 		}
 		return $this->$key;
