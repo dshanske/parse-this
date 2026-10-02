@@ -432,11 +432,15 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			$publication['photo'] = self::image_to_photo( ifset( $organization['image'] ) );
 		}
 		if ( isset( $organization['member'] ) ) {
-			$publication['member'] = array();
-			foreach ( $organization['member'] as $member ) {
-				$publication['member'] = self::person_to_hcard( $member );
+			$members = $organization['member'];
+			if ( ! wp_is_numeric_array( $members ) ) {
+				$members = array( $members );
 			}
-			$publication['members'] = array_filter( $publication['members'] );
+			$publication['member'] = array();
+			foreach ( $members as $member ) {
+				$publication['member'][] = self::person_to_hcard( $member );
+			}
+			$publication['member'] = array_filter( $publication['member'] );
 		}
 		if ( isset( $organization['address'] ) ) {
 			$address = self::postaladdress_to_address( $organization['address'] );
