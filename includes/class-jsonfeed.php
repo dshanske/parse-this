@@ -1,9 +1,11 @@
 <?php
 /**
- * Parse_This_JSONFeed class.
+ * JSONFeed class.
  *
  * @package Parse_This
  */
+
+namespace ParseThis;
 
 /**
  * Converts JSON Feed (versions 1 and 1.1) documents into jf2 feeds.
@@ -12,7 +14,7 @@
  *
  * @link https://www.jsonfeed.org/version/1.1/
  */
-class Parse_This_JSONFeed extends Parse_This_Base {
+class JSONFeed extends Base {
 	/**
 	 * Returns an array value if the key is set.
 	 *
@@ -110,7 +112,7 @@ class Parse_This_JSONFeed extends Parse_This_Base {
 					'name'        => self::ifset( 'title', $item ),
 					'content'     => array_filter(
 						array(
-							'html' => Parse_This::clean_content( self::ifset( 'content_html', $item ) ),
+							'html' => Parser::clean_content( self::ifset( 'content_html', $item ) ),
 							'text' => self::ifset( 'content_text', $item ),
 						)
 					),

@@ -1,9 +1,11 @@
 <?php
 /**
- * Parse_This_JSONLD class.
+ * JSONLD class.
  *
  * @package Parse_This
  */
+
+namespace ParseThis;
 
 /**
  * Converts schema.org JSON-LD embedded in HTML pages into jf2.
@@ -14,7 +16,7 @@
  *
  * @since 1.0.0
  */
-class Parse_This_JSONLD extends Parse_This_Base {
+class JSONLD extends Base {
 	/**
 	 * Parses every application/ld+json script in a document into jf2.
 	 *
@@ -24,7 +26,7 @@ class Parse_This_JSONLD extends Parse_This_Base {
 	 *
 	 * @param DOMDocument|null $doc  Parsed HTML document.
 	 * @param string           $url  URL of the page. Unused.
-	 * @param array            $args Parse arguments (see Parse_This::parse()). Unused.
+	 * @param array            $args Parse arguments (see Parser::parse()). Unused.
 	 * @return array jf2 properties. When WP_DEBUG is on, the decoded JSON-LD is included
 	 *               under '_jsonld'.
 	 */
@@ -32,7 +34,7 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		if ( ! $doc ) {
 			return array();
 		}
-		$xpath = new DOMXPath( $doc );
+		$xpath = new \DOMXPath( $doc );
 
 		$jsonld  = array();
 		$content = '';
@@ -343,7 +345,7 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		);
 		if ( isset( $audio['transcript'] ) ) {
 			$return['content'] = array(
-				'html'  => Parse_This::clean_content( $audio['transcript'] ),
+				'html'  => Parser::clean_content( $audio['transcript'] ),
 				'value' => wp_strip_all_tags( $audio['transcript'] ),
 			);
 		}
@@ -381,7 +383,7 @@ class Parse_This_JSONLD extends Parse_This_Base {
 
 		if ( isset( $video['transcript'] ) ) {
 			$return['content'] = array(
-				'html'  => Parse_This::clean_content( $video['transcript'] ),
+				'html'  => Parser::clean_content( $video['transcript'] ),
 				'value' => wp_strip_all_tags( $video['transcript'] ),
 			);
 		}
@@ -735,7 +737,7 @@ class Parse_This_JSONLD extends Parse_This_Base {
 
 		if ( isset( $newsarticle['articleBody'] ) ) {
 			$jf2['content'] = array(
-				'html'  => Parse_This::clean_content( $newsarticle['articleBody'] ),
+				'html'  => Parser::clean_content( $newsarticle['articleBody'] ),
 				'value' => wp_strip_all_tags( $newsarticle['articleBody'] ),
 			);
 		}

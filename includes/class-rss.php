@@ -1,16 +1,18 @@
 <?php
 /**
- * Parse_This_RSS class.
+ * RSS class.
  *
  * @package Parse_This
  */
+
+namespace ParseThis;
 
 /**
  * Converts RSS and Atom feeds, as parsed by SimplePie, into jf2.
  *
  * @since 1.0.0
  */
-class Parse_This_RSS extends Parse_This_Base {
+class RSS extends Base {
 
 	/**
 	 * Converts a SimplePie feed into a jf2 feed.
@@ -105,7 +107,7 @@ class Parse_This_RSS extends Parse_This_Base {
 		if ( ! $author ) {
 			return array();
 		}
-		if ( $author instanceof SimplePie_Author ) {
+		if ( $author instanceof \SimplePie_Author ) {
 			$author = array( $author );
 		}
 		$return = array();
@@ -156,7 +158,7 @@ class Parse_This_RSS extends Parse_This_Base {
 	 *                    SimplePie_Credit.
 	 */
 	public static function credit_to_card( $credit ) {
-		if ( ! $credit instanceof SimplePie_Credit ) {
+		if ( ! $credit instanceof \SimplePie_Credit ) {
 			return null;
 		}
 		return array(
@@ -176,7 +178,7 @@ class Parse_This_RSS extends Parse_This_Base {
 	 *                    $source is not a SimplePie_Source.
 	 */
 	public static function source_to_cite( $source ) {
-		if ( ! $source instanceof SimplePie_Source ) {
+		if ( ! $source instanceof \SimplePie_Source ) {
 			return null;
 		}
 		return array_filter(
@@ -251,7 +253,7 @@ class Parse_This_RSS extends Parse_This_Base {
 	 * @return array jf2 entry.
 	 */
 	public static function get_item( $item, $title = '' ) {
-		$content = Parse_This::clean_content( $item->get_content( true ) );
+		$content = Parser::clean_content( $item->get_content( true ) );
 		$return  = array(
 			'type'         => 'entry',
 			'name'         => $item->get_title(),

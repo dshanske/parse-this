@@ -1,21 +1,23 @@
 <?php
 /**
- * Parse_This_HTML class.
+ * HTML class.
  *
  * @package Parse_This
  */
+
+namespace ParseThis;
 
 /**
  * Extracts jf2 from HTML pages without microformats.
  *
  * Reads Open Graph, Dublin Core, Parse.ly, citation and other meta tags, plus
  * <title>, <video> and <audio> elements. This is the last fallback in
- * Parse_This::parse(). Originally derived from the Press This code removed
+ * Parser::parse(). Originally derived from the Press This code removed
  * from WordPress core.
  *
  * @since 1.0.0
  */
-class Parse_This_HTML extends Parse_This_Base {
+class HTML extends Base {
 	/**
 	 * Parses meta tags and media elements of an HTML document into jf2.
 	 *
@@ -34,7 +36,7 @@ class Parse_This_HTML extends Parse_This_Base {
 		if ( ! is_object( $doc ) ) {
 			return $doc;
 		}
-		$xpath = new DOMXPath( $doc );
+		$xpath = new \DOMXPath( $doc );
 
 		$meta = array();
 		// Look for OGP properties.

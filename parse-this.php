@@ -23,7 +23,8 @@ if ( ! function_exists( 'parse_this_loader' ) ) {
 	 * ahead of copies bundled in other plugins (Post Kinds loads its copy at
 	 * priority 11). Functions are guarded by function_exists() and the first
 	 * autoloader registered serves the classes, so whichever copy loads first
-	 * wins.
+	 * wins. It also registers the deprecated global names in aliases.php, so
+	 * that plugins bundling an older copy use this one.
 	 *
 	 * @since 1.0.0
 	 */
@@ -34,8 +35,8 @@ if ( ! function_exists( 'parse_this_loader' ) ) {
 		require_once plugin_dir_path( __FILE__ ) . 'includes/compat-functions.php';
 
 		require_once plugin_dir_path( __FILE__ ) . 'includes/functions.php';
-		// Parse This REST endpoint.
-		require_once plugin_dir_path( __FILE__ ) . 'includes/class-rest-parse-this.php';
+
+		new ParseThis\REST_Endpoint();
 	}
 	add_action( 'plugins_loaded', 'parse_this_loader', 9 );
 }
