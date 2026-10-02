@@ -22,7 +22,6 @@ class Parse_This_RSS extends Parse_This_Base {
 			array(
 				'type'            => 'feed',
 				'_feed_type'      => self::get_type( $feed ),
-				'_last_updated'   => self::last_updated( $feed ),
 				'_last_published' => self::find_last_published( $items ),
 				'_last_updated'   => self::find_last_updated( $items ),
 				'summary'         => $feed->get_description(),
@@ -135,7 +134,7 @@ class Parse_This_RSS extends Parse_This_Base {
 				'summary' => $source->get_description(),
 				'url'     => $source->get_permalink(),
 				'author'  => self::get_authors( $source->get_authors() ),
-				'photo'   => $sourece->get_image_url(),
+				'photo'   => $source->get_image_url(),
 			)
 		);
 	}
