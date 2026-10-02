@@ -56,7 +56,10 @@ class Parse_This_HTML extends Parse_This_Base {
 			$meta = self::set( $meta, $meta_name, $meta_value );
 		}
 
-		$meta['title'] = trim( $xpath->query( '//title' )->item( 0 )->textContent );
+		$title = $xpath->query( '//title' )->item( 0 );
+		if ( $title ) {
+			$meta['title'] = trim( $title->textContent ); // phpcs:ignore
+		}
 		$meta          = self::parse_meta( $meta );
 		if ( isset( $meta['og'] ) ) {
 			$meta['og'] = self::parse_meta( $meta['og'] );
@@ -208,7 +211,7 @@ class Parse_This_HTML extends Parse_This_Base {
 			if ( isset( $meta['og']['longitude'] ) ) {
 				$jf2['location'] = array(
 					'longitude' => $meta['og']['longitude'],
-					'latitude'  => $meta['og']['longitude'],
+					'latitude'  => ifset( $meta['og']['latitude'] ),
 				);
 			}
 			if ( isset( $meta['og']['type'] ) ) {
@@ -236,7 +239,7 @@ class Parse_This_HTML extends Parse_This_Base {
 					if ( isset( $meta['book']['isbn'] ) ) {
 						$jf2['uid'] = $meta['book']['isbn'];
 					}
-					if ( isset( $meta['release_date'] ) ) {
+					if ( isset( $meta['book']['release_date'] ) ) {
 						$jf2['release_date'] = $meta['book']['release_date'];
 					}
 				}
