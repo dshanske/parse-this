@@ -127,14 +127,17 @@ class Discovery {
 		$content_type = trim( $content_type );
 
 		$content = wp_remote_retrieve_body( $response );
-		// Find Youtube RSS Feeds.
+		// Find YouTube RSS feeds. Handle URLs (/@name) can't be mapped; their pages advertise the feed instead.
 		if ( in_array( wp_parse_url( $url, PHP_URL_HOST ), array( 'www.youtube.com', 'm.youtube.com', 'youtube.com' ), true ) ) {
-			$links[] = array(
-				'url'        => self::youtube_rss( $url ),
-				'type'       => 'feed',
-				'_feed_type' => 'atom',
-				'name'       => 'YouTube Feed',
-			);
+			$youtube_feed = self::youtube_rss( $url );
+			if ( $youtube_feed ) {
+				$links[] = array(
+					'url'        => $youtube_feed,
+					'type'       => 'feed',
+					'_feed_type' => 'atom',
+					'name'       => 'YouTube Feed',
+				);
+			}
 		}
 		// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway.
 		if ( ( in_array( $content_type, array( 'application/rss+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/xml' ), true ) ) ) {
@@ -274,7 +277,16 @@ class Discovery {
 				}
 			);
 
-			return array( 'results' => $links );
+			// The same feed can be both constructed (YouTube) and advertised by the page; keep the first.
+			$seen = array();
+			foreach ( $links as $key => $link ) {
+				if ( isset( $seen[ $link['url'] ] ) ) {
+					unset( $links[ $key ] );
+				}
+				$seen[ $link['url'] ] = true;
+			}
+
+			return array( 'results' => array_values( $links ) );
 
 		}
 
