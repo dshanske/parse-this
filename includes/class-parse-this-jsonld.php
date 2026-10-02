@@ -460,7 +460,9 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		if ( is_string( $type ) ) {
 			$type = array( $type );
 		}
-		return ( in_array( $jsonld['@type'], $type, true ) );
+		// @type may be a single type or a list of types.
+		$types = is_array( $jsonld['@type'] ) ? $jsonld['@type'] : array( $jsonld['@type'] );
+		return ( 0 < count( array_intersect( $types, $type ) ) );
 	}
 
 	public static function get_type( $jsonld ) {
