@@ -273,6 +273,9 @@ class Parse_This {
 		);
 
 		$response = wp_safe_remote_get( $url, $args );
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
 
 		$raw = wp_remote_retrieve_header( $response, 'link' );
 		if ( is_string( $raw ) ) {
@@ -288,10 +291,14 @@ class Parse_This {
 		if ( in_array( $response_code, array( 403, 415 ), true ) ) {
 			$args['user-agent'] = $user_agent;
 			$response           = wp_safe_remote_get( $url, $args );
-			$response_code      = wp_remote_retrieve_response_code( $response );
+			if ( is_wp_error( $response ) ) {
+				return $response;
+			}
+			$response_code = wp_remote_retrieve_response_code( $response );
 			if ( in_array( $response_code, array( 403, 415 ), true ) ) {
 				return new WP_Error( 'source_error', 'Unable to Retrieve' );
 			}
+			$this->content_type = wp_remote_retrieve_header( $response, 'content-type' );
 		}
 		if ( is_array( $this->content_type ) ) {
 			$this->content_type = array_pop( $this->content_type );
@@ -304,7 +311,7 @@ class Parse_This {
 						$this->content_type = trim( $this->content_type );
 						// List of content types we know how to handle
 		if ( ! self::supported_content( $this->content_type ) ) {
-			return new WP_Error( 'content-type', 'Content Type is Not Supported', array( 'content-type' => $content_type ) );
+			return new WP_Error( 'content-type', 'Content Type is Not Supported', array( 'content-type' => $this->content_type ) );
 		}
 
 		$content = wp_remote_retrieve_body( $response );
@@ -415,7 +422,7 @@ class Parse_This {
 
 		if ( empty( $more ) ) {
 			$alt = null;
-			$jf2 = $this->jf2['_jf2'];
+			$jf2 = isset( $this->jf2['_jf2'] ) ? $this->jf2['_jf2'] : array();
 
 			$empty = true;
 
@@ -427,7 +434,9 @@ class Parse_This {
 					$path         = Parse_This_RESTAPI::get_rest_path( $endpoint, $rest );
 					$fetch        = Parse_This_RESTAPI::fetch( $endpoint, $path );
 					$alt          = Parse_This_RESTAPI::parse( $fetch, $endpoint, $args );
-					$alt['_rest'] = $fetch;
+					if ( is_array( $alt ) ) {
+						$alt['_rest'] = $fetch;
+					}
 				}
 			}
 
@@ -435,7 +444,8 @@ class Parse_This {
 				$alt = Parse_This_JSONLD::parse( $this->doc, $this->url, $args );
 			}
 
-			if ( empty( $alt ) ) {
+			if ( empty( $alt ) || ! is_array( $alt ) ) {
+				$alt   = array();
 				$empty = true;
 			} elseif ( is_countable( $alt ) && 1 === count( $alt ) && array_key_exists( '_jsonld', $alt ) ) {
 				$empty = true;
@@ -455,18 +465,22 @@ class Parse_This {
 					$alt = Parse_This_HTML::parse( $content, $this->url, $args );
 				}
 			}
-			$json      = Parse_This_JSON::parse( $this->doc, $this->url, $args );
-			$this->jf2 = array_merge( $this->jf2, $json );
-			$this->jf2 = array_merge( $this->jf2, $alt );
+			$json = Parse_This_JSON::parse( $this->doc, $this->url, $args );
+			if ( is_array( $json ) ) {
+				$this->jf2 = array_merge( $this->jf2, $json );
+			}
+			if ( is_array( $alt ) ) {
+				$this->jf2 = array_merge( $this->jf2, $alt );
+			}
 			if ( ! empty( $jf2 ) ) {
 				if ( isset( $jf2['author'] ) ) {
-					if ( isset( $this->jf2['author'] ) && is_string( $this->jf2['author'] ) ) {
+					if ( isset( $this->jf2['author'] ) && is_string( $this->jf2['author'] ) && is_array( $jf2['author'] ) ) {
 						$jf2['author']['name'] = $this->jf2['author'];
 					}
 					$this->jf2['author']   = $jf2['author'];
 				}
 			}
-			if ( isset( $alt['author'] ) && is_array( $this->jf2['author'] ) && ! wp_is_numeric_array( $this->jf2['author'] ) && ! isset( $this->jf2['author']['name'] ) ) {
+			if ( isset( $alt['author'] ) && isset( $this->jf2['author'] ) && is_array( $this->jf2['author'] ) && ! wp_is_numeric_array( $this->jf2['author'] ) && ! isset( $this->jf2['author']['name'] ) ) {
 				$this->jf2['author']['name'] = $alt['author'];
 			}  
 		} 
