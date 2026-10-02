@@ -1,8 +1,27 @@
 <?php
-// Parse This Global Functions
-
+/**
+ * Global helper functions.
+ *
+ * Each function is wrapped in function_exists() because several plugins
+ * bundle their own copy of Parse This; the first copy loaded wins.
+ *
+ * @package Parse_This
+ */
 
 if ( ! function_exists( 'jf2_to_mf2' ) ) {
+	/**
+	 * Converts jf2 into microformats2 JSON.
+	 *
+	 * The inverse of mf2_to_jf2(). Empty values and the _raw key are dropped.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @link https://jf2.spec.indieweb.org/
+	 *
+	 * @param array|mixed $jf2 jf2 object, or array( 'items' => ... ) for a list.
+	 * @return array|mixed mf2 object with type and properties. Values that are not
+	 *                     jf2 objects are returned unchanged.
+	 */
 	function jf2_to_mf2( $jf2 ) {
 		if ( ! $jf2 || ! is_array( $jf2 ) ) {
 			return $jf2;
@@ -30,7 +49,7 @@ if ( ! function_exists( 'jf2_to_mf2' ) ) {
 		$mf2['properties'] = array();
 
 		foreach ( $jf2 as $key => $value ) {
-			// Exclude values
+			// Exclude values.
 			if ( empty( $value ) || ( '_raw' === $key ) ) {
 				continue;
 			}
@@ -49,6 +68,21 @@ if ( ! function_exists( 'jf2_to_mf2' ) ) {
 
 if ( ! function_exists( 'mf2_to_jf2' ) ) {
 
+	/**
+	 * Converts microformats2 JSON into jf2.
+	 *
+	 * Single-value property arrays are collapsed to the value, the h- prefix is
+	 * removed from types, and nested microformats are converted recursively.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @link https://jf2.spec.indieweb.org/
+	 *
+	 * @param array|mixed $mf2 mf2 object, a parsed mf2 document with items, or a
+	 *                         list of mf2 objects.
+	 * @return array|mixed jf2. A list of one is returned as the single item.
+	 *                     Strings and objects are returned unchanged.
+	 */
 	function mf2_to_jf2( $mf2 ) {
 		if ( empty( $mf2 ) || is_string( $mf2 ) || is_object( $mf2 ) ) {
 			return $mf2;
@@ -56,7 +90,7 @@ if ( ! function_exists( 'mf2_to_jf2' ) ) {
 
 		$jf2 = array();
 
-		// If it is a numeric array, run this function through each item
+		// If it is a numeric array, run this function through each item.
 		if ( wp_is_numeric_array( $mf2 ) ) {
 			$jf2 = array_map( 'mf2_to_jf2', $mf2 );
 			if ( 1 === count( $jf2 ) ) {
@@ -98,9 +132,18 @@ if ( ! function_exists( 'mf2_to_jf2' ) ) {
 
 
 if ( ! function_exists( 'jf2_location' ) ) {
-	/*
-	 Flatten nested location properties.
-	*/
+	/**
+	 * Flattens a nested jf2 location.
+	 *
+	 * The latitude, longitude and altitude are copied onto the object, and location
+	 * becomes the place's label or name (or is removed). Any check-in on the
+	 * object also receives the location's properties.
+	 *
+	 * @since 1.0.1
+	 *
+	 * @param array $data jf2 object.
+	 * @return array The updated object.
+	 */
 	function jf2_location( $data ) {
 		if ( ! array_key_exists( 'location', $data ) ) {
 			return $data;
@@ -134,9 +177,20 @@ if ( ! function_exists( 'jf2_location' ) ) {
 
 
 if ( ! function_exists( 'jf2_references' ) ) {
-	/*
-	 Turns nested properties into references per the jf2 spec
-	*/
+	/**
+	 * Moves nested citations into refs, per the jf2 spec.
+	 *
+	 * Properties holding h-cite objects are replaced by their URLs, and the
+	 * citations are stored in refs keyed by URL. Typed category values are
+	 * moved the same way.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @link https://jf2.spec.indieweb.org/#references
+	 *
+	 * @param array $data jf2 object.
+	 * @return array The updated object.
+	 */
 	function jf2_references( $data ) {
 		foreach ( $data as $key => $val ) {
 			if ( ! is_array( $val ) ) {
@@ -147,7 +201,7 @@ if ( ! function_exists( 'jf2_references' ) ) {
 			}
 			if ( wp_is_numeric_array( $val ) ) {
 				foreach ( $val as $value ) {
-					// Indicates nested type
+					// Indicates nested type.
 					if ( is_array( $value ) && array_key_exists( 'type', $value ) && 'cite' === $value['type'] ) {
 						if ( ! isset( $data['refs'] ) ) {
 							$data['refs'] = array();
@@ -179,35 +233,42 @@ if ( ! function_exists( 'jf2_references' ) ) {
 
 if ( ! function_exists( 'url_to_author' ) ) {
 	/**
-	 * Examine a url and try to determine the author ID it represents.
+	 * Returns the local user that an author archive URL belongs to.
 	 *
-	 * @param string $url Permalink to check.
+	 * Handles ?author=N URLs and pretty author permalinks.
 	 *
-	 * @return WP_User, or null on failure.
+	 * @since 1.0.0
+	 *
+	 * @global WP_Rewrite $wp_rewrite WordPress rewrite component.
+	 *
+	 * @param string $url URL to check.
+	 * @return WP_User|false|null The user, false if no user has that ID or slug, or
+	 *                            null if the URL is not on this site or not an
+	 *                            author URL.
 	 */
 	function url_to_author( $url ) {
 		global $wp_rewrite;
-		// check if url hase the same host
+		// check if url hase the same host.
 		if ( wp_parse_url( site_url(), PHP_URL_HOST ) !== wp_parse_url( $url, PHP_URL_HOST ) ) {
 			return null;
 		}
-		// first, check to see if there is a 'author=N' to match against
+		// first, check to see if there is a 'author=N' to match against.
 		if ( preg_match( '/[?&]author=(\d+)/i', $url, $values ) ) {
 			$id = absint( $values[1] );
 			if ( $id ) {
 				return get_user_by( 'id', $id );
 			}
 		}
-		// check to see if we are using rewrite rules
+		// check to see if we are using rewrite rules.
 		$rewrite = $wp_rewrite->wp_rewrite_rules();
-		// not using rewrite rules, and 'author=N' method failed, so we're out of options
+		// not using rewrite rules, and 'author=N' method failed, so we're out of options.
 		if ( empty( $rewrite ) ) {
 			return null;
 		}
-		// generate rewrite rule for the author url
+		// generate rewrite rule for the author url.
 		$author_rewrite = $wp_rewrite->get_author_permastruct();
 		$author_regexp  = str_replace( '%author%', '', $author_rewrite );
-		// match the rewrite rule with the passed url
+		// match the rewrite rule with the passed url.
 		if ( preg_match( '/https?:\/\/(.+)' . preg_quote( $author_regexp, '/' ) . '([^\/]+)/i', $url, $match ) ) {
 			$user = get_user_by( 'slug', $match[2] );
 			if ( $user ) {
@@ -220,23 +281,30 @@ if ( ! function_exists( 'url_to_author' ) ) {
 
 if ( ! function_exists( 'url_to_user' ) ) {
 	/**
-	 * Get the user associated with a URL.
+	 * Returns the local user associated with a URL.
 	 *
-	 * @param string $url url to match
-	 * @return WP_User $user Associated user, or null if no associated user
+	 * The site's home URL maps to the IndieWeb plugin's default author when the
+	 * IndieWeb plugin is active, otherwise to the only author if there is just
+	 * one. Author archive URLs map to their author, and other URLs are matched
+	 * against users' website field.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $url URL to check.
+	 * @return WP_User|false|null The user, or null (or false) if none matches.
 	 */
 	function url_to_user( $url ) {
 		if ( empty( $url ) ) {
 			return null;
 		}
-		// Ensure has trailing slash
+		// Ensure has trailing slash.
 		$url = trailingslashit( $url );
 		if ( ( 'https' === wp_parse_url( home_url(), PHP_URL_SCHEME ) ) && ( wp_parse_url( home_url(), PHP_URL_HOST ) === wp_parse_url( $url, PHP_URL_HOST ) ) ) {
 			$url = set_url_scheme( $url, 'https' );
 		}
-		// Try to save the expense of a search query if the URL is the site URL
+		// Try to save the expense of a search query if the URL is the site URL.
 		if ( home_url( '/' ) === $url ) {
-			// Use the Indieweb settings to set the default author
+			// Use the Indieweb settings to set the default author.
 			if ( class_exists( 'Indieweb_Plugin' ) && ( get_option( 'iw_single_author' ) || ! is_multi_author() ) ) {
 				return get_user_by( 'id', get_option( 'iw_default_author' ) );
 			}
@@ -246,7 +314,7 @@ if ( ! function_exists( 'url_to_user' ) ) {
 			}
 			return null;
 		}
-		// Check if this is a author post URL
+		// Check if this is a author post URL.
 		$user = url_to_author( $url );
 		if ( $user instanceof WP_User ) {
 			return $user;
@@ -256,7 +324,7 @@ if ( ! function_exists( 'url_to_user' ) ) {
 			'search_columns' => array( 'user_url' ),
 		);
 		$users = get_users( $args );
-		// check result
+		// check result.
 		if ( ! empty( $users ) ) {
 			return $users[0];
 		}
@@ -265,12 +333,18 @@ if ( ! function_exists( 'url_to_user' ) ) {
 }
 
 if ( ! function_exists( 'ifset' ) ) {
-		/**
-		 * If set, return otherwise false.
-		 *
-		 * @param type $var Check if set.
-		 * @return $var|false Return either $var or $return.
-		 */
+	/**
+	 * Returns a variable if it is set, otherwise a default.
+	 *
+	 * Takes $var by reference, so passing a missing array key creates that key
+	 * with a null value (review finding C-31).
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param mixed $var    Variable to check.
+	 * @param mixed $return Optional. Value to return if $var is not set. Default false.
+	 * @return mixed $var if set, otherwise $return.
+	 */
 	function ifset( &$var, $return = false ) {
 
 			return isset( $var ) ? $var : $return;
@@ -278,17 +352,21 @@ if ( ! function_exists( 'ifset' ) ) {
 }
 
 
-/*
- Inverse of wp_parse_url
- *
- * Slightly modified from p3k-utils (https://github.com/aaronpk/p3k-utils)
- * Copyright 2017 Aaron Parecki, used with permission under MIT License
- *
- * @link http://php.net/parse_url
- * @param  string $parsed_url the parsed URL (wp_parse_url)
- * @return string             the final URL
- */
 if ( ! function_exists( 'build_url' ) ) {
+	/**
+	 * Builds a URL from its parts; the inverse of wp_parse_url().
+	 *
+	 * Slightly modified from p3k-utils. Copyright 2017 Aaron Parecki, used with
+	 * permission under the MIT License.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @link https://github.com/aaronpk/p3k-utils
+	 * @link https://www.php.net/parse_url
+	 *
+	 * @param array $parsed_url URL components as returned by wp_parse_url().
+	 * @return string The URL.
+	 */
 	function build_url( $parsed_url ) {
 			$scheme   = ! empty( $parsed_url['scheme'] ) ? $parsed_url['scheme'] . '://' : '';
 			$host     = ! empty( $parsed_url['host'] ) ? $parsed_url['host'] : '';
@@ -306,7 +384,17 @@ if ( ! function_exists( 'build_url' ) ) {
 
 
 if ( ! function_exists( 'normalize_url' ) ) {
-	// Adds slash if no path is in the URL, and convert hostname to lowercase
+	/**
+	 * Normalizes a URL for comparison.
+	 *
+	 * Lowercases the host and adds a / path if there is none.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $url   URL to normalize.
+	 * @param bool   $strip Optional. Whether to remove the query string. Default false.
+	 * @return string|null The normalized URL, or null if it has no host.
+	 */
 	function normalize_url( $url, $strip = false ) {
 		$parts = wp_parse_url( $url );
 		if ( empty( $parts['path'] ) ) {
@@ -323,7 +411,15 @@ if ( ! function_exists( 'normalize_url' ) ) {
 }
 
 if ( ! function_exists( 'normalize_iso8601' ) ) {
-	// Tries to normalizes dates to a standard iso8601 string
+	/**
+	 * Normalizes a date string to W3C (ISO 8601) format.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string|mixed $string Date string.
+	 * @return string|null The date in W3C format, the original string if it cannot
+	 *                     be parsed, or null if it is empty or not a string.
+	 */
 	function normalize_iso8601( $string ) {
 		if ( empty( $string ) || ! is_string( $string ) ) {
 			return null;
@@ -338,6 +434,21 @@ if ( ! function_exists( 'normalize_iso8601' ) ) {
 }
 
 if ( ! function_exists( 'post_type_discovery' ) ) {
+	/**
+	 * Determines the IndieWeb post type of a jf2 or mf2 entry.
+	 *
+	 * Response properties decide the type first (rsvp, checkin, like-of,
+	 * in-reply-to, ...), then media (video, photo, audio). An entry with a name
+	 * that is not just the start of its content is an article; anything else is
+	 * a note.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @link https://indieweb.org/post-type-discovery
+	 *
+	 * @param array|mixed $jf2 jf2 object, or an mf2 object (converted first).
+	 * @return string The post type, 'event' for events, or an empty string.
+	 */
 	function post_type_discovery( $jf2 ) {
 		if ( ! is_array( $jf2 ) ) {
 			return '';
@@ -403,6 +514,16 @@ if ( ! function_exists( 'post_type_discovery' ) ) {
 }
 
 if ( ! function_exists( 'seconds_to_iso8601' ) ) {
+	/**
+	 * Converts a number of seconds into an ISO 8601 duration.
+	 *
+	 * For example 3725 becomes PT1H2M5S.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param int|float $second Duration in seconds.
+	 * @return string ISO 8601 duration.
+	 */
 	function seconds_to_iso8601( $second ) {
 		$h   = intval( $second / 3600 );
 		$m   = intval( ( $second - $h * 3600 ) / 60 );
@@ -422,6 +543,17 @@ if ( ! function_exists( 'seconds_to_iso8601' ) ) {
 }
 
 if ( ! function_exists( 'pt_load_domdocument' ) ) {
+	/**
+	 * Parses HTML into a DOMDocument.
+	 *
+	 * Uses the bundled masterminds/html5 parser when available, otherwise
+	 * PHP's DOMDocument with errors suppressed.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $content HTML.
+	 * @return DOMDocument The parsed document.
+	 */
 	function pt_load_domdocument( $content ) {
 		if ( ! class_exists( '\Masterminds\HTML5', false ) ) {
 			$file = plugin_dir_path( __DIR__ ) . 'lib/html5/autoloader.php';
@@ -484,6 +616,14 @@ if ( ! function_exists( 'pt_remote_get' ) ) {
 }
 
 if ( ! function_exists( 'pt_secure_rewrite' ) ) {
+	/**
+	 * Upgrades http:// URLs to https:// for hosts known to support HTTPS.
+	 *
+	 * @since 1.0.1
+	 *
+	 * @param string $url URL.
+	 * @return string The URL, with https:// if its domain is on the list.
+	 */
 	function pt_secure_rewrite( $url ) {
 		$host   = wp_parse_url( $url, PHP_URL_HOST );
 		$host   = preg_replace( '/^([a-zA-Z0-9].*\.)?([a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z.]{2,})$/', '$2', $host );
@@ -521,14 +661,19 @@ if ( ! function_exists( 'pt_secure_rewrite' ) ) {
 }
 
 
-/**
- * Parses Link Headers
- *
- *
- * @return array
- */
-
 if ( ! function_exists( 'pt_parse_header_links' ) ) {
+	/**
+	 * Parses HTTP Link headers.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @link https://www.rfc-editor.org/rfc/rfc8288
+	 *
+	 * @param string|string[] $links One Link header value, or several. A value may
+	 *                               hold multiple comma-separated links.
+	 * @return array[] One entry per link and rel value, with 'uri', 'rel' and any
+	 *                 other parameters (type, title, ...).
+	 */
 	function pt_parse_header_links( $links ) {
 		$items = array();
 
@@ -579,14 +724,17 @@ if ( ! function_exists( 'pt_parse_header_links' ) ) {
 	}
 }
 
-/**
- * Find WordPress REST Alternate
- *
- *
- * @return string|false
- */
-
 if ( ! function_exists( 'pt_find_rest_alternate' ) ) {
+	/**
+	 * Finds the application/json alternate link among parsed Link headers.
+	 *
+	 * WordPress sends this for each post, pointing at its REST API URL.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array[] $links Links from pt_parse_header_links().
+	 * @return string|false The URL, or false if there is none.
+	 */
 	function pt_find_rest_alternate( $links ) {
 		foreach ( $links as $link ) {
 			if ( 'alternate' === ifset( $link['rel'] ) && 'application/json' === ifset( $link['type'] ) ) {
@@ -598,14 +746,15 @@ if ( ! function_exists( 'pt_find_rest_alternate' ) ) {
 	}
 }
 
-/**
- * Find WordPress REST Endpoint
- *
- *
- * @return string|false
- */
-
 if ( ! function_exists( 'pt_find_rest_endpoint' ) ) {
+	/**
+	 * Finds the WordPress REST API root among parsed Link headers.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array[] $links Links from pt_parse_header_links().
+	 * @return string|false The REST API root URL, or false if there is none.
+	 */
 	function pt_find_rest_endpoint( $links ) {
 		foreach ( $links as $link ) {
 			if ( 'https://api.w.org/' === ifset( $link['rel'] ) ) {
@@ -617,6 +766,16 @@ if ( ! function_exists( 'pt_find_rest_endpoint' ) ) {
 }
 
 if ( ! function_exists( 'pt_make_absolute_url' ) ) {
+	/**
+	 * Resolves a relative URL against a base URL.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $maybe_relative_path URL or path to resolve.
+	 * @param string $url                 Base URL.
+	 * @return string The absolute URL, or $maybe_relative_path unchanged if it is
+	 *                already absolute or either value cannot be parsed.
+	 */
 	function pt_make_absolute_url( $maybe_relative_path, $url ) {
 		if ( empty( $url ) ) {
 			return $maybe_relative_path;
