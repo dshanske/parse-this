@@ -247,48 +247,27 @@ class Parser {
 	/**
 	 * Fetches an RSS or Atom feed with SimplePie.
 	 *
-	 * A variant of core's fetch_feed() with caching disabled and HTML tags
-	 * kept, so that content can be sanitized by clean_content() instead.
+	 * Uses core's fetch_feed(), with the feed cache turned off and HTML tags
+	 * kept for the duration of the call, so that every fetch is fresh and
+	 * content is sanitized by clean_content() rather than stripped. Core's
+	 * KSES sanitizer still runs, as for any feed WordPress fetches.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Uses core's fetch_feed() instead of a copy of it.
 	 *
 	 * @param string $url Feed URL.
-	 * @return SimplePie|WP_Error The initialized feed, or WP_Error if SimplePie
-	 *                            reports an error.
+	 * @return \SimplePie|\SimplePie\SimplePie|\WP_Error The initialized feed, or
+	 *                                                   WP_Error if SimplePie
+	 *                                                   reports an error.
 	 */
 	public static function fetch_feed( $url ) {
-		$url = pt_secure_rewrite( $url );
-		if ( ! class_exists( 'SimplePie', false ) ) {
-			require_once ABSPATH . WPINC . '/class-simplepie.php';
-		}
-		require_once ABSPATH . WPINC . '/class-wp-feed-cache-transient.php';
-		require_once ABSPATH . WPINC . '/class-wp-simplepie-file.php';
-		require_once ABSPATH . WPINC . '/class-wp-simplepie-sanitize-kses.php';
-		$feed = new \SimplePie();
-
-		// Register the cache handler using the recommended method for SimplePie 1.3 or later.
-		if ( method_exists( 'SimplePie_Cache', 'register' ) ) {
-			\SimplePie_Cache::register( 'wp_transient', 'WP_Feed_Cache_Transient' );
-			$feed->set_cache_location( 'wp_transient' );
-		} else {
-			// Back-compat for SimplePie 1.2.x. Not reached on WordPress 6.2+, which bundles 1.5 or later.
-			require_once ABSPATH . WPINC . '/class-wp-feed-cache.php';
-			$feed->set_cache_class( 'WP_Feed_Cache' );
-		}
-
-		$feed->set_file_class( 'WP_SimplePie_File' );
-		$feed->enable_cache( false );
-		$feed->set_feed_url( $url );
-		$feed->strip_htmltags( false );
-		/** This action is documented in wp-includes/feed.php */
-		do_action_ref_array( 'wp_feed_options', array( &$feed, $url ) );
-		$feed->init();
-		$feed->set_output_encoding( get_option( 'blog_charset' ) );
-
-		if ( $feed->error() ) {
-			return new \WP_Error( 'simplepie-error', $feed->error() );
-		}
-
+		$options = static function ( $feed ) {
+			$feed->enable_cache( false );
+			$feed->strip_htmltags( false );
+		};
+		add_action( 'wp_feed_options', $options );
+		$feed = \fetch_feed( pt_secure_rewrite( $url ) );
+		remove_action( 'wp_feed_options', $options );
 		return $feed;
 	}
 
@@ -483,7 +462,7 @@ class Parser {
 		if ( ! in_array( $args['return'], array( 'single', 'feed' ), true ) ) {
 			$args['return'] = 'single';
 		}
-		if ( class_exists( RSS::class ) && $this->content instanceof \SimplePie ) {
+		if ( class_exists( RSS::class ) && ( $this->content instanceof \SimplePie\SimplePie || $this->content instanceof \SimplePie ) ) {
 			$this->jf2 = RSS::parse( $this->content, $this->url );
 
 			return;

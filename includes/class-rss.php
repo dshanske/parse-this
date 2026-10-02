@@ -107,7 +107,7 @@ class RSS extends Base {
 		if ( ! $author ) {
 			return array();
 		}
-		if ( $author instanceof \SimplePie_Author ) {
+		if ( $author instanceof \SimplePie\Author || $author instanceof \SimplePie_Author ) {
 			$author = array( $author );
 		}
 		$return = array();
@@ -158,7 +158,7 @@ class RSS extends Base {
 	 *                    SimplePie_Credit.
 	 */
 	public static function credit_to_card( $credit ) {
-		if ( ! $credit instanceof \SimplePie_Credit ) {
+		if ( ! ( $credit instanceof \SimplePie\Credit || $credit instanceof \SimplePie_Credit ) ) {
 			return null;
 		}
 		return array(
@@ -178,7 +178,7 @@ class RSS extends Base {
 	 *                    $source is not a SimplePie_Source.
 	 */
 	public static function source_to_cite( $source ) {
-		if ( ! $source instanceof \SimplePie_Source ) {
+		if ( ! ( $source instanceof \SimplePie\Source || $source instanceof \SimplePie_Source ) ) {
 			return null;
 		}
 		return array_filter(
