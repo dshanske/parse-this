@@ -16,7 +16,9 @@ class Parse_This_YouTube extends Parse_This_Base {
 			return array();
 		}
 
-		preg_match( '#ytInitialPlayerResponse = (\{.+\});#U', $content, $match );
+		if ( ! preg_match( '#ytInitialPlayerResponse = (\{.+\});#U', $content, $match ) ) {
+			return array();
+		}
 		$decode = json_decode( $match[1], true );
 		if ( empty( $decode ) ) {
 			return array();
@@ -25,7 +27,7 @@ class Parse_This_YouTube extends Parse_This_Base {
 			return array();
 		}
 		$details       = $decode['videoDetails'];
-		$microformat   = $decode['microformat']['playerMicroformatRenderer'];
+		$microformat   = isset( $decode['microformat']['playerMicroformatRenderer'] ) ? $decode['microformat']['playerMicroformatRenderer'] : array();
 		$jf2           = array(
 			'uid'       => ifset( $details['videoID'] ),
 			'name'      => ifset( $details['title'] ),
