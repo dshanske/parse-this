@@ -1,36 +1,51 @@
 name: Unit Testing
-on: 
-    push:
-    pull_request:
+on:
+  push:
+  pull_request:
 jobs:
-  phpcs:
+  phpunit:
+    name: PHP ${{ matrix.php }} / ${{ matrix.platform }}
     runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental == true }}
     services:
-     mysql:
-       image: mariadb:10.4
-       env:
-         MYSQL_ROOT_PASSWORD: root
-       ports:
-         - 3306:3306
-       options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=10s --health-retries=10
+      mysql:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval=10s --health-timeout=5s --health-retries=10
     strategy:
+      fail-fast: false
       matrix:
-        php-versions: ['5.6', '7.2', '7.3', '7.4', '8.0']
+        include:
+          # Minimum supported WordPress.
+          - { php: '7.4', platform: '6.2' }
+          - { php: '8.0', platform: '6.2' }
+          - { php: '8.2', platform: '6.2' }
+          # Latest WordPress.
+          - { php: '7.4', platform: 'latest' }
+          - { php: '8.1', platform: 'latest' }
+          - { php: '8.3', platform: 'latest' }
+          - { php: '8.4', platform: 'latest' }
+          - { php: '8.5', platform: 'latest', experimental: true }
+          # ClassicPress.
+          - { php: '7.4', platform: 'classicpress:2.7.3' }
+          - { php: '8.1', platform: 'classicpress:2.7.3' }
+          - { php: '8.3', platform: 'classicpress:2.7.3' }
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php-versions }}
+          php-version: ${{ matrix.php }}
           coverage: none
           tools: composer
-          extensions: mysql
-      - name: Install Composer dependencies for PHP
-        uses: "ramsey/composer-install@v2"
-      - name: Setup Test Environment
-        run: composer setup-local-tests
-      - name: Unit Testing
+          extensions: mysqli
+      - name: Install Composer dependencies
+        uses: ramsey/composer-install@v3
+      - name: Install test environment
+        run: bash bin/install-wp-tests.sh wordpress_test root root 127.0.0.1 '${{ matrix.platform }}'
+      - name: Run PHPUnit
         run: composer phpunit
-        env:
-          PHP_VERSION: ${{ matrix.php-versions }}

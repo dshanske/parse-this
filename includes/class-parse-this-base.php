@@ -11,8 +11,12 @@ class Parse_This_Base {
 	 *
 	 */
 	protected static function order_by_date( $items, $field = 'published' ) {
+		if ( empty( $items ) || ! is_array( $items ) ) {
+			return null;
+		}
+		$items = array_values( $items );
 		// If the first entry does not have this field return.
-		if ( ! array_key_exists( $field, $items[0] ) ) {
+		if ( ! is_array( $items[0] ) || ! array_key_exists( $field, $items[0] ) ) {
 			return null;
 		}
 		if ( ! is_string( $items[0][ $field ] ) ) {
@@ -20,7 +24,7 @@ class Parse_This_Base {
 		}
 		usort(
 			$items,
-			function( $a, $b ) use ( $field ) {
+			function ( $a, $b ) use ( $field ) {
 				return ( strtotime( $b[ $field ] ) - strtotime( $a[ $field ] ) );
 			}
 		);
@@ -35,7 +39,11 @@ class Parse_This_Base {
 		if ( ! $items ) {
 			return null;
 		}
-		$return = new DateTime( $items[0]['published'], wp_timezone() );
+		try {
+			$return = new DateTime( $items[0]['published'], wp_timezone() );
+		} catch ( Exception $e ) {
+			return null;
+		}
 		return $return->format( DATE_W3C );
 	}
 
@@ -47,8 +55,15 @@ class Parse_This_Base {
 	 *
 	 */
 	protected static function find_last_updated( $items ) {
-		$items  = self::order_by_date( $items, 'updated' );
-		$return = new DateTime( $items[0]['updated'], wp_timezone() );
+		$items = self::order_by_date( $items, 'updated' );
+		if ( ! $items ) {
+			return null;
+		}
+		try {
+			$return = new DateTime( $items[0]['updated'], wp_timezone() );
+		} catch ( Exception $e ) {
+			return null;
+		}
 		return $return->format( DATE_W3C );
 	}
 

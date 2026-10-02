@@ -6,6 +6,8 @@
  * Version: 1.0.1
  * Author: David Shanske
  * Author URI: https://david.shanske.com
+ * Requires at least: 6.2
+ * Requires PHP: 7.4
  * Text Domain: parse-this
  * Domain Path:  /languages
  */
@@ -25,8 +27,6 @@ if ( ! function_exists( 'parse_this_loader' ) ) {
 		require_once plugin_dir_path( __FILE__ ) . 'includes/functions.php';
 		// Parse This REST Endpoint
 		require_once plugin_dir_path( __FILE__ ) . 'includes/class-rest-parse-this.php';
-
 	}
 	add_action( 'plugins_loaded', 'parse_this_loader', 9 );
 }
-

@@ -325,11 +325,15 @@ if ( ! function_exists( 'normalize_url' ) ) {
 if ( ! function_exists( 'normalize_iso8601' ) ) {
 	// Tries to normalizes dates to a standard iso8601 string
 	function normalize_iso8601( $string ) {
-		$date = new DateTime( $string );
-		if ( $date ) {
-			return $date->format( DATE_W3C );
+		if ( empty( $string ) || ! is_string( $string ) ) {
+			return null;
 		}
-		return $string;
+		try {
+			$date = new DateTime( $string );
+		} catch ( Exception $e ) {
+			return $string;
+		}
+		return $date->format( DATE_W3C );
 	}
 }
 
@@ -440,6 +444,45 @@ if ( ! function_exists( 'pt_load_domdocument' ) ) {
 		return $doc;
 	}
 }
+if ( ! function_exists( 'pt_remote_get' ) ) {
+	/**
+	 * Retrieves a remote URL, retrying once with a browser user agent if the site rejects the request.
+	 *
+	 * @param string $url         URL to retrieve.
+	 * @param array  $args        Optional. Arguments passed to wp_safe_remote_get().
+	 * @param array  $retry_codes Optional. Response codes that trigger the retry.
+	 * @return array|WP_Error The response, or WP_Error on failure.
+	 */
+	function pt_remote_get( $url, $args = array(), $retry_codes = array( 403, 415 ) ) {
+		$args = wp_parse_args(
+			$args,
+			array(
+				'timeout'             => 15,
+				'limit_response_size' => 1048576,
+				'redirection'         => 5,
+			)
+		);
+
+		$response = wp_safe_remote_get( $url, $args );
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+		if ( ! in_array( (int) wp_remote_retrieve_response_code( $response ), $retry_codes, true ) ) {
+			return $response;
+		}
+
+		$args['user-agent'] = 'Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:57.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36 Parse This/WP';
+		$response           = wp_safe_remote_get( $url, $args );
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+		if ( in_array( (int) wp_remote_retrieve_response_code( $response ), $retry_codes, true ) ) {
+			return new WP_Error( 'source_error', 'Unable to Retrieve' );
+		}
+		return $response;
+	}
+}
+
 if ( ! function_exists( 'pt_secure_rewrite' ) ) {
 	function pt_secure_rewrite( $url ) {
 		$host   = wp_parse_url( $url, PHP_URL_HOST );
@@ -489,15 +532,33 @@ if ( ! function_exists( 'pt_parse_header_links' ) ) {
 	function pt_parse_header_links( $links ) {
 		$items = array();
 
-		if ( is_array( $links ) && 1 <= count( $links ) ) {
-			foreach ( $links as $link ) {
-				$item   = array();
-				$pieces = explode( ';', $link );
-				$uri    = array_shift( $pieces );
-				foreach ( $pieces as $p ) {
-					$elements = explode( '=', $p );
+		if ( is_string( $links ) ) {
+			$links = array( $links );
+		}
 
-					$item[ trim( $elements[0] ) ] = trim( $elements[1], '"\'' );
+		if ( is_array( $links ) && 1 <= count( $links ) ) {
+			// A header may hold several comma-separated links. Only split on commas that start a new <uri>, as URIs may contain commas.
+			$split = array();
+			foreach ( $links as $link ) {
+				$split = array_merge( $split, preg_split( '/,(?=\s*<)/', $link ) );
+			}
+			foreach ( $split as $link ) {
+				$item = array();
+				if ( preg_match( '/^\s*<([^>]*)>(.*)$/s', $link, $match ) ) {
+					$uri    = $match[1];
+					$pieces = explode( ';', $match[2] );
+				} else {
+					$pieces = explode( ';', $link );
+					$uri    = array_shift( $pieces );
+				}
+				foreach ( $pieces as $p ) {
+					$elements = explode( '=', $p, 2 );
+					$name     = trim( $elements[0] );
+					if ( '' === $name ) {
+						continue;
+					}
+
+					$item[ $name ] = isset( $elements[1] ) ? trim( $elements[1], " \t\"'" ) : '';
 				}
 
 				$item['uri'] = trim( trim( $uri ), '<>' );
@@ -591,7 +652,7 @@ if ( ! function_exists( 'pt_make_absolute_url' ) ) {
 				$absolute_path .= ':' . $url_parts['port'];
 			}
 		}
-		
+
 		// Start off with the absolute URL path.
 		$path = ! empty( $url_parts['path'] ) ? $url_parts['path'] : '/';
 
@@ -599,7 +660,7 @@ if ( ! function_exists( 'pt_make_absolute_url' ) ) {
 		if ( ! empty( $relative_url_parts['path'] ) && '/' === $relative_url_parts['path'][0] ) {
 			$path = $relative_url_parts['path'];
 
-		// Else it's a relative path.
+			// Else it's a relative path.
 		} elseif ( ! empty( $relative_url_parts['path'] ) ) {
 			// Strip off any file components from the absolute path.
 			$path = substr( $path, 0, strrpos( $path, '/' ) + 1 );
@@ -625,7 +686,6 @@ if ( ! function_exists( 'pt_make_absolute_url' ) ) {
 		if ( ! empty( $relative_url_parts['fragment'] ) ) {
 				$path .= '#' . $relative_url_parts['fragment'];
 		}
-
 
 		return $absolute_path . '/' . ltrim( $path, '/' );
 	}

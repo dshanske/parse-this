@@ -12,17 +12,16 @@ class Parse_This_Twitter extends Parse_This_Base {
 			return array();
 		}
 
-		$args     = array(
-			'timeout'             => 15,
-			'limit_response_size' => 1048576,
-			'redirection'         => 5,
-			// Use an explicit user-agent for Parse This
-			'user_agent'          => 'Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:57.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36 Parse This/WP',
-		);
 		$url      = add_query_arg( 'url', $url, 'https://publish.twitter.com/oembed' );
-		$response = wp_safe_remote_get( $url, $args );
-		$oembed   = json_decode( wp_remote_retrieve_body( $response ), true );
-		$jf2      = array();
+		$response = pt_remote_get( $url );
+		if ( is_wp_error( $response ) ) {
+			return array();
+		}
+		$oembed = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( ! is_array( $oembed ) ) {
+			return array();
+		}
+		$jf2 = array();
 		if ( array_key_exists( 'url', $oembed ) ) {
 			$jf2['url'] = $oembed['url'];
 		}
@@ -42,15 +41,17 @@ class Parse_This_Twitter extends Parse_This_Base {
 					$key   = wp_strip_all_tags( $link->nodeValue ); // phpcs:ignore
 					$value = $link->getAttribute( 'href' );
 					$parse = wp_parse_url( $value );
+				if ( '' === $key || ! is_array( $parse ) ) {
+					continue;
+				}
 					unset( $parse['query'] );
 					$value = build_url( $parse );
 				if ( '#' === $key[0] ) {
 					$category[] = str_replace( '#', '', $key );
 				} elseif ( '@' === $key[0] ) {
 					$category[] = $value;
-				} elseif ( $jf2['url'] === $value ) {
-					$published        = new DateTime( $key );
-					$jf2['published'] = $published->format( DATE_W3C );
+				} elseif ( isset( $jf2['url'] ) && $jf2['url'] === $value ) {
+					$jf2['published'] = normalize_iso8601( $key );
 				} else {
 					$names[ wp_strip_all_tags( $key ) ] = normalize_url( $value ); // phpcs:ignore
 				}
@@ -77,5 +78,4 @@ class Parse_This_Twitter extends Parse_This_Base {
 
 		return array_filter( $jf2 );
 	}
-
 }

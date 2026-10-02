@@ -57,18 +57,13 @@ class Parse_This_Discovery {
 			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'indieweb-post-kinds' ) );
 		}
 
-		$user_agent = 'Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:57.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36 Parse This/WP';
-		$args       = array(
-			'timeout'             => 15,
-			'limit_response_size' => 1048576,
-			'redirection'         => 5,
-		// Use an explicit user-agent for Parse This
-		);
 		$links = array();
 
-		$response      = wp_safe_remote_get( $url, $args );
-		$response_code = wp_remote_retrieve_response_code( $response );
-		$content_type  = wp_remote_retrieve_header( $response, 'content-type' );
+		$response = pt_remote_get( $url );
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+		$content_type = wp_remote_retrieve_header( $response, 'content-type' );
 		$wprest        = array();
 		$linkheaders   = wp_remote_retrieve_header( $response, 'link' );
 		if ( $linkheaders ) {
@@ -83,26 +78,15 @@ class Parse_This_Discovery {
 						);
 					}
 				}
-			} else {
-				if ( preg_match( '/<(.[^>]+)>;\s+rel\s?=\s?[\"\']?(https:\/\/)?api.w.org?\/?[\"\']?/i', $linkheaders, $result ) ) {
+			} elseif ( preg_match( '/<(.[^>]+)>;\s+rel\s?=\s?[\"\']?(https:\/\/)?api.w.org?\/?[\"\']?/i', $linkheaders, $result ) ) {
 						$wprest[] = array(
 							'url'        => untrailingslashit( pt_make_absolute_url( $result[1], $url ) ),
 							'type'       => 'feed',
 							'_feed_type' => 'wordpress',
 							'name'       => 'WordPress REST API',
 						);
-				}
 			}
 		}
-		if ( in_array( $response_code, array( 403, 415 ), true ) ) {
-			$args['user-agent'] = $user_agent;
-			$response           = wp_safe_remote_get( $url, $args );
-			$response_code      = wp_remote_retrieve_response_code( $response );
-			if ( in_array( $response_code, array( 403, 415 ), true ) ) {
-				return new WP_Error( 'source_error', 'Unable to Retrieve' );
-			}
-		}
-
 		// Strip any character set off the content type
 		$ct = explode( ';', $content_type );
 		if ( is_array( $ct ) ) {
@@ -123,6 +107,9 @@ class Parse_This_Discovery {
 		// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway
 		if ( ( in_array( $content_type, array( 'application/rss+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/xml' ), true ) ) ) {
 			$content = Parse_This::fetch_feed( $url );
+			if ( is_wp_error( $content ) ) {
+				return $content;
+			}
 			if ( class_exists( 'Parse_This_RSS' ) ) {
 				$links[] = array(
 					'url'        => $url,
@@ -137,9 +124,9 @@ class Parse_This_Discovery {
 		if ( in_array( $content_type, array( 'application/mf2+json', 'application/jf2+json', 'application/jf2feed+json' ), true ) ) {
 			$content = json_decode( $content, true );
 		}
-		if ( 'application/json' === $content_type ) {
+		if ( in_array( $content_type, array( 'application/json', 'application/feed+json' ), true ) ) {
 			$content = json_decode( $content, true );
-			if ( $content && isset( $content['version'] ) && 'https://jsonfeed.org/version/1' === $content['version'] ) {
+			if ( is_array( $content ) && isset( $content['version'] ) && is_string( $content['version'] ) && 0 === strpos( $content['version'], 'https://jsonfeed.org/version/' ) ) {
 				$links[] = array(
 					'url'        => $url,
 					'type'       => 'feed',
@@ -244,14 +231,22 @@ class Parse_This_Discovery {
 			);
 			usort(
 				$links,
-				function( $a, $b ) use ( $rank ) {
-					return $rank[ $a['_feed_type'] ] > $rank[ $b['_feed_type'] ];
+				function ( $a, $b ) use ( $rank ) {
+					// Unknown feed types sort last.
+					$rank_a = isset( $rank[ $a['_feed_type'] ] ) ? $rank[ $a['_feed_type'] ] : count( $rank );
+					$rank_b = isset( $rank[ $b['_feed_type'] ] ) ? $rank[ $b['_feed_type'] ] : count( $rank );
+					if ( $rank_a === $rank_b ) {
+						return 0;
+					}
+					return ( $rank_a < $rank_b ) ? -1 : 1;
 				}
 			);
 
 			return array( 'results' => $links );
 
 		}
+
+		return array( 'results' => $links );
 	}
 
 

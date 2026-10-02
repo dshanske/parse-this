@@ -133,13 +133,13 @@ class Parse_This_Instagram extends Parse_This_Base {
 		}
 
 		// Published date
-		$published = new Datetime();
 		if ( isset( $data['taken_at_timestamp'] ) ) {
-			  $published->setTimestamp( $data['taken_at_timestamp'] );
+			$published = new DateTime();
+			$published->setTimestamp( (int) $data['taken_at_timestamp'] );
+			$entry['published'] = $published->format( DATE_W3C );
 		} elseif ( isset( $data['date'] ) ) {
-			  $published = new DateTime( $data['date'] );
+			$entry['published'] = normalize_iso8601( $data['date'] );
 		}
-		$entry['published'] = $published->format( DATE_W3C );
 		if ( isset( $data['location'] ) ) {
 			$entry['location'] = array();
 			if ( isset( $data['location']['address_json'] ) ) {
@@ -177,7 +177,4 @@ class Parse_This_Instagram extends Parse_This_Base {
 		}
 		return array();
 	}
-
-
-
 }

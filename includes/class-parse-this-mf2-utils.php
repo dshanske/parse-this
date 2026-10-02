@@ -180,7 +180,7 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 			);
 			if ( array_key_exists( 'text', $mf['rel-urls'][ $url ] ) ) {
 				$return['name'] = array( $mf['rel-urls'][ $url ]['text'] );
-			} else {
+			} elseif ( array_key_exists( 'title', $mf['rel-urls'][ $url ] ) ) {
 				$return['name'] = array( $mf['rel-urls'][ $url ]['title'] );
 			}
 			return $return;
@@ -291,8 +291,8 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 			$content = self::parse_html_value( $mf, 'content' );
 		}
 		if ( is_array( $content ) && array_key_exists( 'text', $content ) ) {
-			$summary = substr( $content['text'], 0, 300 );
-			if ( 300 < strlen( $content['text'] ) ) {
+			$summary = mb_substr( $content['text'], 0, 300 );
+			if ( 300 < mb_strlen( $content['text'] ) ) {
 				$summary .= '...';
 			}
 			return $summary;

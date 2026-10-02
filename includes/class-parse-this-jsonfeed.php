@@ -13,10 +13,17 @@ class Parse_This_JSONFeed extends Parse_This_Base {
 			return null;
 		}
 		$author = $array['authors'];
+		$return = array();
+		if ( ! is_array( $author ) ) {
+			return null;
+		}
 		if ( ! wp_is_numeric_array( $author ) ) {
 			$author = array( $author );
 		}
 		foreach ( $author as $element ) {
+			if ( ! is_array( $element ) ) {
+				continue;
+			}
 			$return[] = array_filter(
 				array(
 					'name'  => self::ifset( 'name', $element ),
@@ -25,7 +32,7 @@ class Parse_This_JSONFeed extends Parse_This_Base {
 				)
 			);
 		}
-		$return = array_filter( $return );
+		$return = array_values( array_filter( $return ) );
 		if ( 1 === count( $return ) ) {
 			return $return[0];
 		}
@@ -46,7 +53,8 @@ class Parse_This_JSONFeed extends Parse_This_Base {
 			)
 		);
 		$return['items'] = array();
-		foreach ( $content['items'] as $item ) {
+		$items = ( isset( $content['items'] ) && is_array( $content['items'] ) ) ? $content['items'] : array();
+		foreach ( $items as $item ) {
 			$newitem = array_filter(
 				array(
 					'uid'         => self::ifset( 'id', $item ),
@@ -70,6 +78,9 @@ class Parse_This_JSONFeed extends Parse_This_Base {
 			);
 			if ( array_key_exists( 'attachments', $item ) ) {
 				foreach ( $item['attachments'] as $attachment ) {
+					if ( ! isset( $attachment['mime_type'] ) || ! isset( $attachment['url'] ) ) {
+						continue;
+					}
 					$type = explode( '/', $attachment['mime_type'] );
 					$type = array_shift( $type );
 					switch ( $type ) {
@@ -98,6 +109,3 @@ class Parse_This_JSONFeed extends Parse_This_Base {
 		return $return;
 	}
 }
-
-
-

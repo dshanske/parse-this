@@ -26,14 +26,14 @@ class Parse_This_RESTAPI {
 		$path  = '/' . ltrim( $path, '/' );
 		$query = wp_parse_url( $rest_url, PHP_URL_QUERY );
 		if ( ! empty( $query ) ) {
-			$query = explode( '=', $query );
-			if ( array_key_exists( 'rest_route' ) ) {
+			wp_parse_str( $query, $params );
+			if ( isset( $params['rest_route'] ) ) {
 				return add_query_arg(
 					array(
 						'rest_route' => $path,
 						'_embed'     => 1,
 					),
-					trailingslashit( $rest_url )
+					$rest_url
 				);
 			}
 			return false;
@@ -49,9 +49,11 @@ class Parse_This_RESTAPI {
 		}
 		$query = wp_parse_url( $rest_url, PHP_URL_QUERY );
 		if ( ! empty( $query ) ) {
-			$query = explode( '=', $query );
-			if ( array_key_exists( 'rest_route' ) ) {
-				return $query['rest_route'];
+			wp_parse_str( $query, $params );
+			if ( isset( $params['rest_route'] ) ) {
+				// Plain permalinks: the route is in the rest_route parameter of the URL itself.
+				wp_parse_str( (string) wp_parse_url( $url, PHP_URL_QUERY ), $url_params );
+				return isset( $url_params['rest_route'] ) ? $url_params['rest_route'] : false;
 			}
 		}
 		$path = str_replace( $rest_url, '', $url );
@@ -73,28 +75,11 @@ class Parse_This_RESTAPI {
 			}
 		}
 
-		$user_agent = 'Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:57.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36 Parse This/WP';
-		$args       = array(
-			'timeout'             => 15,
-			'limit_response_size' => 1048576,
-			'redirection'         => 5,
-			// Use an explicit user-agent for Parse This
-		);
-
-		$response = wp_safe_remote_get( $url, $args );
+		$response = pt_remote_get( $url, array(), array( 404, 403, 415 ) );
 		if ( is_wp_error( $response ) ) {
 			return $response;
 		}
-		$response_code = (int) wp_remote_retrieve_response_code( $response );
-		$content_type  = wp_remote_retrieve_header( $response, 'content-type' );
-		if ( in_array( $response_code, array( 404, 403, 415 ), true ) ) {
-			$args['user-agent'] = $user_agent;
-			$response           = wp_safe_remote_get( $url, $args );
-			$response_code      = wp_remote_retrieve_response_code( $response );
-			if ( in_array( $response_code, array( 404, 403, 415 ), true ) ) {
-				return new WP_Error( 'source_error', 'Unable to Retrieve' );
-			}
-		}
+		$content_type = wp_remote_retrieve_header( $response, 'content-type' );
 
 		// Strip any character set off the content type
 		$ct = explode( ';', $content_type );
@@ -124,16 +109,18 @@ class Parse_This_RESTAPI {
 			return $content;
 		}
 		return false;
-
 	}
 
 	public static function parse( $content, $rest_url, $args ) {
 		if ( is_wp_error( $content ) ) {
 			return $content;
-		} 
+		}
+		if ( ! is_array( $content ) ) {
+			return false;
+		}
 		if ( array_key_exists( 'id', $content ) ) {
 			return self::get_post( $content, $rest_url );
-		// This is the REST URL itself if it has this.
+			// This is the REST URL itself if it has this.
 		} elseif ( array_key_exists( 'namespaces', $content ) ) {
 			// Return site data if single otherwise feed data.
 			if ( 'single' === $args['return'] ) {
@@ -162,6 +149,9 @@ class Parse_This_RESTAPI {
 				return $return;
 			} else {
 				$content = self::fetch( $rest_url, '/wp/v2/posts?_embed=1' );
+				if ( is_wp_error( $content ) || ! is_array( $content ) ) {
+					return $content;
+				}
 
 				$content = self::posts_to_feed( $content, $rest_url );
 				return $content;
@@ -171,7 +161,7 @@ class Parse_This_RESTAPI {
 	}
 
 	public static function get_author( $item ) {
-		if ( ! array_key_exists( '_embedded', $item ) ) {
+		if ( ! isset( $item['_embedded']['author'][0] ) || ! is_array( $item['_embedded']['author'][0] ) ) {
 			return null;
 		}
 		$author      = $item['_embedded']['author'][0];
@@ -205,15 +195,25 @@ class Parse_This_RESTAPI {
 	}
 
 	public static function get_datetime( $time, $timezone = null ) {
-		$datetime = new DateTime( $time );
-		if ( 'UTC' === $datetime->getTimeZone()->getName() ) {
-			$datetime = new DateTime( $time, $timezone );
+		if ( empty( $time ) || ! is_string( $time ) ) {
+			return null;
+		}
+		try {
+			$datetime = new DateTime( $time );
+			if ( 'UTC' === $datetime->getTimeZone()->getName() ) {
+				$datetime = new DateTime( $time, $timezone );
+			}
+		} catch ( Exception $e ) {
+			return null;
 		}
 		return $datetime->format( DATE_W3C );
 	}
 
 	public static function site_data( $rest_url ) {
 		$fetch = self::fetch( $rest_url, '', true );
+		if ( is_wp_error( $fetch ) || ! is_array( $fetch ) ) {
+			return array();
+		}
 		return wp_array_slice_assoc( $fetch, array( 'name', 'url', 'timezone_string', 'gmt_offset', 'description' ) );
 	}
 
@@ -236,7 +236,6 @@ class Parse_This_RESTAPI {
 
 	public static function get_post( $item, $rest_url ) {
 		$site_data = self::site_data( $rest_url );
-		$author    = self::get_rest_path( $rest_url, $item['_links']['author'][0]['href'] );
 		$timezone  = self::timezone( $site_data );
 		$newitem   = array_filter(
 			array(
@@ -281,7 +280,7 @@ class Parse_This_RESTAPI {
 				'_feed_type' => 'wordpress',
 			)
 		);
-		$items             = $input['items'];
+		$items             = ( isset( $input['items'] ) && is_array( $input['items'] ) ) ? $input['items'] : array();
 		$data              = self::site_data( $url );
 		$timezone          = self::timezone( $data );
 		$return['items']   = array();
@@ -335,6 +334,3 @@ class Parse_This_RESTAPI {
 		return $return;
 	}
 }
-
-
-

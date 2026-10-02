@@ -22,7 +22,6 @@ class Parse_This_RSS extends Parse_This_Base {
 			array(
 				'type'            => 'feed',
 				'_feed_type'      => self::get_type( $feed ),
-				'_last_updated'   => self::last_updated( $feed ),
 				'_last_published' => self::find_last_published( $items ),
 				'_last_updated'   => self::find_last_updated( $items ),
 				'summary'         => $feed->get_description(),
@@ -44,10 +43,7 @@ class Parse_This_RSS extends Parse_This_Base {
 			$updated = $feed->get_channel_tags( SIMPLEPIE_NAMESPACE_ATOM_10, 'updated' );
 		}
 		if ( $updated && isset( $updated[0]['data'] ) ) {
-			$datetime = new DateTime( $updated[0]['data'] );
-			if ( $datetime ) {
-				return $datetime->format( DATE_W3C );
-			}
+			return normalize_iso8601( $updated[0]['data'] );
 		}
 
 		return null;
@@ -135,7 +131,7 @@ class Parse_This_RSS extends Parse_This_Base {
 				'summary' => $source->get_description(),
 				'url'     => $source->get_permalink(),
 				'author'  => self::get_authors( $source->get_authors() ),
-				'photo'   => $sourece->get_image_url(),
+				'photo'   => $source->get_image_url(),
 			)
 		);
 	}
@@ -209,13 +205,11 @@ class Parse_This_RSS extends Parse_This_Base {
 			$medium = $enclosure->get_type();
 			if ( ! $medium ) {
 				$medium = $enclosure->get_medium();
-			} else {
-				if ( array_key_exists( $medium, $medium_map ) ) {
+			} elseif ( array_key_exists( $medium, $medium_map ) ) {
 					$medium = $medium_map[ $medium ];
-				} else {
-					$medium = explode( '/', $medium );
-					$medium = array_shift( $medium );
-				}
+			} else {
+				$medium = explode( '/', $medium );
+				$medium = array_shift( $medium );
 			}
 			switch ( $medium ) {
 				case 'audio':
@@ -327,20 +321,10 @@ class Parse_This_RSS extends Parse_This_Base {
 	}
 
 	public static function get_date( $item ) {
-		$datetime = new DateTime( $item->get_date( null ) );
-		if ( $datetime ) {
-			return $datetime->format( DATE_W3C );
-		}
-		return null;
+		return normalize_iso8601( $item->get_date( '' ) );
 	}
 
 	public static function get_updated_date( $item ) {
-		$datetime = new DateTime( $item->get_updated_date( null ) );
-		if ( $datetime ) {
-			return $datetime->format( DATE_W3C );
-		}
-		return null;
+		return normalize_iso8601( $item->get_updated_date( '' ) );
 	}
-
-
 }

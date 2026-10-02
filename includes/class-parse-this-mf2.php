@@ -108,15 +108,15 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 			} else {
 				$rel = self::get_rel_urls( $mf2, $authorpage );
 				if ( $rel ) {
-					return array( 
+					return array(
 						'type' => array( 'h-card' ),
-						'properties' => $rel
+						'properties' => $rel,
 					);
 				} else {
 					return array(
 						'type'       => array( 'h-card' ),
 						'properties' => array(
-						'url' => array( $authorpage ),
+							'url' => array( $authorpage ),
 						),
 					);
 				}
@@ -206,6 +206,9 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 			return array();
 		}
 
+		if ( ! isset( $input['items'] ) || ! is_array( $input['items'] ) ) {
+			$input['items'] = array();
+		}
 		$count = count( $input['items'] );
 		if ( 0 === $count ) {
 			if ( self::has_rel( $input, 'author' ) ) {
@@ -213,16 +216,19 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 				if ( is_array( $author ) ) {
 					$author = array_pop( $author );
 				}
-				$author = self::get_rel_urls( $input, $author );
+				$author_url = $author;
+				$author     = self::get_rel_urls( $input, $author_url );
+				if ( ! is_array( $author ) ) {
+					$author = array( 'url' => array( $author_url ) );
+				}
 				$author['type'] = 'card';
-				if ( $url !== $author['url'] ) {
+				if ( ! self::urls_match( $url, $author_url ) ) {
 					return array(
-						'author' => $author
+						'author' => $author,
 					);
 				} else {
 					return $author;
 				}
-
 			}
 			return array();
 		}
@@ -244,6 +250,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 		$card   = null;
 		foreach ( $input['items'] as $key => $item ) {
 			$parsed = self::parse_item( $item, $input, $args );
+			$check  = false;
 			if ( isset( $parsed['url'] ) ) {
 				if ( is_array( $parsed['url'] ) ) {
 					$check = in_array( $url, $parsed['url'], true );
@@ -297,7 +304,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 			'items' => array(),
 		);
 		$data['name'] = self::get_plaintext( $entry, 'name' );
-		$author       = self::find_author( $entry, $args['follow'] );
+		$author       = self::find_author( $entry, $mf, $args['follow'] );
 		if ( self::is_microformat( $author ) ) {
 			$data['author'] = self::parse_hcard( $author, $mf, $args );
 		} else {
@@ -377,7 +384,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 		} elseif ( self::is_type( $item, 'h-adr' ) ) {
 			return self::parse_hadr( $item, $mf, $args );
 		} elseif ( self::is_type( $item, 'h-geo' ) ) {
-			return self::parse_hadr( $item, $mf, $args );
+			return self::parse_hgeo( $item, $mf, $args );
 		} elseif ( self::is_type( $item, 'h-measure' ) ) {
 			return self::parse_hmeasure( $item, $mf, $args );
 		}
@@ -474,8 +481,12 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 			$data[ $property ] = self::get_plaintext( $leg, $property );
 		}
 
-		$data['departure'] = self::get_datetime_property( 'departure', $leg, true, null )->format( DATE_W3C );
-		$data['arrival']   = self::get_datetime_property( 'arrival', $leg, true, null )->format( DATE_W3C );
+		foreach ( array( 'departure', 'arrival' ) as $property ) {
+			$datetime = self::get_datetime_property( $property, $leg, true, null );
+			if ( $datetime instanceof DateTimeInterface ) {
+				$data[ $property ] = $datetime->format( DATE_W3C );
+			}
+		}
 		$data              = array_filter( $data );
 		return $data;
 	}
@@ -547,10 +558,10 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 			'label',
 			'post-office-box',
 			'given-name',
-			'honoric-prefix',
+			'honorific-prefix',
 			'additional-name',
 			'family-name',
-			'honorifix-suffix',
+			'honorific-suffix',
 			'email',
 			'postal-code',
 			'altitude',
@@ -654,7 +665,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 				$data[ $p ] = $v;
 			}
 		}
-		$data = array_merge( $data, self::parse_h( $entry, $mf ) );
+		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
 		return array_filter( $data );
 	}
 
@@ -750,12 +761,11 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 		);
 		$properties = array( 'latitude', 'longitude', 'altitude' );
 		foreach ( $properties as $p ) {
-			$v = self::get_plaintext( $hadr, $p );
+			$v = self::get_plaintext( $hgeo, $p );
 			if ( null !== $v ) {
 				$data[ $p ] = $v;
 			}
 		}
 		return array_filter( $data );
 	}
-
 }

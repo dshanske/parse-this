@@ -287,10 +287,10 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			'duration'  => ifset( $video['duration'] ),
 		);
 
-		if ( isset( $vidio['transcript'] ) ) {
+		if ( isset( $video['transcript'] ) ) {
 			$return['content'] = array(
-				'html'  => Parse_This::clean_content( $vidio['transcript'] ),
-				'value' => wp_strip_all_tags( $vidio['transcript'] ),
+				'html'  => Parse_This::clean_content( $video['transcript'] ),
+				'value' => wp_strip_all_tags( $video['transcript'] ),
 			);
 		}
 		if ( isset( $video['publisher'] ) ) {
@@ -344,11 +344,14 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			'tel'   => ifset( $place['telephone'] ),
 			'photo' => self::image_to_photo( ifset( $place['image'] ) ),
 			'me'    => ifset( $place['sameAs'] ),
-			'geo'   => self::geocoordinates_to_geo( $place['geo'] ),
+			'geo'   => self::geocoordinates_to_geo( ifset( $place['geo'] ) ),
 		);
 
 		if ( isset( $place['address'] ) ) {
-			$hcard = array_merge( $hcard, self::postaladdress_to_address( $place['address'] ) );
+			$address = self::postaladdress_to_address( $place['address'] );
+			if ( is_array( $address ) ) {
+				$hcard = array_merge( $hcard, $address );
+			}
 		}
 		return array_filter( $hcard );
 	}
@@ -363,7 +366,12 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		if ( ! self::is_jsonld( $person ) ) {
 			return false;
 		}
-		if ( ! 'person' === self::get_type( $person ) ) {
+		$type = self::get_type( $person );
+		// Organizations are commonly listed as authors.
+		if ( 'org' === $type ) {
+			return self::organization_to_hcard( $person );
+		}
+		if ( 'person' !== $type ) {
 			return false;
 		}
 		if ( isset( $person['name'] ) && is_array( $person['name'] ) ) {
@@ -383,7 +391,6 @@ class Parse_This_JSONLD extends Parse_This_Base {
 				'photo'     => self::image_to_photo( ifset( $person['image'] ) ),
 				'url'       => ifset( $person['url'] ),
 				'me'        => ifset( $person['sameAs'] ),
-				'email'     => ifset( $person['email'] ),
 				'dt-bday'   => ifset( $person['birthDate'] ),
 				'job-title' => ifset( $person['jobTitle'] ),
 				'location'  => self::place_to_hcard( ifset( $person['location'] ) ),
@@ -427,11 +434,15 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			$publication['photo'] = self::image_to_photo( ifset( $organization['image'] ) );
 		}
 		if ( isset( $organization['member'] ) ) {
-			$publication['member'] = array();
-			foreach ( $organization['member'] as $member ) {
-				$publication['member'] = self::person_to_hcard( $member );
+			$members = $organization['member'];
+			if ( ! wp_is_numeric_array( $members ) ) {
+				$members = array( $members );
 			}
-			$publication['members'] = array_filter( $publication['members'] );
+			$publication['member'] = array();
+			foreach ( $members as $member ) {
+				$publication['member'][] = self::person_to_hcard( $member );
+			}
+			$publication['member'] = array_filter( $publication['member'] );
 		}
 		if ( isset( $organization['address'] ) ) {
 			$address = self::postaladdress_to_address( $organization['address'] );
@@ -460,7 +471,9 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		if ( is_string( $type ) ) {
 			$type = array( $type );
 		}
-		return ( in_array( $jsonld['@type'], $type, true ) );
+		// @type may be a single type or a list of types.
+		$types = is_array( $jsonld['@type'] ) ? $jsonld['@type'] : array( $jsonld['@type'] );
+		return ( 0 < count( array_intersect( $types, $type ) ) );
 	}
 
 	public static function get_type( $jsonld ) {
@@ -563,11 +576,25 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			}
 		}
 
-		if ( isset( $newsarticle['video'] ) ) {
-			$jf2['video'] = $newsarticle['video'][0]['@id'];
-		}
-		if ( isset( $newsarticle['audio'] ) ) {
-			$jf2['audio'] = $newsarticle['audio'][0]['@id'];
+		foreach ( array( 'video', 'audio' ) as $media ) {
+			if ( ! isset( $newsarticle[ $media ] ) ) {
+				continue;
+			}
+			// May be a URL, a single object or a list of objects.
+			$value = $newsarticle[ $media ];
+			if ( wp_is_numeric_array( $value ) ) {
+				$value = reset( $value );
+			}
+			if ( is_array( $value ) ) {
+				if ( isset( $value['@id'] ) ) {
+					$value = $value['@id'];
+				} elseif ( isset( $value['contentUrl'] ) ) {
+					$value = $value['contentUrl'];
+				}
+			}
+			if ( is_string( $value ) ) {
+				$jf2[ $media ] = $value;
+			}
 		}
 
 		if ( isset( $newsarticle['publisher'] ) ) {

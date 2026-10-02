@@ -32,7 +32,7 @@ class Parse_This {
 		if ( 'mf2' === $key ) {
 			return jf2_to_mf2( $this->jf2 );
 		}
-		if ( ! in_array( $key, get_object_vars( $this ), true ) ) {
+		if ( ! property_exists( $this, $key ) ) {
 			$key = 'jf2';
 		}
 		return $this->$key;
@@ -236,15 +236,8 @@ class Parse_This {
 		if ( ! $allowlist && ! in_array( $domain, $shorteners, true ) ) {
 			return false;
 		}
-		$user_agent    = 'Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:57.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36 Parse This/WP';
-		$args          = array(
-			'timeout'             => 15,
-			'limit_response_size' => 1048576,
-			'redirection'         => 0,
-		);
-		$response      = wp_safe_remote_get( $url, $args );
-		$response_code = wp_remote_retrieve_response_code( $response );
-		$redirect      = wp_remote_retrieve_header( $response, 'location' );
+		$response = pt_remote_get( $url, array( 'redirection' => 0 ), array() );
+		$redirect = wp_remote_retrieve_header( $response, 'location' );
 		if ( ! $redirect ) {
 			return false;
 		}
@@ -264,35 +257,17 @@ class Parse_This {
 		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
 			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'indieweb-post-kinds' ) );
 		}
-		$user_agent = 'Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:57.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36 Parse This/WP';
-		$args       = array(
-			'timeout'             => 15,
-			'limit_response_size' => 1048576,
-			'redirection'         => 5,
-		// Use an explicit user-agent for Parse This
-		);
-
-		$response = wp_safe_remote_get( $url, $args );
-
-		$raw = wp_remote_retrieve_header( $response, 'link' );
-		if ( is_string( $raw ) ) {
-			$raw = explode( ',', $raw );
+		$response = pt_remote_get( $url );
+		if ( is_wp_error( $response ) ) {
+			return $response;
 		}
 
-		if ( is_array( $raw ) && 1 <= count( $raw ) ) {
+		$raw = wp_remote_retrieve_header( $response, 'link' );
+		if ( ! empty( $raw ) ) {
 			$this->links = pt_parse_header_links( $raw );
 		}
 
-		$response_code      = wp_remote_retrieve_response_code( $response );
 		$this->content_type = wp_remote_retrieve_header( $response, 'content-type' );
-		if ( in_array( $response_code, array( 403, 415 ), true ) ) {
-			$args['user-agent'] = $user_agent;
-			$response           = wp_safe_remote_get( $url, $args );
-			$response_code      = wp_remote_retrieve_response_code( $response );
-			if ( in_array( $response_code, array( 403, 415 ), true ) ) {
-				return new WP_Error( 'source_error', 'Unable to Retrieve' );
-			}
-		}
 		if ( is_array( $this->content_type ) ) {
 			$this->content_type = array_pop( $this->content_type );
 		}
@@ -304,7 +279,7 @@ class Parse_This {
 						$this->content_type = trim( $this->content_type );
 						// List of content types we know how to handle
 		if ( ! self::supported_content( $this->content_type ) ) {
-			return new WP_Error( 'content-type', 'Content Type is Not Supported', array( 'content-type' => $content_type ) );
+			return new WP_Error( 'content-type', 'Content Type is Not Supported', array( 'content-type' => $this->content_type ) );
 		}
 
 		$content = wp_remote_retrieve_body( $response );
@@ -323,6 +298,8 @@ class Parse_This {
 
 		if ( in_array( $this->content_type, array( 'application/mf2+json', 'application/jf2+json', 'application/jf2feed+json' ), true ) ) {
 			$content = json_decode( $content, true );
+			// Parsed mf2 is passed to the MF2 parser as content; jf2 is already in its final form.
+			$this->set( $content, $url, ( 'application/mf2+json' !== $this->content_type ) );
 			return true;
 		}
 
@@ -334,7 +311,7 @@ class Parse_This {
 				$this->set( $content, $url, true );
 				// This means we are probing a specific REST Endpoint as they return this.
 			} elseif ( wp_remote_retrieve_header( $response, 'x-wp-total' ) ) {
-				$content           = Parse_This_RESTAPI::posts_to_feed( $content, $url );
+				$content           = Parse_This_RESTAPI::posts_to_feed( array( 'items' => $content ), $url );
 				$content['_total'] = wp_remote_retrieve_header( $response, 'x-wp-total' );
 				$content['_pages'] = wp_remote_retrieve_header( $response, 'x-wp-totalpages' );
 
@@ -413,7 +390,7 @@ class Parse_This {
 
 		if ( empty( $more ) ) {
 			$alt = null;
-			$jf2 = $this->jf2['_jf2'];
+			$jf2 = isset( $this->jf2['_jf2'] ) ? $this->jf2['_jf2'] : array();
 
 			$empty = true;
 
@@ -425,7 +402,9 @@ class Parse_This {
 					$path         = Parse_This_RESTAPI::get_rest_path( $endpoint, $rest );
 					$fetch        = Parse_This_RESTAPI::fetch( $endpoint, $path );
 					$alt          = Parse_This_RESTAPI::parse( $fetch, $endpoint, $args );
-					$alt['_rest'] = $fetch;
+					if ( is_array( $alt ) ) {
+						$alt['_rest'] = $fetch;
+					}
 				}
 			}
 
@@ -433,7 +412,8 @@ class Parse_This {
 				$alt = Parse_This_JSONLD::parse( $this->doc, $this->url, $args );
 			}
 
-			if ( empty( $alt ) ) {
+			if ( empty( $alt ) || ! is_array( $alt ) ) {
+				$alt   = array();
 				$empty = true;
 			} elseif ( is_countable( $alt ) && 1 === count( $alt ) && array_key_exists( '_jsonld', $alt ) ) {
 				$empty = true;
@@ -453,21 +433,25 @@ class Parse_This {
 					$alt = Parse_This_HTML::parse( $content, $this->url, $args );
 				}
 			}
-			$json      = Parse_This_JSON::parse( $this->doc, $this->url, $args );
-			$this->jf2 = array_merge( $this->jf2, $json );
-			$this->jf2 = array_merge( $this->jf2, $alt );
+			$json = Parse_This_JSON::parse( $this->doc, $this->url, $args );
+			if ( is_array( $json ) ) {
+				$this->jf2 = array_merge( $this->jf2, $json );
+			}
+			if ( is_array( $alt ) ) {
+				$this->jf2 = array_merge( $this->jf2, $alt );
+			}
 			if ( ! empty( $jf2 ) ) {
 				if ( isset( $jf2['author'] ) ) {
-					if ( isset( $this->jf2['author'] ) && is_string( $this->jf2['author'] ) ) {
+					if ( isset( $this->jf2['author'] ) && is_string( $this->jf2['author'] ) && is_array( $jf2['author'] ) ) {
 						$jf2['author']['name'] = $this->jf2['author'];
 					}
 					$this->jf2['author']   = $jf2['author'];
 				}
 			}
-			if ( isset( $alt['author'] ) && is_array( $this->jf2['author'] ) && ! wp_is_numeric_array( $this->jf2['author'] ) && ! isset( $this->jf2['author']['name'] ) ) {
+			if ( isset( $alt['author'] ) && isset( $this->jf2['author'] ) && is_array( $this->jf2['author'] ) && ! wp_is_numeric_array( $this->jf2['author'] ) && ! isset( $this->jf2['author']['name'] ) ) {
 				$this->jf2['author']['name'] = $alt['author'];
-			}  
-		} 
+			}
+		}
 		if ( ! isset( $this->jf2['url'] ) ) {
 			$this->jf2['url'] = $this->url;
 		}
