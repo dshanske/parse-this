@@ -474,8 +474,12 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 			$data[ $property ] = self::get_plaintext( $leg, $property );
 		}
 
-		$data['departure'] = self::get_datetime_property( 'departure', $leg, true, null )->format( DATE_W3C );
-		$data['arrival']   = self::get_datetime_property( 'arrival', $leg, true, null )->format( DATE_W3C );
+		foreach ( array( 'departure', 'arrival' ) as $property ) {
+			$datetime = self::get_datetime_property( $property, $leg, true, null );
+			if ( $datetime instanceof DateTimeInterface ) {
+				$data[ $property ] = $datetime->format( DATE_W3C );
+			}
+		}
 		$data              = array_filter( $data );
 		return $data;
 	}
