@@ -109,6 +109,3 @@ class Parse_This_JSONFeed extends Parse_This_Base {
 		return $return;
 	}
 }
-
-
-

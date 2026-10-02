@@ -78,5 +78,4 @@ class Parse_This_Twitter extends Parse_This_Base {
 
 		return array_filter( $jf2 );
 	}
-
 }

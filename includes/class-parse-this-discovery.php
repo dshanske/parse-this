@@ -78,15 +78,13 @@ class Parse_This_Discovery {
 						);
 					}
 				}
-			} else {
-				if ( preg_match( '/<(.[^>]+)>;\s+rel\s?=\s?[\"\']?(https:\/\/)?api.w.org?\/?[\"\']?/i', $linkheaders, $result ) ) {
+			} elseif ( preg_match( '/<(.[^>]+)>;\s+rel\s?=\s?[\"\']?(https:\/\/)?api.w.org?\/?[\"\']?/i', $linkheaders, $result ) ) {
 						$wprest[] = array(
 							'url'        => untrailingslashit( pt_make_absolute_url( $result[1], $url ) ),
 							'type'       => 'feed',
 							'_feed_type' => 'wordpress',
 							'name'       => 'WordPress REST API',
 						);
-				}
 			}
 		}
 		// Strip any character set off the content type
@@ -233,7 +231,7 @@ class Parse_This_Discovery {
 			);
 			usort(
 				$links,
-				function( $a, $b ) use ( $rank ) {
+				function ( $a, $b ) use ( $rank ) {
 					// Unknown feed types sort last.
 					$rank_a = isset( $rank[ $a['_feed_type'] ] ) ? $rank[ $a['_feed_type'] ] : count( $rank );
 					$rank_b = isset( $rank[ $b['_feed_type'] ] ) ? $rank[ $b['_feed_type'] ] : count( $rank );

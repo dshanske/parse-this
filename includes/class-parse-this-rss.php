@@ -205,13 +205,11 @@ class Parse_This_RSS extends Parse_This_Base {
 			$medium = $enclosure->get_type();
 			if ( ! $medium ) {
 				$medium = $enclosure->get_medium();
-			} else {
-				if ( array_key_exists( $medium, $medium_map ) ) {
+			} elseif ( array_key_exists( $medium, $medium_map ) ) {
 					$medium = $medium_map[ $medium ];
-				} else {
-					$medium = explode( '/', $medium );
-					$medium = array_shift( $medium );
-				}
+			} else {
+				$medium = explode( '/', $medium );
+				$medium = array_shift( $medium );
 			}
 			switch ( $medium ) {
 				case 'audio':
@@ -329,6 +327,4 @@ class Parse_This_RSS extends Parse_This_Base {
 	public static function get_updated_date( $item ) {
 		return normalize_iso8601( $item->get_updated_date( '' ) );
 	}
-
-
 }

@@ -27,8 +27,6 @@ if ( ! function_exists( 'parse_this_loader' ) ) {
 		require_once plugin_dir_path( __FILE__ ) . 'includes/functions.php';
 		// Parse This REST Endpoint
 		require_once plugin_dir_path( __FILE__ ) . 'includes/class-rest-parse-this.php';
-
 	}
 	add_action( 'plugins_loaded', 'parse_this_loader', 9 );
 }
-

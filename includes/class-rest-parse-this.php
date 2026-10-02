@@ -186,7 +186,6 @@ class REST_Parse_This {
 	public static function addscheme( $url, $scheme = 'http://' ) {
 		return wp_parse_url( $url, PHP_URL_SCHEME ) === null ? $scheme . $url : $url;
 	}
-
 }
 
 new REST_Parse_This();

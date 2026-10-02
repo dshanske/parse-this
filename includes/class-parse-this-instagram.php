@@ -177,7 +177,4 @@ class Parse_This_Instagram extends Parse_This_Base {
 		}
 		return array();
 	}
-
-
-
 }

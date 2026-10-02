@@ -109,7 +109,6 @@ class Parse_This_RESTAPI {
 			return $content;
 		}
 		return false;
-
 	}
 
 	public static function parse( $content, $rest_url, $args ) {
@@ -121,7 +120,7 @@ class Parse_This_RESTAPI {
 		}
 		if ( array_key_exists( 'id', $content ) ) {
 			return self::get_post( $content, $rest_url );
-		// This is the REST URL itself if it has this.
+			// This is the REST URL itself if it has this.
 		} elseif ( array_key_exists( 'namespaces', $content ) ) {
 			// Return site data if single otherwise feed data.
 			if ( 'single' === $args['return'] ) {
@@ -335,6 +334,3 @@ class Parse_This_RESTAPI {
 		return $return;
 	}
 }
-
-
-

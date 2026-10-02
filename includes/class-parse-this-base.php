@@ -24,7 +24,7 @@ class Parse_This_Base {
 		}
 		usort(
 			$items,
-			function( $a, $b ) use ( $field ) {
+			function ( $a, $b ) use ( $field ) {
 				return ( strtotime( $b[ $field ] ) - strtotime( $a[ $field ] ) );
 			}
 		);
