@@ -656,6 +656,7 @@ if ( ! function_exists( __NAMESPACE__ . '\\pt_secure_rewrite' ) ) {
 			'lwn.net',
 			'tumblr.com',
 			'twitter.com',
+			'x.com',
 			'vimeo.com',
 			'wikipedia.org',
 			'wordpress.com',

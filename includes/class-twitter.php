@@ -8,13 +8,14 @@
 namespace ParseThis;
 
 /**
- * Builds jf2 for individual tweets from Twitter's public oEmbed endpoint.
+ * Builds jf2 for individual posts on X (formerly Twitter) from its public
+ * oEmbed endpoint.
  *
  * @since 1.0.0
  */
 class Twitter extends Base {
 	/**
-	 * Parses a tweet URL into jf2 using publish.twitter.com/oembed.
+	 * Parses a post URL on x.com or twitter.com into jf2 using publish.x.com/oembed.
 	 *
 	 * Only status URLs are handled. Hashtags become categories, mentioned
 	 * accounts become category URLs, and the tweet's own permalink text is used
@@ -32,7 +33,7 @@ class Twitter extends Base {
 			return array();
 		}
 
-		$url      = add_query_arg( 'url', $url, 'https://publish.twitter.com/oembed' );
+		$url      = add_query_arg( 'url', $url, 'https://publish.x.com/oembed' );
 		$response = pt_remote_get( $url );
 		if ( is_wp_error( $response ) ) {
 			return array();

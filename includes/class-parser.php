@@ -549,7 +549,7 @@ class Parser {
 					$alt = YouTube::parse( $this->content, $this->url, $args );
 				} elseif ( in_array( wp_parse_url( $this->url, PHP_URL_HOST ), array( 'www.instagram.com', 'instagram.com' ), true ) ) {
 					$alt = Instagram::parse( $this->doc, $this->url, $args );
-				} elseif ( in_array( wp_parse_url( $this->url, PHP_URL_HOST ), array( 'twitter.com', 'mobile.twitter.com' ), true ) ) {
+				} elseif ( in_array( wp_parse_url( $this->url, PHP_URL_HOST ), array( 'x.com', 'www.x.com', 'mobile.x.com', 'twitter.com', 'www.twitter.com', 'mobile.twitter.com' ), true ) ) {
 					$alt = Twitter::parse( $this->url, $args );
 				}
 				if ( ! $alt ) {
