@@ -323,6 +323,8 @@ class Parse_This {
 
 		if ( in_array( $this->content_type, array( 'application/mf2+json', 'application/jf2+json', 'application/jf2feed+json' ), true ) ) {
 			$content = json_decode( $content, true );
+			// Parsed mf2 is passed to the MF2 parser as content; jf2 is already in its final form.
+			$this->set( $content, $url, ( 'application/mf2+json' !== $this->content_type ) );
 			return true;
 		}
 
