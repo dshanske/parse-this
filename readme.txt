@@ -126,6 +126,11 @@ Yes. It is tested with ClassicPress 2.7 on PHP 7.4 to 8.3.
 * Move all classes and functions into the `ParseThis` namespace, with the `Parse_This_` prefix dropped from class names. The old names used by Post Kinds and Yarns remain as deprecated aliases; see "Upgrading from 1.x".
 * Add `ParseThis\pt_remote_get()`, used for all remote requests.
 * Remove the Instagram parser. Instagram stopped embedding the data it read; Instagram pages are now parsed from their Open Graph tags like any other page.
+* Use core's `fetch_feed()` for RSS and Atom, now that core's SimplePie is current.
+* Recognize x.com post URLs, and use the publish.x.com oEmbed endpoint.
+* Fix YouTube feed discovery for `@handle` URLs and the video ID in parsed videos.
+* Update the bundled php-mf2 (0.5.0) and masterminds/html5 (2.11.0) libraries.
+* Remove polyfills for functions WordPress 6.2 already provides, and the deprecated `who` argument to `get_users()`.
 * Use the `parse-this` text domain throughout.
 * Document every function, class and filter in the source, following the WordPress documentation standards.
 * Test against WordPress 6.2, the latest WordPress and ClassicPress 2.7.
