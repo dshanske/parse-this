@@ -123,6 +123,9 @@ class Parse_This_Discovery {
 		// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway
 		if ( ( in_array( $content_type, array( 'application/rss+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/xml' ), true ) ) ) {
 			$content = Parse_This::fetch_feed( $url );
+			if ( is_wp_error( $content ) ) {
+				return $content;
+			}
 			if ( class_exists( 'Parse_This_RSS' ) ) {
 				$links[] = array(
 					'url'        => $url,
@@ -137,9 +140,9 @@ class Parse_This_Discovery {
 		if ( in_array( $content_type, array( 'application/mf2+json', 'application/jf2+json', 'application/jf2feed+json' ), true ) ) {
 			$content = json_decode( $content, true );
 		}
-		if ( 'application/json' === $content_type ) {
+		if ( in_array( $content_type, array( 'application/json', 'application/feed+json' ), true ) ) {
 			$content = json_decode( $content, true );
-			if ( $content && isset( $content['version'] ) && 'https://jsonfeed.org/version/1' === $content['version'] ) {
+			if ( is_array( $content ) && isset( $content['version'] ) && is_string( $content['version'] ) && 0 === strpos( $content['version'], 'https://jsonfeed.org/version/' ) ) {
 				$links[] = array(
 					'url'        => $url,
 					'type'       => 'feed',
@@ -245,13 +248,21 @@ class Parse_This_Discovery {
 			usort(
 				$links,
 				function( $a, $b ) use ( $rank ) {
-					return $rank[ $a['_feed_type'] ] > $rank[ $b['_feed_type'] ];
+					// Unknown feed types sort last.
+					$rank_a = isset( $rank[ $a['_feed_type'] ] ) ? $rank[ $a['_feed_type'] ] : count( $rank );
+					$rank_b = isset( $rank[ $b['_feed_type'] ] ) ? $rank[ $b['_feed_type'] ] : count( $rank );
+					if ( $rank_a === $rank_b ) {
+						return 0;
+					}
+					return ( $rank_a < $rank_b ) ? -1 : 1;
 				}
 			);
 
 			return array( 'results' => $links );
 
 		}
+
+		return array( 'results' => $links );
 	}
 
 
