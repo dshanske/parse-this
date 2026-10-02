@@ -206,6 +206,9 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 			return array();
 		}
 
+		if ( ! isset( $input['items'] ) || ! is_array( $input['items'] ) ) {
+			$input['items'] = array();
+		}
 		$count = count( $input['items'] );
 		if ( 0 === $count ) {
 			if ( self::has_rel( $input, 'author' ) ) {
@@ -213,9 +216,13 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 				if ( is_array( $author ) ) {
 					$author = array_pop( $author );
 				}
-				$author = self::get_rel_urls( $input, $author );
+				$author_url = $author;
+				$author     = self::get_rel_urls( $input, $author_url );
+				if ( ! is_array( $author ) ) {
+					$author = array( 'url' => array( $author_url ) );
+				}
 				$author['type'] = 'card';
-				if ( $url !== $author['url'] ) {
+				if ( ! self::urls_match( $url, $author_url ) ) {
 					return array(
 						'author' => $author
 					);
@@ -244,6 +251,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 		$card   = null;
 		foreach ( $input['items'] as $key => $item ) {
 			$parsed = self::parse_item( $item, $input, $args );
+			$check  = false;
 			if ( isset( $parsed['url'] ) ) {
 				if ( is_array( $parsed['url'] ) ) {
 					$check = in_array( $url, $parsed['url'], true );
