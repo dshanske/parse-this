@@ -571,7 +571,7 @@ if ( ! function_exists( __NAMESPACE__ . '\\pt_load_domdocument' ) ) {
 		} else {
 			$doc = new \DOMDocument();
 			libxml_use_internal_errors( true );
-			if ( function_exists( __NAMESPACE__ . '\\mb_convert_encoding' ) ) {
+			if ( function_exists( 'mb_convert_encoding' ) ) {
 				$content = mb_convert_encoding( $content, 'HTML-ENTITIES', mb_detect_encoding( $content ) );
 			}
 			$doc->loadHTML( $content );
