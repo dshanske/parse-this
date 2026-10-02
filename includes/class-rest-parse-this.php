@@ -1,38 +1,55 @@
 <?php
 /**
- * Provides REST Endpoint to Retrieve the Parsed Data
+ * REST_Parse_This class.
+ *
+ * @package Parse_This
  */
 
+/**
+ * Provides the parse REST endpoint and the Tools > Parse This debug page.
+ *
+ * Endpoint: GET /wp-json/parse-this/1.0/parse?url=...
+ *
+ * @since 1.0.0
+ */
 class REST_Parse_This {
+	/**
+	 * Hooks the route registration and the admin menu item.
+	 *
+	 * @since 1.0.0
+	 */
 	public function __construct() {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
 		add_action( 'admin_menu', array( $this, 'admin_menu' ) );
 	}
 
-		/**
-		 * Adds Options Page for Plugin Options.
-		 *
-		 * @access public
-		 */
+	/**
+	 * Adds the Tools > Parse This page for users who can manage options.
+	 *
+	 * @since 1.0.0
+	 */
 	public function admin_menu() {
 		add_management_page(
-			__( 'Parse This', 'indieweb-post-kinds' ), // page title
-			__( 'Parse This', 'indieweb-post-kinds' ), // menu title
-			'manage_options', // access capability
+			__( 'Parse This', 'parse-this' ), // Page title.
+			__( 'Parse This', 'parse-this' ), // Menu title.
+			'manage_options', // Capability.
 			'parse_this',
 			array( $this, 'debug' )
 		);
 	}
 
 	/**
-	 * Generate Debug Tool
+	 * Renders the debug page.
 	 *
-	 * @access public
+	 * The form submits directly to the parse endpoint, with a wp_rest nonce for
+	 * cookie authentication.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function debug() {
 		?>
 				<div class="wrap">
-						<h1> <?php esc_html_e( 'Parse This Debugger', 'indieweb-post-kinds' ); ?> </h1>
+						<h1> <?php esc_html_e( 'Parse This Debugger', 'parse-this' ); ?> </h1>
 						<p> <?php esc_html_e( 'Test the Parse Tools Debugger. You can report sites to the developer for possibly improvement in future.', 'parse-this' ); ?>
 							<a href="https://github.com/dshanske/parse-this/issues"><?php esc_html_e( 'Open an Issue', 'parse-this' ); ?></a>
 						</p>
@@ -47,13 +64,13 @@ class REST_Parse_This {
 						<hr />
 			<form method="get" action="<?php echo esc_url( rest_url( '/parse-this/1.0/parse/' ) ); ?> ">
 				<p>
-					<label for="url"><?php esc_html_e( 'URL', 'indieweb-post-kinds' ); ?></label><input type="url" class="widefat" name="url" id="url" />
+					<label for="url"><?php esc_html_e( 'URL', 'parse-this' ); ?></label><input type="url" class="widefat" name="url" id="url" />
 				</p>
 				<table class="form-table" role="presentation">
 					<tbody>
 					<tr>
 						<th scope="row">
-							<label for="mf2"><?php esc_html_e( 'MF2', 'indieweb-post-kinds' ); ?></label>
+							<label for="mf2"><?php esc_html_e( 'MF2', 'parse-this' ); ?></label>
 						</th>
 						<td>
 							<input type="checkbox" name="mf2" id="mf2" />
@@ -61,7 +78,7 @@ class REST_Parse_This {
 					</tr>
 					<tr>
 						<th scope="row">
-							<label for="discovery"><?php esc_html_e( 'Feed Discovery', 'indieweb-post-kinds' ); ?></label>
+							<label for="discovery"><?php esc_html_e( 'Feed Discovery', 'parse-this' ); ?></label>
 						</th>
 						<td>
 							<input type="checkbox" name="discovery" id="discovery" />
@@ -69,7 +86,7 @@ class REST_Parse_This {
 					</tr>
 					<tr>
 						<th scope="row">
-							<label for="references"><?php esc_html_e( 'References', 'indieweb-post-kinds' ); ?></label>
+							<label for="references"><?php esc_html_e( 'References', 'parse-this' ); ?></label>
 						</th>
 						<td>
 							<input type="checkbox" name="references" id="references" checked />
@@ -77,7 +94,7 @@ class REST_Parse_This {
 					</tr>
 					<tr>
 						<th scope="row">
-							<label for="location"><?php esc_html_e( 'Clean up Location', 'indieweb-post-kinds' ); ?></label>
+							<label for="location"><?php esc_html_e( 'Clean up Location', 'parse-this' ); ?></label>
 						</th>
 						<td>
 							<input type="checkbox" name="location" id="location" />
@@ -85,18 +102,18 @@ class REST_Parse_This {
 					</tr>
 					<tr>
 						<th scope="row">
-							<label for="return"><?php esc_html_e( 'Return Type', 'indieweb-post-kinds' ); ?></label>
+							<label for="return"><?php esc_html_e( 'Return Type', 'parse-this' ); ?></label>
 						</th>
 						<td>
 							<select name="return" id="return">
-								<option value="single"><?php esc_html_e( 'Single', 'indieweb-post-kinds' ); ?></option>
-								<option value="feed"><?php esc_html_e( 'Feed', 'indieweb-post-kinds' ); ?></option>
+								<option value="single"><?php esc_html_e( 'Single', 'parse-this' ); ?></option>
+								<option value="feed"><?php esc_html_e( 'Feed', 'parse-this' ); ?></option>
 							</select>
 						</td>
 					</tr>
 					<tr>
 						<th scope="row">
-							<label for="follow"><?php esc_html_e( 'Follow Author Links', 'indieweb-post-kinds' ); ?></label>
+							<label for="follow"><?php esc_html_e( 'Follow Author Links', 'parse-this' ); ?></label>
 						</th>
 						<td>
 							<input type="checkbox" name="follow" id="follow" />
@@ -105,7 +122,7 @@ class REST_Parse_This {
 					</tbody>
 				</table>
 			<?php wp_nonce_field( 'wp_rest' ); ?>
-			<?php submit_button( __( 'Parse', 'indieweb-post-kinds' ) ); ?>
+			<?php submit_button( __( 'Parse', 'parse-this' ) ); ?>
 						</form>
 				</div>
 				<?php
@@ -113,7 +130,11 @@ class REST_Parse_This {
 
 
 	/**
-	 * Register the Route.
+	 * Registers the parse-this/1.0/parse route.
+	 *
+	 * Any logged-in user with the read capability may call it.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function register_routes() {
 		$cls = get_called_class();
@@ -139,6 +160,19 @@ class REST_Parse_This {
 		);
 	}
 
+	/**
+	 * Handles a parse request.
+	 *
+	 * Accepted parameters: url (required); mf2, to return mf2 instead of jf2;
+	 * discovery, to list the URL's feeds instead of parsing it; and return,
+	 * references, location and follow, which are passed to Parse_This::parse().
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return array|WP_Error Parsed jf2 (or mf2), discovery results, or WP_Error if
+	 *                        the URL cannot be fetched.
+	 */
 	public static function read( $request ) {
 		$url       = $request->get_param( 'url' );
 		$mf2       = $request->get_param( 'mf2' );
@@ -172,17 +206,29 @@ class REST_Parse_This {
 	}
 
 	/**
-	 * Returns if valid URL for REST validation
+	 * Validates the url parameter.
 	 *
-	 * @param string $url
+	 * @since 1.0.0
 	 *
-	 * @return boolean
+	 * @param string               $url     URL to validate.
+	 * @param WP_REST_Request|null $request Optional. Request object. Unused.
+	 * @param string|null          $key     Optional. Parameter name. Unused.
+	 * @return string|false The URL if valid, false otherwise.
 	 */
 	public static function is_valid_url( $url, $request = null, $key = null ) {
 		return wp_http_validate_url( $url );
 	}
 
 
+	/**
+	 * Adds a scheme to a URL that lacks one.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $url    URL.
+	 * @param string $scheme Optional. Scheme to prepend. Default 'http://'.
+	 * @return string The URL with a scheme.
+	 */
 	public static function addscheme( $url, $scheme = 'http://' ) {
 		return wp_parse_url( $url, PHP_URL_SCHEME ) === null ? $scheme . $url : $url;
 	}

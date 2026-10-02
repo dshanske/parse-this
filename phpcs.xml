@@ -11,6 +11,13 @@
 	<rule ref="PHPCompatibilityWP"/>
 	<config name="minimum_supported_wp_version" value="6.2"/>
 	<rule ref="WordPress.WP.DeprecatedFunctions" />
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="parse-this"/>
+			</property>
+		</properties>
+	</rule>
 
 	<rule ref="WordPress-Extra">
 		<exclude name="WordPress.Security.ValidatedSanitizedInput" />
@@ -23,4 +30,7 @@
 	</rule>
 
 	<rule ref="WordPress-Extra" />
+
+	<!-- Require complete docblocks (WordPress PHP Documentation Standards). -->
+	<rule ref="WordPress-Docs" />
 </ruleset>

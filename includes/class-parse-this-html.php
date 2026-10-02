@@ -1,13 +1,31 @@
 <?php
 /**
- * Parse This HTML class.
- * Originally Derived from the Press This Class with Enhancements.
+ * Parse_This_HTML class.
+ *
+ * @package Parse_This
+ */
+
+/**
+ * Extracts jf2 from HTML pages without microformats.
+ *
+ * Reads Open Graph, Dublin Core, Parse.ly, citation and other meta tags, plus
+ * <title>, <video> and <audio> elements. This is the last fallback in
+ * Parse_This::parse(). Originally derived from the Press This code removed
+ * from WordPress core.
+ *
+ * @since 1.0.0
  */
 class Parse_This_HTML extends Parse_This_Base {
 	/**
-	 * Parses _meta, _images, and _links data from the content.
+	 * Parses meta tags and media elements of an HTML document into jf2.
 	 *
-	 * @access public
+	 * @since 1.0.0
+	 *
+	 * @param DOMDocument|mixed $doc Parsed HTML document. Any other non-empty value
+	 *                               is returned unchanged.
+	 * @param string            $url URL of the page.
+	 * @return array jf2 properties. When WP_DEBUG is on, the collected meta tags are
+	 *               included under '_meta'.
 	 */
 	public static function parse( $doc, $url ) {
 		if ( ! $doc ) {
@@ -19,7 +37,7 @@ class Parse_This_HTML extends Parse_This_Base {
 		$xpath = new DOMXPath( $doc );
 
 		$meta = array();
-		// Look for OGP properties
+		// Look for OGP properties.
 		foreach ( $xpath->query( '//meta[(@name or @property or @itemprop) and @content]' ) as $tag ) {
 			$meta_name = self::limit_string( $tag->getAttribute( 'property' ) );
 			if ( ! $meta_name ) {
@@ -34,7 +52,7 @@ class Parse_This_HTML extends Parse_This_Base {
 			if ( strlen( $meta_name ) > 200 ) {
 				continue;
 			}
-			// Decode known JSON encoded properties
+			// Decode known JSON encoded properties.
 			if ( 'parsely-metadata' === $meta_name ) {
 				$json = json_decode( $meta_value, true );
 				if ( is_array( $json ) ) {
@@ -159,7 +177,8 @@ class Parse_This_HTML extends Parse_This_Base {
 			if ( in_array( $extension, $video_extensions, true ) ) {
 				$videos[] = $url;
 			}
-		} */
+		}
+		*/
 
 		if ( WP_DEBUG ) {
 			$jf2['_meta'] = $meta;
@@ -167,6 +186,19 @@ class Parse_This_HTML extends Parse_This_Base {
 		return array_filter( $jf2 );
 	}
 
+	/**
+	 * Maps collected meta tag values to jf2 properties.
+	 *
+	 * Open Graph takes precedence, then Dublin Core, then citation_*, Parse.ly
+	 * and generic tags. The og:type value selects the jf2 type: article becomes
+	 * an entry, profile a card, and book, music.song and video types a cite.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array $meta Meta values as grouped by parse_meta(), keyed by prefix
+	 *                    (og, article, dc, music, video, ...) or by plain name.
+	 * @return array jf2 properties.
+	 */
 	public static function meta_to_jf2( $meta ) {
 		if ( empty( $meta ) ) {
 			return array();
@@ -350,7 +382,7 @@ class Parse_This_HTML extends Parse_This_Base {
 			}
 		}
 
-		// If Site Name is not set use domain name less www
+		// If Site Name is not set use domain name less www.
 		if ( ! isset( $jf2['publication'] ) && isset( $jf2['url'] ) ) {
 			$jf2['publication'] = preg_replace( '/^www\./', '', wp_parse_url( $jf2['url'], PHP_URL_HOST ) );
 		}
@@ -368,6 +400,18 @@ class Parse_This_HTML extends Parse_This_Base {
 		return $jf2;
 	}
 
+	/**
+	 * Groups prefixed meta names into nested arrays.
+	 *
+	 * For example og:title and og:image become $return['og']['title'] and
+	 * $return['og']['image']. Names separated with a dot (DC.Title) are grouped
+	 * the same way. Unprefixed names are kept at the top level.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array $meta Meta values keyed by their full name.
+	 * @return array Grouped meta values.
+	 */
 	public static function parse_meta( $meta ) {
 		$return = array();
 		if ( isset( $meta ) && is_array( $meta ) ) {

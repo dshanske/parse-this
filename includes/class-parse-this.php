@@ -1,26 +1,91 @@
 <?php
+/**
+ * Parse_This class.
+ *
+ * @package Parse_This
+ */
 
 /**
- * Parse This class.
- * Originally Derived from the Press This Class with Enhancements.
+ * Fetches a URL and converts it into jf2.
+ *
+ * Typical use:
+ *
+ *     $parse = new Parse_This( $url );
+ *     $parse->fetch();
+ *     $parse->parse( array( 'return' => 'feed' ) );
+ *     $jf2 = $parse->get();
+ *
+ * Microformats2 are tried first. If they don't yield content, a WordPress
+ * REST API alternate, JSON-LD, a site-specific parser (YouTube, Instagram,
+ * Twitter) and finally meta tags are tried in turn. RSS, Atom, JSON Feed,
+ * jf2 and mf2 JSON responses are handled directly. Originally derived from
+ * the Press This code removed from WordPress core.
+ *
+ * @since 1.0.0
  */
 class Parse_This {
+	/**
+	 * URL being parsed.
+	 *
+	 * @since 1.0.0
+	 * @var string
+	 */
 	private $url = '';
+	/**
+	 * Parsed DOM of the fetched HTML, if any.
+	 *
+	 * @since 1.0.0
+	 * @var DOMDocument|null
+	 */
 	private $doc;
+	/**
+	 * Links from the HTTP Link header, as parsed by pt_parse_header_links().
+	 *
+	 * @since 1.0.0
+	 * @var array[]
+	 */
 	private $links = array();
+	/**
+	 * Parsed result.
+	 *
+	 * @since 1.0.0
+	 * @var array
+	 */
 	private $jf2   = array();
 
+	/**
+	 * Host name of the URL.
+	 *
+	 * @since 1.0.0
+	 * @var string
+	 */
 	private $domain = '';
 
+	/**
+	 * Fetched content: an HTML string, decoded JSON, or a SimplePie object.
+	 *
+	 * @since 1.0.0
+	 * @var string|array|SimplePie
+	 */
 	private $content = '';
 
+	/**
+	 * MIME type of the fetched content, without parameters.
+	 *
+	 * @since 1.0.0
+	 * @var string
+	 */
 	private $content_type = '';
 
 	/**
-	 * Constructor.
+	 * Sets up a parser for a URL.
 	 *
-	 * @since x.x.x
-	 * @access public
+	 * URLs on a list of hosts known to support HTTPS are upgraded to https://
+	 * (see pt_secure_rewrite()).
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string|null $url Optional. URL to parse. Invalid URLs are ignored.
 	 */
 	public function __construct( $url = null ) {
 		if ( wp_http_validate_url( $url ) ) {
@@ -28,6 +93,16 @@ class Parse_This {
 		}
 	}
 
+	/**
+	 * Returns the parsed result or another stored property.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $key Optional. 'jf2' (default), 'mf2' for the result converted
+	 *                    to mf2, or the name of another property such as 'content',
+	 *                    'doc', 'links' or 'content_type'. Unknown names return jf2.
+	 * @return mixed The requested value.
+	 */
 	public function get( $key = 'jf2' ) {
 		if ( 'mf2' === $key ) {
 			return jf2_to_mf2( $this->jf2 );
@@ -38,19 +113,25 @@ class Parse_This {
 		return $this->$key;
 	}
 
-	/*
-	 Cleans HTML content.
+	/**
+	 * Sanitizes HTML content for display.
 	 *
-	 * @param string $content HTML content to be cleaned.
-	 * @param array $strip Any keys in this array will be removed from the allowed tags that are retained when cleaned.
+	 * Decodes entities, removes comments and <script> elements, then filters
+	 * the result through wp_kses() with an allow-list of text, media and
+	 * structural tags.
 	 *
-	 * @return string Clean Content.
+	 * @since 1.0.0
+	 *
+	 * @param string $content HTML to clean. Non-strings are returned unchanged.
+	 * @param array  $strip   Optional. Tags to remove from the allow-list, as keys
+	 *                        (for example array( 'blockquote' => array() )).
+	 * @return string|mixed The cleaned HTML.
 	 */
 	public static function clean_content( $content, $strip = array() ) {
 		if ( ! is_string( $content ) ) {
 			return $content;
 		}
-		// Decode escaped entities so that they can be stripped
+		// Decode escaped entities so that they can be stripped.
 		$content     = html_entity_decode( $content, ENT_COMPAT | ENT_HTML401, 'UTF-8' );
 		$content     = preg_replace( '/<!--(.|\s)*?-->/', '', $content );
 		$domdocument = pt_load_domdocument( $content );
@@ -136,14 +217,17 @@ class Parse_This {
 	}
 
 	/**
-	 * Sets the source.
+	 * Sets the content to parse, skipping the fetch.
 	 *
-	 * @since x.x.x
-	 * @access public
+	 * @since 1.0.0
 	 *
-	 * @param string $source_content source content.
-	 * @param string $url Source URL
-	 * @param string $jf2 If set it passes the content directly as preparsed
+	 * @param string|array|SimplePie $source_content Content: an HTML string, decoded
+	 *                                               JSON, a SimplePie feed, or jf2.
+	 * @param string                 $url            URL of the content.
+	 * @param bool                   $jf2            Optional. Whether
+	 *                                               $source_content is already jf2
+	 *                                               and should be stored as the
+	 *                                               result. Default false.
 	 */
 	public function set( $source_content, $url, $jf2 = false ) {
 		$this->content = $source_content;
@@ -158,9 +242,18 @@ class Parse_This {
 		}
 	}
 
-	/*
-	 Reproduced version of fetch_feed from core which calls bundled SimplePie instead of older version
-	*/
+	/**
+	 * Fetches an RSS or Atom feed with SimplePie.
+	 *
+	 * A variant of core's fetch_feed() with caching disabled and HTML tags
+	 * kept, so that content can be sanitized by clean_content() instead.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $url Feed URL.
+	 * @return SimplePie|WP_Error The initialized feed, or WP_Error if SimplePie
+	 *                            reports an error.
+	 */
 	public static function fetch_feed( $url ) {
 		$url = pt_secure_rewrite( $url );
 		if ( ! class_exists( 'SimplePie', false ) ) {
@@ -176,7 +269,7 @@ class Parse_This {
 			SimplePie_Cache::register( 'wp_transient', 'WP_Feed_Cache_Transient' );
 			$feed->set_cache_location( 'wp_transient' );
 		} else {
-			// Back-compat for SimplePie 1.2.x.
+			// Back-compat for SimplePie 1.2.x. Not reached on WordPress 6.2+, which bundles 1.5 or later.
 			require_once ABSPATH . WPINC . '/class-wp-feed-cache.php';
 			$feed->set_cache_class( 'WP_Feed_Cache' );
 		}
@@ -185,14 +278,7 @@ class Parse_This {
 		$feed->enable_cache( false );
 		$feed->set_feed_url( $url );
 		$feed->strip_htmltags( false );
-		/**
-		 * Fires just before processing the SimplePie feed object.
-		 *
-		 * @since 3.0.0
-		 *
-		 * @param object $feed SimplePie feed object (passed by reference).
-		 * @param mixed  $url  URL of feed to retrieve. If an array of URLs, the feeds are merged.
-		 */
+		/** This action is documented in wp-includes/feed.php */
 		do_action_ref_array( 'wp_feed_options', array( &$feed, $url ) );
 		$feed->init();
 		$feed->set_output_encoding( get_option( 'blog_charset' ) );
@@ -205,10 +291,12 @@ class Parse_This {
 	}
 
 	/**
-	 * Returns a list of supported content types
+	 * Checks whether a content type can be parsed.
 	 *
-	 * @param string $content_type
-	 * @return boolean if supported
+	 * @since 1.0.0
+	 *
+	 * @param string $content_type MIME type, without parameters.
+	 * @return bool True if supported.
 	 */
 	public function supported_content( $content_type ) {
 		$types = array(
@@ -226,9 +314,26 @@ class Parse_This {
 		return in_array( $content_type, $types, true );
 	}
 
+	/**
+	 * Returns where a URL redirects to, without following the redirect.
+	 *
+	 * Used to expand short links in summaries.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $url       URL to check.
+	 * @param bool   $allowlist Optional. When false, only URLs on known
+	 *                          link-shortener hosts are checked; when true
+	 *                          (the default), any URL is. The name is the reverse
+	 *                          of what it does (review finding P-2).
+	 * @return string|false|WP_Error The redirect target, false if there is no
+	 *                               redirect (or $url is not a shortener when
+	 *                               $allowlist is false), or WP_Error if $url is
+	 *                               invalid.
+	 */
 	public static function redirect( $url, $allowlist = true ) {
 		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
-			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'indieweb-post-kinds' ) );
+			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'parse-this' ) );
 		}
 		$url        = pt_secure_rewrite( $url );
 		$domain     = wp_parse_url( $url, PHP_URL_HOST );
@@ -245,17 +350,27 @@ class Parse_This {
 	}
 
 	/**
-	 * Downloads the source's via server - side call for the given URL .
+	 * Downloads a URL and stores its content for parse().
 	 *
-	 * @param string $url URL to scan .
-	 * @return WP_Error | boolean WP_Error if invalid and true if successful
+	 * Feeds are loaded into SimplePie, JSON Feeds and WordPress REST
+	 * collections are converted to jf2 immediately, jf2 JSON is stored as the
+	 * result, and HTML is loaded into a DOM document.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string|null $url Optional. URL to fetch. Defaults to the URL passed to
+	 *                         the constructor.
+	 * @return true|false|WP_Error True on success, false if a feed could not be
+	 *                             parsed, or WP_Error if the URL is invalid, the
+	 *                             request fails, or the content type is not
+	 *                             supported.
 	 */
 	public function fetch( $url = null ) {
 		if ( ! $url ) {
 			$url = $this->url;
 		}
 		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
-			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'indieweb-post-kinds' ) );
+			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'parse-this' ) );
 		}
 		$response = pt_remote_get( $url );
 		if ( is_wp_error( $response ) ) {
@@ -271,20 +386,20 @@ class Parse_This {
 		if ( is_array( $this->content_type ) ) {
 			$this->content_type = array_pop( $this->content_type );
 		}
-						// Strip any character set off the content type
+						// Strip any character set off the content type.
 						$ct = explode( ';', $this->content_type );
 		if ( is_array( $ct ) ) {
 			$this->content_type = array_shift( $ct );
 		}
 						$this->content_type = trim( $this->content_type );
-						// List of content types we know how to handle
+						// List of content types we know how to handle.
 		if ( ! self::supported_content( $this->content_type ) ) {
 			return new WP_Error( 'content-type', 'Content Type is Not Supported', array( 'content-type' => $this->content_type ) );
 		}
 
 		$content = wp_remote_retrieve_body( $response );
 
-		// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway
+		// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway.
 		if ( class_exists( 'Parse_This_RSS' ) && ( in_array( $this->content_type, array( 'application/rss+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/xml' ), true ) ) ) {
 			// Get a SimplePie feed object from the specified feed source.
 			$content = self::fetch_feed( $url );
@@ -323,19 +438,46 @@ class Parse_This {
 		return true;
 	}
 
+	/**
+	 * Parses the fetched content into jf2.
+	 *
+	 * Retrieve the result with get().
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array $args {
+	 *     Optional. Parse arguments.
+	 *
+	 *     @type bool   $alternate  Whether to use a rel=alternate jf2 or mf2 version
+	 *                              of the page. Default false.
+	 *     @type string $return     'single' for one item or 'feed' for a list.
+	 *                              Default 'single'.
+	 *     @type bool   $follow     Whether to fetch and parse external author pages.
+	 *                              Default false.
+	 *     @type int    $limit      Maximum number of feed children. Default 150.
+	 *     @type bool   $jsonld     Whether to try JSON-LD. Default true.
+	 *     @type bool   $html       Whether to fall back to meta tags. Default true.
+	 *     @type bool   $references Whether to move nested citations into refs, per
+	 *                              the jf2 spec. Default true.
+	 *     @type bool   $location   Whether to flatten location into latitude,
+	 *                              longitude and altitude properties with a string
+	 *                              location. Default false.
+	 * }
+	 * @return WP_Error|void WP_Error if there is no content to parse.
+	 */
 	public function parse( $args = array() ) {
 		$defaults = array(
-			'alternate'  => false, // check for rel-alternate jf2 or mf2 feed
-			'return'     => 'single', // Options are single, feed or TBC mention
-			'follow'     => false, // If set to true h-card and author properties with external urls will be retrieved parsed and merged into the return
-			'limit'      => 150, // Limit the number of children returned.
-			'jsonld'     => true,  // Try JSON-LD parsing
-			'html'       => true, // If mf2 parsing does not work look for html parsing which includes OGP, meta tags, and title tags
-			'references' => true, // Store nested citations as references per the JF2 spec
-			'location'   => false, // Collapse location parameters in jf2. Specifically, location will be a string and latitude, longitude, and altitude will be set as h-entry properties.
+			'alternate'  => false,
+			'return'     => 'single',
+			'follow'     => false,
+			'limit'      => 150,
+			'jsonld'     => true,
+			'html'       => true,
+			'references' => true,
+			'location'   => false,
 		);
 		$args     = wp_parse_args( $args, $defaults );
-		// If not an option then revert to single
+		// If not an option then revert to single.
 		if ( ! in_array( $args['return'], array( 'single', 'feed' ), true ) ) {
 			$args['return'] = 'single';
 		}
@@ -368,14 +510,14 @@ class Parse_This {
 			return;
 		}
 
-		// Ensure not already preparsed
+		// Ensure not already preparsed.
 		if ( empty( $this->jf2 ) ) {
 			$this->jf2 = Parse_This_MF2::parse( $content, $this->url, $args );
 		}
 
 		$more = array();
 
-		// If No MF2 or if the parsed jf2 is missing any sort of content then try to find it in the HTML
+		// If No MF2 or if the parsed jf2 is missing any sort of content then try to find it in the HTML.
 		if ( isset( $this->jf2['type'] ) && 'card' === $this->jf2['type'] ) {
 			$more = array_intersect( array_keys( $this->jf2 ), array( 'name', 'url', 'photo' ) );
 		} else {
@@ -455,7 +597,7 @@ class Parse_This {
 		if ( ! isset( $this->jf2['url'] ) ) {
 			$this->jf2['url'] = $this->url;
 		}
-			// Expand Short URLs in summary
+			// Expand Short URLs in summary.
 		if ( isset( $this->jf2['summary'] ) ) {
 			$urls = wp_extract_urls( $this->jf2['summary'] );
 			foreach ( $urls as $url ) {
