@@ -287,10 +287,10 @@ class Parse_This_JSONLD extends Parse_This_Base {
 			'duration'  => ifset( $video['duration'] ),
 		);
 
-		if ( isset( $vidio['transcript'] ) ) {
+		if ( isset( $video['transcript'] ) ) {
 			$return['content'] = array(
-				'html'  => Parse_This::clean_content( $vidio['transcript'] ),
-				'value' => wp_strip_all_tags( $vidio['transcript'] ),
+				'html'  => Parse_This::clean_content( $video['transcript'] ),
+				'value' => wp_strip_all_tags( $video['transcript'] ),
 			);
 		}
 		if ( isset( $video['publisher'] ) ) {
