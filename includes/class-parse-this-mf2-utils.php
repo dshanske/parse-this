@@ -1,59 +1,84 @@
 <?php
 /**
- * Helpers for processing microformats2 array structures.
- * Derived from https://github.com/barnabywalters/php-mf-cleaner
- * and https://github.com/aaronpk/XRay/blob/master/lib/Formats/Mf2.php
- * and https://github.com/pfefferle/wordpress-semantic-linkbacks/blob/master/includes/class-linkbacks-mf2-handler.php
- **/
+ * Parse_This_MF2_Utils class.
+ *
+ * @package Parse_This
+ */
 
+/**
+ * Helpers for reading parsed microformats2 structures.
+ *
+ * Derived from php-mf-cleaner, XRay's Mf2 format and Semantic Linkbacks'
+ * mf2 handler.
+ *
+ * @since 1.0.0
+ *
+ * @link https://github.com/barnabywalters/php-mf-cleaner
+ * @link https://github.com/aaronpk/XRay/blob/master/lib/Formats/Mf2.php
+ * @link https://github.com/pfefferle/wordpress-semantic-linkbacks/blob/master/includes/class-linkbacks-mf2-handler.php
+ */
 class Parse_This_MF2_Utils extends Parse_This_Base {
 
 	/**
-	 * Verifies if $mf is an array without numeric keys, and has a 'properties' key.
+	 * Checks whether a value is a microformat object.
 	 *
-	 * @param $mf
-	 * @return bool
+	 * A microformat is an associative array with a non-empty type and a
+	 * properties key.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param mixed $mf Value to check.
+	 * @return bool True if it is a microformat.
 	 */
 	public static function is_microformat( $mf ) {
 		return ( is_array( $mf ) && ! wp_is_numeric_array( $mf ) && ! empty( $mf['type'] ) && isset( $mf['properties'] ) );
 	}
 
 	/**
-	 * Verifies if $mf is a microformat and has children
+	 * Checks whether a microformat has children.
 	 *
-	 * @param $mf
-	 * @return bool
+	 * @since 1.0.0
+	 *
+	 * @param mixed $mf Value to check.
+	 * @return bool True if it is a microformat with a children key.
 	 */
 	public static function has_children( $mf ) {
 		return ( self::is_microformat( $mf ) && isset( $mf['children'] ) );
 	}
 
 	/**
-	 * Verifies if $mf has an 'items' key which is also an array, returns true.
+	 * Checks whether a value is a parsed microformats document.
 	 *
-	 * @param $mf
-	 * @return bool
+	 * @since 1.0.0
+	 *
+	 * @param mixed $mf Value to check.
+	 * @return bool True if it has an items array.
 	 */
 	public static function is_microformat_array( $mf ) {
 		return ( is_array( $mf ) && isset( $mf['items'] ) && is_array( $mf['items'] ) );
 	}
 
 	/**
-	 * is this what type
+	 * Checks whether a microformat has a given type.
 	 *
-	 * @param array  $mf Parsed Microformats Array
-	 * @param string $type Type
-	 * @return bool
+	 * @since 1.0.0
+	 *
+	 * @param mixed  $mf   Microformat.
+	 * @param string $type Type to look for, for example h-entry.
+	 * @return bool True if $type is among the microformat's types.
 	 */
 	public static function is_type( $mf, $type ) {
 		return is_array( $mf ) && ! empty( $mf['type'] ) && is_array( $mf['type'] ) && in_array( $type, $mf['type'], true );
 	}
 
 	/**
-	 * Return Type of a Microformat.
+	 * Returns the first type of a microformat.
 	 *
-	 * @param array $mf Parsed Microformats Array
-	 * @return string|false Return type if present or false if not a microformat.
+	 * @since 1.0.0
+	 *
+	 * @param mixed $mf    Microformat.
+	 * @param bool  $strip Optional. Whether to remove the h- prefix. Default false.
+	 * @return string|false The type, or false if $mf is not a microformat.
 	 */
 	public static function get_type( $mf, $strip = false ) {
 		$type = false;
@@ -67,10 +92,17 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 	}
 
 	/**
-	 * Parse Content
+	 * Returns the text and sanitized HTML of an e-* property.
 	 *
-	 * @param array $mf Parsed Microformats Array.
-	 * @return array $data Content array consisting of text and html properties.
+	 * The HTML is cleaned with Parse_This::clean_content() and only included
+	 * when it differs from the text.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array  $mf       Microformat.
+	 * @param string $property Property name, for example content.
+	 * @return array|null Array with 'text' and possibly 'html', or null if the property
+	 *                    is absent.
 	 */
 	public static function parse_html_value( $mf, $property ) {
 		if ( ! array_key_exists( $property, $mf['properties'] ) ) {
@@ -99,31 +131,37 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 	}
 
 	/**
-	 * Verifies if $p is an array without numeric keys and has key 'value' and 'html' set.
+	 * Checks whether a property value is an embedded HTML value.
 	 *
-	 * @param $p
-	 * @return bool
+	 * @since 1.0.0
+	 *
+	 * @param mixed $p Property value.
+	 * @return bool True if it is an associative array with value and html.
 	 */
 	public static function is_embedded_html( $p ) {
 		return is_array( $p ) && ! wp_is_numeric_array( $p ) && isset( $p['value'] ) && isset( $p['html'] );
 	}
 
 	/**
-	 * Verifies if $p is an array without numeric keys and has key 'value' and 'alt' set.
+	 * Checks whether a property value is an image with alt text.
 	 *
-	 * @param $p
-	 * @return bool
+	 * @since 1.0.0
+	 *
+	 * @param mixed $p Property value.
+	 * @return bool True if it is an associative array with value and alt.
 	 */
 	public static function is_embedded_img( $p ) {
 		return is_array( $p ) && ! wp_is_numeric_array( $p ) && isset( $p['value'] ) && isset( $p['alt'] );
 	}
 
 	/**
-	 * Verifies if property named $propname is in array $mf.
+	 * Checks whether a microformat has a non-empty property.
 	 *
-	 * @param array    $mf
-	 * @param $propname
-	 * @return bool
+	 * @since 1.0.0
+	 *
+	 * @param array  $mf       Microformat.
+	 * @param string $propname Property name.
+	 * @return bool True if the property is present and non-empty.
 	 */
 	public static function has_prop( array $mf, $propname ) {
 		return ! empty( $mf['properties'][ $propname ] ) && is_array( $mf['properties'][ $propname ] );
@@ -131,22 +169,26 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 
 
 	/**
-	 * Verifies if rel named $relname is in array $mf.
+	 * Checks whether a parsed document has a rel value.
 	 *
-	 * @param array   $mf
-	 * @param $relname
-	 * @return bool
+	 * @since 1.0.0
+	 *
+	 * @param array  $mf      Parsed microformats document.
+	 * @param string $relname Rel name, for example author.
+	 * @return bool True if the document has at least one URL for that rel.
 	 */
 	public static function has_rel( array $mf, $relname ) {
 		return ! empty( $mf['rels'][ $relname ] ) && is_array( $mf['rels'][ $relname ] );
 	}
 
 	/**
-	 * Returns rel property $relname in array $mf.
+	 * Returns the URLs of a rel value.
 	 *
-	 * @param array   $mf
-	 * @param $relname
-	 * @return mixed
+	 * @since 2.0.0
+	 *
+	 * @param array  $mf      Parsed microformats document.
+	 * @param string $relname Rel name.
+	 * @return string[]|false The URLs, or false if the rel is absent.
 	 */
 	public static function get_rel( array $mf, $relname ) {
 		if ( self::has_rel( $mf, $relname ) ) {
@@ -156,22 +198,29 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 	}
 
 	/**
-	 * Verifies if rel-url named $url is in array $mf.
+	 * Checks whether a parsed document has rel-urls data for a URL.
 	 *
-	 * @param array   $mf
-	 * @param $url
-	 * @return bool
+	 * @since 2.0.0
+	 *
+	 * @param array  $mf  Parsed microformats document.
+	 * @param string $url URL to look up.
+	 * @return bool True if rel-urls has an entry for $url.
 	 */
 	public static function has_rel_urls( array $mf, $url ) {
 		return ! empty( $mf['rel-urls'][ $url ] ) && is_array( $mf['rel-urls'][ $url ] );
 	}
 
 	/**
-	 * Returns rel-url property $url array $mf.
+	 * Returns rel-urls data for a URL as h-card style properties.
 	 *
-	 * @param array   $mf
-	 * @param $url
-	 * @return mixed
+	 * The link text, or failing that its title, becomes the name.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array  $mf  Parsed microformats document.
+	 * @param string $url URL to look up.
+	 * @return array|false Properties array with url and possibly name, or false if
+	 *                     there is no rel-urls entry for $url.
 	 */
 	public static function get_rel_urls( array $mf, $url ) {
 		if ( self::has_rel_urls( $mf, $url ) ) {
@@ -189,23 +238,30 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 	}
 
 	/**
-	 * shortcut for getPlaintext.
+	 * Returns the plain-text value of a property.
 	 *
-	 * @deprecated use getPlaintext from now on
-	 * @param array       $mf
-	 * @param $propname
-	 * @param null|string $fallback
-	 * @return mixed|null
+	 * Alias of get_plaintext().
+	 *
+	 * @deprecated 1.0.0 Use get_plaintext().
+	 * @since 1.0.0
+	 *
+	 * @param array  $mf       Microformat.
+	 * @param string $propname Property name.
+	 * @param mixed  $fallback Optional. Value to return if the property is absent.
+	 * @return mixed The first value as plain text, or $fallback.
 	 */
 	public static function get_prop( array $mf, $propname, $fallback = null ) {
 		return self::get_plaintext( $mf, $propname, $fallback );
 	}
 
 	/**
-	 * If $v is a microformat or embedded html, return $v['value']. Else return v.
+	 * Returns the plain-text form of a property value.
 	 *
-	 * @param $v
-	 * @return mixed
+	 * @since 1.0.0
+	 *
+	 * @param mixed $v Property value.
+	 * @return mixed The value key of a microformat, embedded HTML or image, the text
+	 *               key of a parsed content array, or $v unchanged.
 	 */
 	public static function to_plaintext( $v ) {
 		if ( self::is_microformat( $v ) || self::is_embedded_html( $v ) || self::is_embedded_img( $v ) ) {
@@ -217,13 +273,14 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 	}
 
 	/**
-	 * Returns plaintext of $propname with optional $fallback
+	 * Returns the first value of a property as plain text.
 	 *
-	 * @param array       $mf
-	 * @param $propname
-	 * @param null|string $fallback
-	 * @return mixed|null
-	 * @link http://php.net/manual/en/function.current.php
+	 * @since 1.0.0
+	 *
+	 * @param array  $mf       Microformat.
+	 * @param string $propname Property name.
+	 * @param mixed  $fallback Optional. Value to return if the property is absent.
+	 * @return mixed The value, or $fallback.
 	 */
 	public static function get_plaintext( array $mf, $propname, $fallback = null ) {
 		if ( ! empty( $mf['properties'][ $propname ] ) && is_array( $mf['properties'][ $propname ] ) ) {
@@ -233,12 +290,14 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 	}
 
 	/**
-	 * Converts $propname in $mf into array_map plaintext, or $fallback if not valid.
+	 * Returns every value of a property as plain text.
 	 *
-	 * @param array       $mf
-	 * @param $propname
-	 * @param null|string $fallback
-	 * @return null
+	 * @since 1.0.0
+	 *
+	 * @param array  $mf       Microformat.
+	 * @param string $propname Property name.
+	 * @param mixed  $fallback Optional. Value to return if the property is absent.
+	 * @return array|mixed The values, or $fallback.
 	 */
 	public static function get_plaintext_array( array $mf, $propname, $fallback = null ) {
 		if ( ! empty( $mf['properties'][ $propname ] ) && is_array( $mf['properties'][ $propname ] ) ) {
@@ -247,10 +306,13 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 	}
 
 	/**
-	 * Returns ['html'] element of $v, or ['value'] or just $v, in order of availablility.
+	 * Returns the HTML form of a property value.
 	 *
-	 * @param $v
-	 * @return mixed
+	 * @since 1.0.0
+	 *
+	 * @param mixed $v Property value.
+	 * @return string The html key of embedded HTML, otherwise the value escaped with
+	 *                htmlspecialchars().
 	 */
 	public static function to_html( $v ) {
 		if ( self::is_embedded_html( $v ) ) {
@@ -260,12 +322,14 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 	}
 
 	/**
-	 * Gets HTML of $propname or if not, $fallback
+	 * Returns the first value of a property as HTML.
 	 *
-	 * @param array       $mf
-	 * @param $propname
-	 * @param null|string $fallback
-	 * @return mixed|null
+	 * @since 1.0.0
+	 *
+	 * @param array  $mf       Microformat.
+	 * @param string $propname Property name.
+	 * @param mixed  $fallback Optional. Value to return if the property is absent.
+	 * @return mixed The value as HTML, or $fallback.
 	 */
 	public static function get_html( array $mf, $propname, $fallback = null ) {
 		if ( ! empty( $mf['properties'][ $propname ] ) && is_array( $mf['properties'][ $propname ] ) ) {
@@ -276,12 +340,17 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 
 
 	/**
-	 * Returns 'summary' element of $mf or a truncated Plaintext of $mf['properties']['content'] with 19 chars and ellipsis.
+	 * Returns a microformat's summary.
 	 *
-	 * @deprecated as not often used
-	 * @param array $mf
-	 * @param array $content
-	 * @return mixed|null|string
+	 * Uses the summary property if present, otherwise the first 300 characters
+	 * of the content text, with an ellipsis if truncated.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array      $mf      Microformat.
+	 * @param array|null $content Optional. Parsed content from parse_html_value(),
+	 *                           to avoid parsing it again.
+	 * @return string The summary, or an empty string.
 	 */
 	public static function get_summary( array $mf, $content = null ) {
 		if ( self::has_prop( $mf, 'summary' ) ) {
@@ -302,12 +371,15 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 
 
 	/**
-	 * Gets the date published of $mf array.
+	 * Returns a microformat's published date, falling back to updated.
 	 *
-	 * @param array       $mf
-	 * @param bool        $ensurevalid
-	 * @param null|string $fallback optional result if date not available
-	 * @return mixed|null
+	 * @since 1.0.0
+	 *
+	 * @param array $mf          Microformat.
+	 * @param bool  $ensurevalid Optional. Whether to parse the value as a date.
+	 *                           Default false.
+	 * @param mixed $fallback    Optional. Passed to get_datetime_property().
+	 * @return string|null The date in W3C format, or null if absent or not parsed.
 	 */
 	public static function get_published( array $mf, $ensurevalid = false, $fallback = null ) {
 		$date = self::get_datetime_property( 'published', $mf, $ensurevalid, $fallback );
@@ -318,12 +390,15 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 	}
 
 	/**
-	 * Gets the date updated of $mf array.
+	 * Returns a microformat's updated date, falling back to published.
 	 *
-	 * @param array $mf
-	 * @param bool  $ensurevalid
-	 * @param null  $fallback
-	 * @return mixed|null
+	 * @since 1.0.0
+	 *
+	 * @param array $mf          Microformat.
+	 * @param bool  $ensurevalid Optional. Whether to parse the value as a date.
+	 *                           Default false.
+	 * @param mixed $fallback    Optional. Passed to get_datetime_property().
+	 * @return string|null The date in W3C format, or null if absent or not parsed.
 	 */
 	public static function get_updated( array $mf, $ensurevalid = false, $fallback = null ) {
 		$date = self::get_datetime_property( 'updated', $mf, $ensurevalid, $fallback );
@@ -334,13 +409,20 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 	}
 
 	/**
-	 * Gets the DateTime properties including published or updated, depending on params.
+	 * Returns a date property, falling back to its counterpart.
 	 *
-	 * @param $name string updated or published
-	 * @param array                            $mf
-	 * @param bool                             $ensurevalid
-	 * @param null|string                      $fallback
-	 * @return DateTime|null
+	 * For published the counterpart is updated; for any other name it is
+	 * published.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $name        Property name, for example published or updated.
+	 * @param array  $mf          Microformat.
+	 * @param bool   $ensurevalid Optional. Whether to parse the value into a
+	 *                            DateTimeImmutable. Default false.
+	 * @param mixed  $fallback    Optional. Value to return if absent or unparseable.
+	 * @return DateTimeImmutable|string|mixed The parsed date when $ensurevalid is true,
+	 *                                      the raw value otherwise, or $fallback.
 	 */
 	public static function get_datetime_property( $name, array $mf, $ensurevalid = false, $fallback = null ) {
 		$compliment = 'published' === $name ? 'updated' : 'published';
@@ -363,23 +445,25 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 	}
 
 	/**
-	 * True if same hostname is parsed on both
+	 * Checks whether two URLs have the same host.
 	 *
-	 * @param $u1 string url
-	 * @param $u2 string url
-	 * @return bool
-	 * @link http://php.net/manual/en/function.parse-url.php
+	 * @since 1.0.0
+	 *
+	 * @param string $u1 First URL.
+	 * @param string $u2 Second URL.
+	 * @return bool True if the hosts match.
 	 */
 	public static function same_hostname( $u1, $u2 ) {
 		return wp_parse_url( $u1, PHP_URL_HOST ) === wp_parse_url( $u2, PHP_URL_HOST );
 	}
 
 	/**
-	 * Returns array per parse_url standard with pathname key added.
+	 * Parses a URL, adding a pathname key.
 	 *
-	 * @param $url
-	 * @return mixed
-	 * @link http://php.net/manual/en/function.parse-url.php
+	 * @since 1.0.0
+	 *
+	 * @param string $url URL to parse.
+	 * @return array The wp_parse_url() components plus 'pathname' ('/' if there is no path).
 	 */
 	public static function parse_url( $url ) {
 		$r             = wp_parse_url( $url );
@@ -389,12 +473,15 @@ class Parse_This_MF2_Utils extends Parse_This_Base {
 
 
 	/**
-	 * See if urls match for each component of parsed urls. Return true if so.
+	 * Checks whether two URLs are equal after normalization.
 	 *
-	 * @param $url1
-	 * @param $url2
-	 * @return bool
-	 * @see parseUrl()
+	 * See normalize_url().
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $url1 First URL.
+	 * @param string $url2 Second URL.
+	 * @return bool True if they match.
 	 */
 	public static function urls_match( $url1, $url2 ) {
 		return ( normalize_url( $url1 ) === normalize_url( $url2 ) );
