@@ -2,6 +2,9 @@
 /**
  * Polyfills for functions missing from older versions of WordPress and PHP.
  *
+ * WordPress 6.2, the minimum supported version, already provides all of
+ * them, so none of these definitions is used any more (review finding CMP-10).
+ *
  * @package Parse_This
  */
 
@@ -9,7 +12,7 @@ if ( ! function_exists( 'current_datetime' ) ) {
 	/**
 	 * Retrieves the current time as an object with the timezone from settings.
 	 *
-	 * @since 5.3.0 - Backported to Parse This
+	 * @since 1.0.0 Polyfill of the WordPress 5.3 function. Unused on WordPress 6.2+.
 	 *
 	 * @return DateTime Date and time object.
 	 */
@@ -25,7 +28,7 @@ if ( ! function_exists( 'get_post_timestamp' ) ) {
 	 * Note that this function returns a true Unix timestamp, not summed with timezone offset
 	 * like older WP functions.
 	 *
-	 * @since 5.3.0 - backported to Parse This
+	 * @since 1.0.0 Polyfill of the WordPress 5.3 function. Unused on WordPress 6.2+.
 	 *
 	 * @param int|WP_Post $post  Optional. WP_Post object or ID. Default is global `$post` object.
 	 * @param string      $field Optional. Post field to use. Accepts 'date' or 'modified'.
@@ -47,7 +50,7 @@ if ( ! function_exists( 'get_post_datetime' ) ) {
 	 *
 	 * The object will be set to the timezone from WordPress settings.
 	 *
-	 * @since 5.3.0 - backported to Parse This
+	 * @since 1.0.0 Polyfill of the WordPress 5.3 function. Unused on WordPress 6.2+.
 	 *
 	 * @param int|WP_Post $post  Optional. WP_Post object or ID. Default is global `$post` object.
 	 * @param string      $field Optional. Post field to use. Accepts 'date' or 'modified'.
@@ -73,7 +76,7 @@ if ( ! function_exists( 'wp_timezone_string' ) ) {
 	 * Uses the `timezone_string` option to get a proper timezone if available,
 	 * otherwise falls back to an offset.
 	 *
-	 * @since 5.3.0 - backported into Parse This
+	 * @since 1.0.0 Polyfill of the WordPress 5.3 function. Unused on WordPress 6.2+.
 	 *
 	 * @return string PHP timezone string or a ±HH:MM offset.
 	 */
@@ -99,7 +102,7 @@ if ( ! function_exists( 'wp_timezone' ) ) {
 	 *
 	 * Timezone can be based on a PHP timezone string or a ±HH:MM offset.
 	 *
-	 * @since 5.3.0 - backported into Parse This
+	 * @since 1.0.0 Polyfill of the WordPress 5.3 function. Unused on WordPress 6.2+.
 	 *
 	 * @return DateTimeZone Timezone object.
 	 */
@@ -118,7 +121,7 @@ if ( ! function_exists( 'wp_date' ) ) {
 	 * Note that, unlike `date_i18n()`, this function accepts a true Unix timestamp, not summed
 	 * with timezone offset.
 	 *
-	 * @since 5.3.0 - backported to Parse This
+	 * @since 1.0.0 Polyfill of the WordPress 5.3 function. Unused on WordPress 6.2+.
 	 *
 	 * @param string       $format    PHP date format.
 	 * @param int          $timestamp Optional. Unix timestamp. Defaults to current time.

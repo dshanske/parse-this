@@ -269,7 +269,7 @@ class Parse_This {
 			SimplePie_Cache::register( 'wp_transient', 'WP_Feed_Cache_Transient' );
 			$feed->set_cache_location( 'wp_transient' );
 		} else {
-			// Back-compat for SimplePie 1.2.x.
+			// Back-compat for SimplePie 1.2.x. Not reached on WordPress 6.2+, which bundles 1.5 or later.
 			require_once ABSPATH . WPINC . '/class-wp-feed-cache.php';
 			$feed->set_cache_class( 'WP_Feed_Cache' );
 		}

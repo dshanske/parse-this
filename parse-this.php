@@ -30,7 +30,7 @@ if ( ! function_exists( 'parse_this_loader' ) ) {
 	function parse_this_loader() {
 		require_once plugin_dir_path( __FILE__ ) . 'includes/autoload.php';
 
-		// Functions not available in earlier versions of WordPress.
+		// Polyfills; unused on WordPress 6.2+ (see compat-functions.php).
 		require_once plugin_dir_path( __FILE__ ) . 'includes/compat-functions.php';
 
 		require_once plugin_dir_path( __FILE__ ) . 'includes/functions.php';

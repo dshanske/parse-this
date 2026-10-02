@@ -250,9 +250,9 @@ class Parse_This_Base {
 	/**
 	 * Converts an embed URL into the canonical URL of what it embeds.
 	 *
-	 * YouTube, Vimeo, Daily Motion and Vine player URLs are rewritten to their
-	 * watch-page form. Any other URL is kept only if it matches a registered
-	 * oEmbed provider.
+	 * YouTube, Vimeo, Daily Motion and Vine (now defunct) player URLs are
+	 * rewritten to their watch-page form. Any other URL is kept only if it
+	 * matches a registered oEmbed provider.
 	 *
 	 * @since 1.0.0
 	 *
@@ -277,7 +277,7 @@ class Parse_This_Base {
 			// Embedded Vimeo Flash videos.
 			$src = 'https://vimeo.com/' . (int) $src_matches[1];
 		} elseif ( preg_match( '!//vine\.co/v/([^/]+)/embed!i', $src, $src_matches ) ) {
-			// Embedded Vine videos.
+			// Embedded Vine videos. Vine shut down in 2017; kept for old links.
 			$src = 'https://vine.co/v/' . $src_matches[1];
 		} elseif ( preg_match( '!//(www\.)?dailymotion\.com/embed/video/([^/?]+)([/?].+)?!i', $src, $src_matches ) ) {
 			// Embedded Daily Motion videos.
