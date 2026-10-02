@@ -652,6 +652,16 @@ if ( ! function_exists( 'pt_secure_rewrite' ) ) {
 			'wordpress.com',
 			'youtube.com',
 		);
+		/**
+		 * Filters the domains whose http:// URLs are upgraded to https://.
+		 *
+		 * Matching is on the registrable domain, so listing example.com also
+		 * covers www.example.com.
+		 *
+		 * @since 1.0.1
+		 *
+		 * @param string[] $secure Domains known to support HTTPS.
+		 */
 		$secure = apply_filters( 'pt_rewrite_secure', $secure );
 		if ( in_array( $host, $secure, true ) ) {
 			$url = preg_replace( '/^http:/i', 'https:', $url );

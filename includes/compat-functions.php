@@ -182,16 +182,7 @@ if ( ! function_exists( 'wp_date' ) ) {
 			$date = $datetime->format( $new_format );
 			$date = wp_maybe_decline_date( $date );
 		}
-		/**
-		 * Filters the date formatted based on the locale.
-		 *
-		 * @since 5.3.0 but backported to Parse This
-		 *
-		 * @param string       $date      Formatted date string.
-		 * @param string       $format    Format to display the date.
-		 * @param int          $timestamp Unix timestamp.
-		 * @param DateTimeZone $timezone  Timezone.
-		 */
+		/** This filter is documented in wp-includes/functions.php */
 		$date = apply_filters( 'wp_date', $date, $format, $timestamp, $timezone );
 		return $date;
 	}

@@ -278,14 +278,7 @@ class Parse_This {
 		$feed->enable_cache( false );
 		$feed->set_feed_url( $url );
 		$feed->strip_htmltags( false );
-		/**
-		 * Fires just before processing the SimplePie feed object.
-		 *
-		 * @since 3.0.0
-		 *
-		 * @param object $feed SimplePie feed object (passed by reference).
-		 * @param mixed  $url  URL of feed to retrieve. If an array of URLs, the feeds are merged.
-		 */
+		/** This action is documented in wp-includes/feed.php */
 		do_action_ref_array( 'wp_feed_options', array( &$feed, $url ) );
 		$feed->init();
 		$feed->set_output_encoding( get_option( 'blog_charset' ) );

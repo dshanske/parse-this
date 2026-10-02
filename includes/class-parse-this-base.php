@@ -234,7 +234,16 @@ class Parse_This_Base {
 			// WordPress.com stats gif.
 			return '';
 		}
-		// Optionally add additional limits.
+		/**
+		 * Filters an image URL after the built-in exclusions have been applied.
+		 *
+		 * Return an empty string to exclude the image.
+		 *
+		 * @since 1.0.0
+		 *
+		 * @param string $src Absolute image URL that passed the built-in checks, or an
+		 *                    empty string if the URL was invalid.
+		 */
 		return apply_filters( 'parse_this_img_filters', $src );
 	}
 
