@@ -493,15 +493,33 @@ if ( ! function_exists( 'pt_parse_header_links' ) ) {
 	function pt_parse_header_links( $links ) {
 		$items = array();
 
-		if ( is_array( $links ) && 1 <= count( $links ) ) {
-			foreach ( $links as $link ) {
-				$item   = array();
-				$pieces = explode( ';', $link );
-				$uri    = array_shift( $pieces );
-				foreach ( $pieces as $p ) {
-					$elements = explode( '=', $p );
+		if ( is_string( $links ) ) {
+			$links = array( $links );
+		}
 
-					$item[ trim( $elements[0] ) ] = trim( $elements[1], '"\'' );
+		if ( is_array( $links ) && 1 <= count( $links ) ) {
+			// A header may hold several comma-separated links. Only split on commas that start a new <uri>, as URIs may contain commas.
+			$split = array();
+			foreach ( $links as $link ) {
+				$split = array_merge( $split, preg_split( '/,(?=\s*<)/', $link ) );
+			}
+			foreach ( $split as $link ) {
+				$item = array();
+				if ( preg_match( '/^\s*<([^>]*)>(.*)$/s', $link, $match ) ) {
+					$uri    = $match[1];
+					$pieces = explode( ';', $match[2] );
+				} else {
+					$pieces = explode( ';', $link );
+					$uri    = array_shift( $pieces );
+				}
+				foreach ( $pieces as $p ) {
+					$elements = explode( '=', $p, 2 );
+					$name     = trim( $elements[0] );
+					if ( '' === $name ) {
+						continue;
+					}
+
+					$item[ $name ] = isset( $elements[1] ) ? trim( $elements[1], " \t\"'" ) : '';
 				}
 
 				$item['uri'] = trim( trim( $uri ), '<>' );

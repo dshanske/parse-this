@@ -278,11 +278,7 @@ class Parse_This {
 		}
 
 		$raw = wp_remote_retrieve_header( $response, 'link' );
-		if ( is_string( $raw ) ) {
-			$raw = explode( ',', $raw );
-		}
-
-		if ( is_array( $raw ) && 1 <= count( $raw ) ) {
+		if ( ! empty( $raw ) ) {
 			$this->links = pt_parse_header_links( $raw );
 		}
 
