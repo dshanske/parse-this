@@ -32,7 +32,7 @@ class REST_Parse_This {
 	public static function debug() {
 		?>
 				<div class="wrap">
-						<h2> <?php esc_html_e( 'Parse This Debugger', 'indieweb-post-kinds' ); ?> </h2>
+						<h1> <?php esc_html_e( 'Parse This Debugger', 'indieweb-post-kinds' ); ?> </h1>
 						<p> <?php esc_html_e( 'Test the Parse Tools Debugger. You can report sites to the developer for possibly improvement in future.', 'parse-this' ); ?>
 							<a href="https://github.com/dshanske/parse-this/issues"><?php esc_html_e( 'Open an Issue', 'parse-this' ); ?></a>
 						</p>
@@ -43,6 +43,7 @@ class REST_Parse_This {
 								esc_html_e( 'You are using the plugin version of Parse This as opposed to a version built into any plugin', 'parse-this' );
 							}
 							?>
+							</p>
 						<hr />
 			<form method="get" action="<?php echo esc_url( rest_url( '/parse-this/1.0/parse/' ) ); ?> ">
 				<p>
@@ -68,7 +69,7 @@ class REST_Parse_This {
 					</tr>
 					<tr>
 						<th scope="row">
-							<label for="discovery"><?php esc_html_e( 'References', 'indieweb-post-kinds' ); ?></label>
+							<label for="references"><?php esc_html_e( 'References', 'indieweb-post-kinds' ); ?></label>
 						</th>
 						<td>
 							<input type="checkbox" name="references" id="references" checked />
@@ -84,10 +85,10 @@ class REST_Parse_This {
 					</tr>
 					<tr>
 						<th scope="row">
-							<label for"return"><?php esc_html_e( 'Return Type', 'indieweb-post-kinds' ); ?></label>
+							<label for="return"><?php esc_html_e( 'Return Type', 'indieweb-post-kinds' ); ?></label>
 						</th>
 						<td>
-							<select name="return">
+							<select name="return" id="return">
 								<option value="single"><?php esc_html_e( 'Single', 'indieweb-post-kinds' ); ?></option>
 								<option value="feed"><?php esc_html_e( 'Feed', 'indieweb-post-kinds' ); ?></option>
 							</select>
