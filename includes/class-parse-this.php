@@ -336,7 +336,7 @@ class Parse_This {
 				$this->set( $content, $url, true );
 				// This means we are probing a specific REST Endpoint as they return this.
 			} elseif ( wp_remote_retrieve_header( $response, 'x-wp-total' ) ) {
-				$content           = Parse_This_RESTAPI::posts_to_feed( $content, $url );
+				$content           = Parse_This_RESTAPI::posts_to_feed( array( 'items' => $content ), $url );
 				$content['_total'] = wp_remote_retrieve_header( $response, 'x-wp-total' );
 				$content['_pages'] = wp_remote_retrieve_header( $response, 'x-wp-totalpages' );
 
