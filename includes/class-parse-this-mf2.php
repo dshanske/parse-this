@@ -377,7 +377,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 		} elseif ( self::is_type( $item, 'h-adr' ) ) {
 			return self::parse_hadr( $item, $mf, $args );
 		} elseif ( self::is_type( $item, 'h-geo' ) ) {
-			return self::parse_hadr( $item, $mf, $args );
+			return self::parse_hgeo( $item, $mf, $args );
 		} elseif ( self::is_type( $item, 'h-measure' ) ) {
 			return self::parse_hmeasure( $item, $mf, $args );
 		}
@@ -754,7 +754,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 		);
 		$properties = array( 'latitude', 'longitude', 'altitude' );
 		foreach ( $properties as $p ) {
-			$v = self::get_plaintext( $hadr, $p );
+			$v = self::get_plaintext( $hgeo, $p );
 			if ( null !== $v ) {
 				$data[ $p ] = $v;
 			}
