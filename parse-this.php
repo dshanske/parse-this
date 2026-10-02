@@ -9,22 +9,30 @@
  * Requires at least: 6.2
  * Requires PHP: 7.4
  * Text Domain: parse-this
- */
-
-
-/*
- Parse This Load
+ *
+ * @package Parse_This
  */
 
 if ( ! function_exists( 'parse_this_loader' ) ) {
+	/**
+	 * Loads Parse This.
+	 *
+	 * Runs on plugins_loaded at priority 9, so that the standalone plugin loads
+	 * ahead of copies bundled in other plugins (Post Kinds loads its copy at
+	 * priority 11). Functions are guarded by function_exists() and the first
+	 * autoloader registered serves the classes, so whichever copy loads first
+	 * wins.
+	 *
+	 * @since 1.0.0
+	 */
 	function parse_this_loader() {
 		require_once plugin_dir_path( __FILE__ ) . 'includes/autoload.php';
 
-		// Functions Not Available in Earlier Versions of WordPress
+		// Functions not available in earlier versions of WordPress.
 		require_once plugin_dir_path( __FILE__ ) . 'includes/compat-functions.php';
 
 		require_once plugin_dir_path( __FILE__ ) . 'includes/functions.php';
-		// Parse This REST Endpoint
+		// Parse This REST endpoint.
 		require_once plugin_dir_path( __FILE__ ) . 'includes/class-rest-parse-this.php';
 	}
 	add_action( 'plugins_loaded', 'parse_this_loader', 9 );

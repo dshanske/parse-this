@@ -1,5 +1,9 @@
 <?php
-
+/**
+ * Polyfills for functions missing from older versions of WordPress and PHP.
+ *
+ * @package Parse_This
+ */
 
 if ( ! function_exists( 'current_datetime' ) ) {
 	/**
@@ -194,6 +198,18 @@ if ( ! function_exists( 'wp_date' ) ) {
 }
 
 if ( ! function_exists( 'str_contains' ) ) {
+	/**
+	 * Determines whether a string contains a substring (polyfill for PHP 8.0).
+	 *
+	 * Core WordPress has provided its own polyfill since 5.9, so this definition is
+	 * only reached on older versions.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $haystack The string to search in.
+	 * @param string $needle   The substring to search for.
+	 * @return bool True if $needle is in $haystack, false otherwise.
+	 */
 	function str_contains( $haystack, $needle ) {
 		return '' !== $needle && false !== mb_strpos( $haystack, $needle );
 	}
