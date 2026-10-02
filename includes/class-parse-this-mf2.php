@@ -297,7 +297,7 @@ class Parse_This_MF2 extends Parse_This_MF2_Utils {
 			'items' => array(),
 		);
 		$data['name'] = self::get_plaintext( $entry, 'name' );
-		$author       = self::find_author( $entry, $args['follow'] );
+		$author       = self::find_author( $entry, $mf, $args['follow'] );
 		if ( self::is_microformat( $author ) ) {
 			$data['author'] = self::parse_hcard( $author, $mf, $args );
 		} else {
