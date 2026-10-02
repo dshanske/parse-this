@@ -39,7 +39,11 @@ class Parse_This_Base {
 		if ( ! $items ) {
 			return null;
 		}
-		$return = new DateTime( $items[0]['published'], wp_timezone() );
+		try {
+			$return = new DateTime( $items[0]['published'], wp_timezone() );
+		} catch ( Exception $e ) {
+			return null;
+		}
 		return $return->format( DATE_W3C );
 	}
 
@@ -55,7 +59,11 @@ class Parse_This_Base {
 		if ( ! $items ) {
 			return null;
 		}
-		$return = new DateTime( $items[0]['updated'], wp_timezone() );
+		try {
+			$return = new DateTime( $items[0]['updated'], wp_timezone() );
+		} catch ( Exception $e ) {
+			return null;
+		}
 		return $return->format( DATE_W3C );
 	}
 

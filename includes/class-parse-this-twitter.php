@@ -49,8 +49,7 @@ class Parse_This_Twitter extends Parse_This_Base {
 				} elseif ( '@' === $key[0] ) {
 					$category[] = $value;
 				} elseif ( $jf2['url'] === $value ) {
-					$published        = new DateTime( $key );
-					$jf2['published'] = $published->format( DATE_W3C );
+					$jf2['published'] = normalize_iso8601( $key );
 				} else {
 					$names[ wp_strip_all_tags( $key ) ] = normalize_url( $value ); // phpcs:ignore
 				}

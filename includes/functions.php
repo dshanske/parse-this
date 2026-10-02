@@ -325,11 +325,15 @@ if ( ! function_exists( 'normalize_url' ) ) {
 if ( ! function_exists( 'normalize_iso8601' ) ) {
 	// Tries to normalizes dates to a standard iso8601 string
 	function normalize_iso8601( $string ) {
-		$date = new DateTime( $string );
-		if ( $date ) {
-			return $date->format( DATE_W3C );
+		if ( empty( $string ) || ! is_string( $string ) ) {
+			return null;
 		}
-		return $string;
+		try {
+			$date = new DateTime( $string );
+		} catch ( Exception $e ) {
+			return $string;
+		}
+		return $date->format( DATE_W3C );
 	}
 }
 

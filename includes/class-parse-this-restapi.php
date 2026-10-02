@@ -213,9 +213,16 @@ class Parse_This_RESTAPI {
 	}
 
 	public static function get_datetime( $time, $timezone = null ) {
-		$datetime = new DateTime( $time );
-		if ( 'UTC' === $datetime->getTimeZone()->getName() ) {
-			$datetime = new DateTime( $time, $timezone );
+		if ( empty( $time ) || ! is_string( $time ) ) {
+			return null;
+		}
+		try {
+			$datetime = new DateTime( $time );
+			if ( 'UTC' === $datetime->getTimeZone()->getName() ) {
+				$datetime = new DateTime( $time, $timezone );
+			}
+		} catch ( Exception $e ) {
+			return null;
 		}
 		return $datetime->format( DATE_W3C );
 	}

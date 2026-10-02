@@ -43,10 +43,7 @@ class Parse_This_RSS extends Parse_This_Base {
 			$updated = $feed->get_channel_tags( SIMPLEPIE_NAMESPACE_ATOM_10, 'updated' );
 		}
 		if ( $updated && isset( $updated[0]['data'] ) ) {
-			$datetime = new DateTime( $updated[0]['data'] );
-			if ( $datetime ) {
-				return $datetime->format( DATE_W3C );
-			}
+			return normalize_iso8601( $updated[0]['data'] );
 		}
 
 		return null;
@@ -326,19 +323,11 @@ class Parse_This_RSS extends Parse_This_Base {
 	}
 
 	public static function get_date( $item ) {
-		$datetime = new DateTime( $item->get_date( null ) );
-		if ( $datetime ) {
-			return $datetime->format( DATE_W3C );
-		}
-		return null;
+		return normalize_iso8601( $item->get_date( '' ) );
 	}
 
 	public static function get_updated_date( $item ) {
-		$datetime = new DateTime( $item->get_updated_date( null ) );
-		if ( $datetime ) {
-			return $datetime->format( DATE_W3C );
-		}
-		return null;
+		return normalize_iso8601( $item->get_updated_date( '' ) );
 	}
 
 
