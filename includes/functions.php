@@ -571,8 +571,13 @@ if ( ! function_exists( __NAMESPACE__ . '\\pt_load_domdocument' ) ) {
 		} else {
 			$doc = new \DOMDocument();
 			libxml_use_internal_errors( true );
-			if ( function_exists( 'mb_convert_encoding' ) ) {
-				$content = mb_convert_encoding( $content, 'HTML-ENTITIES', mb_detect_encoding( $content ) );
+			if ( function_exists( 'mb_encode_numericentity' ) ) {
+				// DOMDocument assumes ISO-8859-1, so convert to UTF-8 and encode non-ASCII characters as entities.
+				$encoding = mb_detect_encoding( $content, array( 'UTF-8', 'ISO-8859-1' ), true );
+				if ( $encoding && 'UTF-8' !== $encoding ) {
+					$content = mb_convert_encoding( $content, 'UTF-8', $encoding );
+				}
+				$content = mb_encode_numericentity( $content, array( 0x80, 0x10FFFF, 0, 0x1FFFFF ), 'UTF-8' );
 			}
 			$doc->loadHTML( $content );
 			libxml_use_internal_errors( false );
