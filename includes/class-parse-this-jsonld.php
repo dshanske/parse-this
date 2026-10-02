@@ -1,12 +1,32 @@
 <?php
 /**
- * Parse This JSON-LD class.
+ * Parse_This_JSONLD class.
+ *
+ * @package Parse_This
+ */
+
+/**
+ * Converts schema.org JSON-LD embedded in HTML pages into jf2.
+ *
+ * Recognizes articles and web pages, people, organizations, web sites,
+ * events, images, audio, video, music releases, movies and TV, places and
+ * postal addresses.
+ *
+ * @since 1.0.0
  */
 class Parse_This_JSONLD extends Parse_This_Base {
 	/**
-	 * Parses _meta, _images, and _links data from the content.
+	 * Parses every application/ld+json script in a document into jf2.
 	 *
-	 * @access public
+	 * A top-level @graph is unwrapped before conversion.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param DOMDocument|null $doc  Parsed HTML document.
+	 * @param string           $url  URL of the page. Unused.
+	 * @param array            $args Parse arguments (see Parse_This::parse()). Unused.
+	 * @return array jf2 properties. When WP_DEBUG is on, the decoded JSON-LD is included
+	 *               under '_jsonld'.
 	 */
 	public static function parse( $doc, $url, $args ) {
 		if ( ! $doc ) {
@@ -39,6 +59,19 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		return array_filter( $jf2 );
 	}
 
+	/**
+	 * Converts a list of JSON-LD nodes into a single jf2 object.
+	 *
+	 * An article is preferred, with any video, audio, author and organization
+	 * nodes merged into it. Otherwise the first event, video, audio, media or
+	 * person node found is returned.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array $jsonld List of JSON-LD nodes.
+	 * @return array jf2 properties, or the nodes converted so far keyed by type when
+	 *               none of the preferred types is present.
+	 */
 	public static function jsonld_to_jf2( $jsonld ) {
 		if ( empty( $jsonld ) ) {
 			return array();
@@ -128,6 +161,15 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		return array_filter( $return );
 	}
 
+	/**
+	 * Converts a MusicRelease node into a jf2 cite.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array $music MusicRelease node.
+	 * @return array|false jf2 cite including its artists and tracks, or false if the node
+	 *                     is not a MusicRelease.
+	 */
 	public static function music_to_hcite( $music ) {
 		if ( 'music' !== self::get_type( $music ) ) {
 			return false;
@@ -168,6 +210,15 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		return array_filter( $return );
 	}
 
+	/**
+	 * Converts a Movie, TVSeries or TVEpisode node into a jf2 cite.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array $movie Movie, TVSeries or TVEpisode node.
+	 * @return array|false jf2 cite with actor, director and creator cards, or false if
+	 *                     the node is not one of those types.
+	 */
 	public static function media_to_hcite( $movie ) {
 		if ( 'media' !== self::get_type( $movie ) ) {
 			return false;
@@ -202,6 +253,14 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		return array_filter( $return );
 	}
 
+	/**
+	 * Converts an Event node into a jf2 event.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array $event Event or BusinessEvent node.
+	 * @return array|false jf2 event, or false if the node is not an event.
+	 */
 	public static function event_to_hevent( $event ) {
 		if ( 'event' !== self::get_type( $event ) ) {
 			return false;
@@ -222,6 +281,16 @@ class Parse_This_JSONLD extends Parse_This_Base {
 	}
 
 
+	/**
+	 * Returns the URL of an ImageObject.
+	 *
+	 * For a list, the last image is used.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array|string|mixed $image ImageObject node, list of nodes, or URL.
+	 * @return string|false The image URL, or false if $image is not an image.
+	 */
 	public static function image_to_photo( $image ) {
 		if ( wp_is_numeric_array( $image ) ) {
 			$image = array_pop( $image );
@@ -234,15 +303,28 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		}
 
 		/*
-		 if ( isset( $image['caption'] ) ) {
-			return array(
-				'value' => $image['url'],
-				'alt' => $image['caption']
-			);
-		} */
+		 * Disabled: return the caption as alt text.
+		 *
+		 * if ( isset( $image['caption'] ) ) {
+		 *     return array(
+		 *         'value' => $image['url'],
+		 *         'alt'   => $image['caption'],
+		 *     );
+		 * }
+		 */
 		return $image['url'];
 	}
 
+	/**
+	 * Converts an AudioObject node into jf2 properties.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array|string $audio AudioObject node, or a URL.
+	 * @return array|string|false jf2 properties (name, summary, featured, audio,
+	 *                           published, duration, content, publication), the URL
+	 *                           if a string was passed, or false.
+	 */
 	public static function audio_to_audio( $audio ) {
 		if ( is_string( $audio ) ) {
 			return $audio;
@@ -271,6 +353,16 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		return array_filter( $return );
 	}
 
+	/**
+	 * Converts a VideoObject node into jf2 properties.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array|string $video VideoObject node, or a URL.
+	 * @return array|string|false jf2 properties (name, summary, featured, video,
+	 *                           published, duration, content, publication), the URL
+	 *                           if a string was passed, or false.
+	 */
 	public static function video_to_video( $video ) {
 		if ( is_string( $video ) ) {
 			return $video;
@@ -299,6 +391,14 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		return array_filter( $return );
 	}
 
+	/**
+	 * Converts a GeoCoordinates node into a jf2 geo object.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array|mixed $geo GeoCoordinates node.
+	 * @return array|false Geo with latitude and longitude, or false.
+	 */
 	public static function geocoordinates_to_geo( $geo ) {
 		if ( ! self::is_jsonld( $geo ) ) {
 			return false;
@@ -314,6 +414,15 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		return array_filter( $return );
 	}
 
+	/**
+	 * Converts a PostalAddress node into h-adr properties.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array|mixed $address PostalAddress node.
+	 * @return array|false Address properties (locality, region, country-name,
+	 *                     postal-code, street-address), or false.
+	 */
 	public static function postaladdress_to_address( $address ) {
 		if ( ! self::is_jsonld_type( $address, 'PostalAddress' ) ) {
 			return false;
@@ -329,6 +438,14 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		return array_filter( $return );
 	}
 
+	/**
+	 * Converts a Place node into a jf2 card.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array|mixed $place Place node.
+	 * @return array|false Card with '_type' => 'place', its address merged in, or false.
+	 */
 	public static function place_to_hcard( $place ) {
 		if ( ! self::is_jsonld( $place ) ) {
 			return false;
@@ -356,6 +473,16 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		return array_filter( $hcard );
 	}
 
+	/**
+	 * Converts a Person node, or a plain name, into a jf2 card.
+	 *
+	 * Organizations are accepted too, since sites often list one as the author.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array|string $person Person or Organization node, or a name.
+	 * @return array|false Card, list of cards if the node lists several names, or false.
+	 */
 	public static function person_to_hcard( $person ) {
 		if ( is_string( $person ) ) {
 			return array(
@@ -399,6 +526,14 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		return array_filter( $author );
 	}
 
+	/**
+	 * Converts a WebSite node into a jf2 card.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array|mixed $website WebSite node.
+	 * @return array|false Card with '_type' => 'website', or false.
+	 */
 	public static function site_to_hcard( $website ) {
 		if ( 'site' !== self::get_type( $website ) ) {
 			return false;
@@ -414,6 +549,15 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		return array_filter( $publication );
 	}
 
+	/**
+	 * Converts an Organization node into a jf2 card.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array|mixed $organization Organization, NewsMediaOrganization, NGO or
+	 *                                   MusicGroup node.
+	 * @return array|false Card with logo as photo, members and address, or false.
+	 */
 	public static function organization_to_hcard( $organization ) {
 		if ( 'org' !== self::get_type( $organization ) ) {
 			return false;
@@ -455,14 +599,39 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		return array_filter( $publication );
 	}
 
+	/**
+	 * Checks whether a value is a typed JSON-LD node.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param mixed $jsonld Value to check.
+	 * @return bool True if it is an array with an @type.
+	 */
 	public static function is_jsonld( $jsonld ) {
 		return ( is_array( $jsonld ) && array_key_exists( '@type', $jsonld ) );
 	}
 
+	/**
+	 * Checks whether a value is a JSON-LD document with an @graph.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param mixed $jsonld Value to check.
+	 * @return bool True if it is an array with an @graph.
+	 */
 	public static function is_jsonld_graph( $jsonld ) {
 		return ( is_array( $jsonld ) && array_key_exists( '@graph', $jsonld ) );
 	}
 
+	/**
+	 * Checks whether a JSON-LD node has one of the given types.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param mixed           $jsonld Node to check. Its @type may be a string or a list.
+	 * @param string|string[] $type   Type or types to match.
+	 * @return bool True if any of the node's types matches.
+	 */
 	public static function is_jsonld_type( $jsonld, $type ) {
 		if ( ! self::is_jsonld( $jsonld ) ) {
 			return false;
@@ -476,6 +645,15 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		return ( 0 < count( array_intersect( $types, $type ) ) );
 	}
 
+	/**
+	 * Maps a JSON-LD node's schema.org type to the plugin's type name.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param mixed $jsonld Node to check.
+	 * @return string|false One of entry, org, person, site, event, image, audio, video,
+	 *                      music, media, place or address, or false.
+	 */
 	public static function get_type( $jsonld ) {
 		if ( self::is_jsonld_type( $jsonld, array( 'WebPage', 'Article', 'NewsArticle', 'BlogPosting' ) ) ) {
 			return 'entry';
@@ -507,6 +685,16 @@ class Parse_This_JSONLD extends Parse_This_Base {
 	}
 
 
+	/**
+	 * Converts an article or web page node into a jf2 entry.
+	 *
+	 * Accepts WebPage, Article, NewsArticle and BlogPosting.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array|mixed $newsarticle Article node.
+	 * @return array|false jf2 entry, or false if the node is not an article.
+	 */
 	public static function article_to_hentry( $newsarticle ) {
 		if ( 'entry' !== self::get_type( $newsarticle ) ) {
 			return false;
