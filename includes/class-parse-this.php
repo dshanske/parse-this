@@ -228,7 +228,7 @@ class Parse_This {
 
 	public static function redirect( $url, $allowlist = true ) {
 		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
-			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'indieweb-post-kinds' ) );
+			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'parse-this' ) );
 		}
 		$url        = pt_secure_rewrite( $url );
 		$domain     = wp_parse_url( $url, PHP_URL_HOST );
@@ -255,7 +255,7 @@ class Parse_This {
 			$url = $this->url;
 		}
 		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
-			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'indieweb-post-kinds' ) );
+			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'parse-this' ) );
 		}
 		$response = pt_remote_get( $url );
 		if ( is_wp_error( $response ) ) {

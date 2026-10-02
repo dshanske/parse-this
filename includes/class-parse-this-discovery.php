@@ -54,7 +54,7 @@ class Parse_This_Discovery {
 	 */
 	public function fetch( $url ) {
 		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
-			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'indieweb-post-kinds' ) );
+			return new WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'parse-this' ) );
 		}
 
 		$links = array();

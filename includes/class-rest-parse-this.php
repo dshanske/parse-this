@@ -16,8 +16,8 @@ class REST_Parse_This {
 		 */
 	public function admin_menu() {
 		add_management_page(
-			__( 'Parse This', 'indieweb-post-kinds' ), // page title
-			__( 'Parse This', 'indieweb-post-kinds' ), // menu title
+			__( 'Parse This', 'parse-this' ), // page title
+			__( 'Parse This', 'parse-this' ), // menu title
 			'manage_options', // access capability
 			'parse_this',
 			array( $this, 'debug' )
@@ -32,7 +32,7 @@ class REST_Parse_This {
 	public static function debug() {
 		?>
 				<div class="wrap">
-						<h1> <?php esc_html_e( 'Parse This Debugger', 'indieweb-post-kinds' ); ?> </h1>
+						<h1> <?php esc_html_e( 'Parse This Debugger', 'parse-this' ); ?> </h1>
 						<p> <?php esc_html_e( 'Test the Parse Tools Debugger. You can report sites to the developer for possibly improvement in future.', 'parse-this' ); ?>
 							<a href="https://github.com/dshanske/parse-this/issues"><?php esc_html_e( 'Open an Issue', 'parse-this' ); ?></a>
 						</p>
@@ -47,13 +47,13 @@ class REST_Parse_This {
 						<hr />
 			<form method="get" action="<?php echo esc_url( rest_url( '/parse-this/1.0/parse/' ) ); ?> ">
 				<p>
-					<label for="url"><?php esc_html_e( 'URL', 'indieweb-post-kinds' ); ?></label><input type="url" class="widefat" name="url" id="url" />
+					<label for="url"><?php esc_html_e( 'URL', 'parse-this' ); ?></label><input type="url" class="widefat" name="url" id="url" />
 				</p>
 				<table class="form-table" role="presentation">
 					<tbody>
 					<tr>
 						<th scope="row">
-							<label for="mf2"><?php esc_html_e( 'MF2', 'indieweb-post-kinds' ); ?></label>
+							<label for="mf2"><?php esc_html_e( 'MF2', 'parse-this' ); ?></label>
 						</th>
 						<td>
 							<input type="checkbox" name="mf2" id="mf2" />
@@ -61,7 +61,7 @@ class REST_Parse_This {
 					</tr>
 					<tr>
 						<th scope="row">
-							<label for="discovery"><?php esc_html_e( 'Feed Discovery', 'indieweb-post-kinds' ); ?></label>
+							<label for="discovery"><?php esc_html_e( 'Feed Discovery', 'parse-this' ); ?></label>
 						</th>
 						<td>
 							<input type="checkbox" name="discovery" id="discovery" />
@@ -69,7 +69,7 @@ class REST_Parse_This {
 					</tr>
 					<tr>
 						<th scope="row">
-							<label for="references"><?php esc_html_e( 'References', 'indieweb-post-kinds' ); ?></label>
+							<label for="references"><?php esc_html_e( 'References', 'parse-this' ); ?></label>
 						</th>
 						<td>
 							<input type="checkbox" name="references" id="references" checked />
@@ -77,7 +77,7 @@ class REST_Parse_This {
 					</tr>
 					<tr>
 						<th scope="row">
-							<label for="location"><?php esc_html_e( 'Clean up Location', 'indieweb-post-kinds' ); ?></label>
+							<label for="location"><?php esc_html_e( 'Clean up Location', 'parse-this' ); ?></label>
 						</th>
 						<td>
 							<input type="checkbox" name="location" id="location" />
@@ -85,18 +85,18 @@ class REST_Parse_This {
 					</tr>
 					<tr>
 						<th scope="row">
-							<label for="return"><?php esc_html_e( 'Return Type', 'indieweb-post-kinds' ); ?></label>
+							<label for="return"><?php esc_html_e( 'Return Type', 'parse-this' ); ?></label>
 						</th>
 						<td>
 							<select name="return" id="return">
-								<option value="single"><?php esc_html_e( 'Single', 'indieweb-post-kinds' ); ?></option>
-								<option value="feed"><?php esc_html_e( 'Feed', 'indieweb-post-kinds' ); ?></option>
+								<option value="single"><?php esc_html_e( 'Single', 'parse-this' ); ?></option>
+								<option value="feed"><?php esc_html_e( 'Feed', 'parse-this' ); ?></option>
 							</select>
 						</td>
 					</tr>
 					<tr>
 						<th scope="row">
-							<label for="follow"><?php esc_html_e( 'Follow Author Links', 'indieweb-post-kinds' ); ?></label>
+							<label for="follow"><?php esc_html_e( 'Follow Author Links', 'parse-this' ); ?></label>
 						</th>
 						<td>
 							<input type="checkbox" name="follow" id="follow" />
@@ -105,7 +105,7 @@ class REST_Parse_This {
 					</tbody>
 				</table>
 			<?php wp_nonce_field( 'wp_rest' ); ?>
-			<?php submit_button( __( 'Parse', 'indieweb-post-kinds' ) ); ?>
+			<?php submit_button( __( 'Parse', 'parse-this' ) ); ?>
 						</form>
 				</div>
 				<?php
