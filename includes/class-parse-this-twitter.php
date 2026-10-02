@@ -12,15 +12,8 @@ class Parse_This_Twitter extends Parse_This_Base {
 			return array();
 		}
 
-		$args     = array(
-			'timeout'             => 15,
-			'limit_response_size' => 1048576,
-			'redirection'         => 5,
-			// Use an explicit user-agent for Parse This
-			'user-agent'          => 'Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:57.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36 Parse This/WP',
-		);
 		$url      = add_query_arg( 'url', $url, 'https://publish.twitter.com/oembed' );
-		$response = wp_safe_remote_get( $url, $args );
+		$response = pt_remote_get( $url );
 		if ( is_wp_error( $response ) ) {
 			return array();
 		}

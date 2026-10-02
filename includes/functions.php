@@ -444,6 +444,45 @@ if ( ! function_exists( 'pt_load_domdocument' ) ) {
 		return $doc;
 	}
 }
+if ( ! function_exists( 'pt_remote_get' ) ) {
+	/**
+	 * Retrieves a remote URL, retrying once with a browser user agent if the site rejects the request.
+	 *
+	 * @param string $url         URL to retrieve.
+	 * @param array  $args        Optional. Arguments passed to wp_safe_remote_get().
+	 * @param array  $retry_codes Optional. Response codes that trigger the retry.
+	 * @return array|WP_Error The response, or WP_Error on failure.
+	 */
+	function pt_remote_get( $url, $args = array(), $retry_codes = array( 403, 415 ) ) {
+		$args = wp_parse_args(
+			$args,
+			array(
+				'timeout'             => 15,
+				'limit_response_size' => 1048576,
+				'redirection'         => 5,
+			)
+		);
+
+		$response = wp_safe_remote_get( $url, $args );
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+		if ( ! in_array( (int) wp_remote_retrieve_response_code( $response ), $retry_codes, true ) ) {
+			return $response;
+		}
+
+		$args['user-agent'] = 'Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:57.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36 Parse This/WP';
+		$response           = wp_safe_remote_get( $url, $args );
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+		if ( in_array( (int) wp_remote_retrieve_response_code( $response ), $retry_codes, true ) ) {
+			return new WP_Error( 'source_error', 'Unable to Retrieve' );
+		}
+		return $response;
+	}
+}
+
 if ( ! function_exists( 'pt_secure_rewrite' ) ) {
 	function pt_secure_rewrite( $url ) {
 		$host   = wp_parse_url( $url, PHP_URL_HOST );
