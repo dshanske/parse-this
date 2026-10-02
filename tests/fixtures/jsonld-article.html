@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Breaking News - Example Daily</title>
+<script type="application/ld+json">
+{
+	"@context": "https://schema.org",
+	"@graph": [
+		{
+			"@type": ["Article", "NewsArticle"],
+			"headline": "Breaking News Headline",
+			"description": "A short summary of the news.",
+			"datePublished": "2026-08-15T09:30:00+00:00",
+			"dateModified": "2026-08-15T12:00:00+00:00",
+			"keywords": "news, testing , parse this",
+			"image": { "@type": "ImageObject", "url": "https://example.com/news.jpg" },
+			"author": [
+				{ "@type": "Person", "name": "John Reporter", "url": "https://example.com/john/" },
+				{ "@type": "Organization", "name": "Example Daily Staff" }
+			],
+			"publisher": { "@type": "Organization", "name": "Example Daily", "logo": { "@type": "ImageObject", "url": "https://example.com/logo.png" } },
+			"video": "https://example.com/news.mp4",
+			"articleBody": "<p>The full article body.</p>"
+		},
+		{ "@type": "WebSite", "name": "Example Daily", "url": "https://example.com/" }
+	]
+}
+</script>
+</head>
+<body><p>Article</p></body>
+</html>
