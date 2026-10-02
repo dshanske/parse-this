@@ -1,9 +1,29 @@
 <?php
+/**
+ * Parse_This_Discovery class.
+ *
+ * @package Parse_This
+ */
 
 /**
- * Parse This Discovery class.
+ * Discovers the feeds a URL offers.
+ *
+ * Finds rel=alternate and rel=feed links, the WordPress REST API root, the
+ * page itself as an h-feed, YouTube channel feeds, and direct RSS, Atom and
+ * JSON Feed URLs. Used by the REST endpoint's discovery option.
+ *
+ * @since 1.0.0
  */
 class Parse_This_Discovery {
+	/**
+	 * Maps a feed MIME type to the plugin's feed type name.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $type MIME type from a link's type attribute.
+	 * @return string One of 'jsonfeed', 'json', 'rss', 'atom', 'jf2feed',
+	 *                'microformats', or an empty string if the type is not a feed.
+	 */
 	private function get_feed_type( $type ) {
 		switch ( $type ) {
 			case 'application/feed+json':
@@ -25,10 +45,12 @@ class Parse_This_Discovery {
 	}
 
 	/**
-	 * Returns a list of supported content types
+	 * Checks whether a content type is one discovery knows how to handle.
 	 *
-	 * @param string $content_type
-	 * @return boolean if supported
+	 * @since 1.0.0
+	 *
+	 * @param string $content_type MIME type, without parameters.
+	 * @return bool True if supported.
 	 */
 	public function supported_content( $content_type ) {
 		$types = array(
@@ -47,10 +69,18 @@ class Parse_This_Discovery {
 
 
 	/**
-	 * Downloads the $url and returns the feeds it finds
+	 * Downloads a URL and returns the feeds it finds.
+	 *
+	 * Results are sorted by preference: jf2feed, microformats, jsonfeed,
+	 * wordpress, atom, rss, then anything else.
+	 *
+	 * @since 1.0.0
 	 *
 	 * @param string $url URL to scan.
-	 * @return WP_Error|boolean WP_Error if invalid and true if successful
+	 * @return array|WP_Error Array with a 'results' key listing the feeds found (each
+	 *                        with url, type, _feed_type and, where known, name and
+	 *                        author), or WP_Error if the URL is invalid or cannot
+	 *                        be fetched.
 	 */
 	public function fetch( $url ) {
 		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
@@ -87,7 +117,7 @@ class Parse_This_Discovery {
 						);
 			}
 		}
-		// Strip any character set off the content type
+		// Strip any character set off the content type.
 		$ct = explode( ';', $content_type );
 		if ( is_array( $ct ) ) {
 			$content_type = array_shift( $ct );
@@ -95,7 +125,7 @@ class Parse_This_Discovery {
 		$content_type = trim( $content_type );
 
 		$content = wp_remote_retrieve_body( $response );
-		// Find Youtube RSS Feeds
+		// Find Youtube RSS Feeds.
 		if ( in_array( wp_parse_url( $url, PHP_URL_HOST ), array( 'www.youtube.com', 'm.youtube.com', 'youtube.com' ), true ) ) {
 			$links[] = array(
 				'url'        => self::youtube_rss( $url ),
@@ -104,7 +134,7 @@ class Parse_This_Discovery {
 				'name'       => 'YouTube Feed',
 			);
 		}
-		// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway
+		// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway.
 		if ( ( in_array( $content_type, array( 'application/rss+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/xml' ), true ) ) ) {
 			$content = Parse_This::fetch_feed( $url );
 			if ( is_wp_error( $content ) ) {
@@ -176,7 +206,7 @@ class Parse_This_Discovery {
 
 				// If an mf2 feed was found, do not check to see if this page is also one.
 				if ( ! $mf2 ) {
-					// Check to see if the current page is an h-feed
+					// Check to see if the current page is an h-feed.
 					$feeds = Parse_This_MF2::find_hfeed( $doc, $url );
 					foreach ( $feeds as $key => $feed ) {
 						if ( ! Parse_This_MF2::is_microformat( $feed ) ) {
@@ -220,7 +250,7 @@ class Parse_This_Discovery {
 				$links = array_merge( $wprest, $links );
 			}
 
-			// Sort feeds by priority
+			// Sort feeds by priority.
 			$rank = array(
 				'jf2feed'      => 0,
 				'microformats' => 1,
@@ -250,12 +280,21 @@ class Parse_This_Discovery {
 	}
 
 
+	/**
+	 * Builds the RSS feed URL for a YouTube channel, user or playlist page.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $url YouTube page URL.
+	 * @return string|null The feed URL, or null if $url is not a channel, user or
+	 *                     playlist URL.
+	 */
 	private static function youtube_rss( $url ) {
 		$youtube_url_base = 'https://www.youtube.com/feeds/videos.xml';
 		$preg_entities    = array(
-			'channel_id'  => '\/channel\/(([^\/])+?)$', // match YouTube channel ID from url
-			'user'        => '\/user\/(([^\/])+?)$', // match YouTube user from url
-			'playlist_id' => '\/playlist\?list=(([^\/])+?)$',  // match YouTube playlist ID from url
+			'channel_id'  => '\/channel\/(([^\/])+?)$', // match YouTube channel ID from url.
+			'user'        => '\/user\/(([^\/])+?)$', // match YouTube user from url.
+			'playlist_id' => '\/playlist\?list=(([^\/])+?)$',  // match YouTube playlist ID from url.
 		);
 
 		foreach ( $preg_entities as $key => $preg_entity ) {

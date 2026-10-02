@@ -1,11 +1,29 @@
 <?php
 /**
- * Parse This Twitter class.
+ * Parse_This_Twitter class.
+ *
+ * @package Parse_This
+ */
+
+/**
+ * Builds jf2 for individual tweets from Twitter's public oEmbed endpoint.
+ *
+ * @since 1.0.0
  */
 class Parse_This_Twitter extends Parse_This_Base {
 	/**
+	 * Parses a tweet URL into jf2 using publish.twitter.com/oembed.
 	 *
-	 * @access public
+	 * Only status URLs are handled. Hashtags become categories, mentioned
+	 * accounts become category URLs, and the tweet's own permalink text is used
+	 * as the published date.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $url  URL of the tweet.
+	 * @param array  $args Parse arguments (see Parse_This::parse()). Unused.
+	 * @return array jf2 properties for the tweet, or an empty array if $url is
+	 *               not a status URL or the oEmbed request fails.
 	 */
 	public static function parse( $url, $args ) {
 		if ( false === strpos( $url, 'status' ) ) {

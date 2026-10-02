@@ -1,16 +1,40 @@
 <?php
+/**
+ * Parse_This_OPML class.
+ *
+ * @package Parse_This
+ */
 
+/**
+ * Fetches and converts OPML subscription lists.
+ *
+ * Not currently used anywhere in the plugin.
+ *
+ * @since 1.0.0
+ */
 class Parse_This_OPML {
+	/**
+	 * Returns an array value if the key is set.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string|int $key   Key to look up.
+	 * @param array      $array Array to look in.
+	 * @return mixed The value, or null if the key is not set.
+	 */
 	private static function ifset( $key, $array ) {
 		return isset( $array[ $key ] ) ? $array[ $key ] : null;
 	}
 
 
 	/**
-	 * Downloads the $url and returns the feeds it finds
+	 * Downloads an OPML document.
 	 *
-	 * @param string $url URL to scan.
-	 * @return WP_Error|boolean WP_Error if invalid and true if successful
+	 * @since 1.0.0
+	 *
+	 * @param string $url URL of the OPML file.
+	 * @return string|WP_Error The response body, or WP_Error if the URL is invalid
+	 *                         or the request fails.
 	 */
 	public function fetch( $url ) {
 		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
@@ -23,7 +47,7 @@ class Parse_This_OPML {
 		}
 		$content_type = wp_remote_retrieve_header( $response, 'content-type' );
 
-		// Strip any character set off the content type
+		// Strip any character set off the content type.
 		$ct = explode( ';', $content_type );
 		if ( is_array( $ct ) ) {
 			$content_type = array_shift( $ct );
@@ -34,6 +58,15 @@ class Parse_This_OPML {
 		return $content;
 	}
 
+	/**
+	 * Converts OPML into a list of outline groups and their feeds.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $content OPML XML.
+	 * @return array[] List of groups, each with 'title' and 'children', where each
+	 *                 child has 'name' and 'url' (as SimpleXMLElement values).
+	 */
 	public function convert( $content ) {
 		$xml    = simplexml_load_string( $content );
 		$xml    = $xml->body;
