@@ -132,7 +132,10 @@ class Parse_This_RESTAPI {
 	public static function parse( $content, $rest_url, $args ) {
 		if ( is_wp_error( $content ) ) {
 			return $content;
-		} 
+		}
+		if ( ! is_array( $content ) ) {
+			return false;
+		}
 		if ( array_key_exists( 'id', $content ) ) {
 			return self::get_post( $content, $rest_url );
 		// This is the REST URL itself if it has this.
@@ -164,6 +167,9 @@ class Parse_This_RESTAPI {
 				return $return;
 			} else {
 				$content = self::fetch( $rest_url, '/wp/v2/posts?_embed=1' );
+				if ( is_wp_error( $content ) || ! is_array( $content ) ) {
+					return $content;
+				}
 
 				$content = self::posts_to_feed( $content, $rest_url );
 				return $content;
@@ -173,7 +179,7 @@ class Parse_This_RESTAPI {
 	}
 
 	public static function get_author( $item ) {
-		if ( ! array_key_exists( '_embedded', $item ) ) {
+		if ( ! isset( $item['_embedded']['author'][0] ) || ! is_array( $item['_embedded']['author'][0] ) ) {
 			return null;
 		}
 		$author      = $item['_embedded']['author'][0];
@@ -216,6 +222,9 @@ class Parse_This_RESTAPI {
 
 	public static function site_data( $rest_url ) {
 		$fetch = self::fetch( $rest_url, '', true );
+		if ( is_wp_error( $fetch ) || ! is_array( $fetch ) ) {
+			return array();
+		}
 		return wp_array_slice_assoc( $fetch, array( 'name', 'url', 'timezone_string', 'gmt_offset', 'description' ) );
 	}
 
@@ -238,7 +247,6 @@ class Parse_This_RESTAPI {
 
 	public static function get_post( $item, $rest_url ) {
 		$site_data = self::site_data( $rest_url );
-		$author    = self::get_rest_path( $rest_url, $item['_links']['author'][0]['href'] );
 		$timezone  = self::timezone( $site_data );
 		$newitem   = array_filter(
 			array(
@@ -283,7 +291,7 @@ class Parse_This_RESTAPI {
 				'_feed_type' => 'wordpress',
 			)
 		);
-		$items             = $input['items'];
+		$items             = ( isset( $input['items'] ) && is_array( $input['items'] ) ) ? $input['items'] : array();
 		$data              = self::site_data( $url );
 		$timezone          = self::timezone( $data );
 		$return['items']   = array();
