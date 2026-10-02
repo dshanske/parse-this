@@ -30,4 +30,7 @@
 	</rule>
 
 	<rule ref="WordPress-Extra" />
+
+	<!-- Require complete docblocks (WordPress PHP Documentation Standards). -->
+	<rule ref="WordPress-Docs" />
 </ruleset>
