@@ -391,7 +391,6 @@ class Parse_This_JSONLD extends Parse_This_Base {
 				'photo'     => self::image_to_photo( ifset( $person['image'] ) ),
 				'url'       => ifset( $person['url'] ),
 				'me'        => ifset( $person['sameAs'] ),
-				'email'     => ifset( $person['email'] ),
 				'dt-bday'   => ifset( $person['birthDate'] ),
 				'job-title' => ifset( $person['jobTitle'] ),
 				'location'  => self::place_to_hcard( ifset( $person['location'] ) ),
