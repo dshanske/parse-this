@@ -363,7 +363,12 @@ class Parse_This_JSONLD extends Parse_This_Base {
 		if ( ! self::is_jsonld( $person ) ) {
 			return false;
 		}
-		if ( ! 'person' === self::get_type( $person ) ) {
+		$type = self::get_type( $person );
+		// Organizations are commonly listed as authors.
+		if ( 'org' === $type ) {
+			return self::organization_to_hcard( $person );
+		}
+		if ( 'person' !== $type ) {
 			return false;
 		}
 		if ( isset( $person['name'] ) && is_array( $person['name'] ) ) {
