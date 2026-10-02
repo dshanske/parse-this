@@ -69,7 +69,7 @@ class Parse_This_HTML extends Parse_This_Base {
 			foreach ( $xpath->query( '//video' ) as $video ) {
 				$src = $video->getAttribute( 'src' );
 				if ( ! empty( $src ) ) {
-					$videos = $src;
+					$videos[] = $src;
 				}
 			}
 			$jf2['video'] = array_unique( $videos );
