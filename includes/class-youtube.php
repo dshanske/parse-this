@@ -51,7 +51,7 @@ class YouTube extends Base {
 		$details       = $decode['videoDetails'];
 		$microformat   = isset( $decode['microformat']['playerMicroformatRenderer'] ) ? $decode['microformat']['playerMicroformatRenderer'] : array();
 		$jf2           = array(
-			'uid'       => ifset( $details['videoID'] ),
+			'uid'       => ifset( $details['videoId'] ),
 			'name'      => ifset( $details['title'] ),
 			'duration'  => seconds_to_iso8601( ifset( $details['lengthSeconds'] ) ),
 			'category'  => ifset( $details['keywords'] ),

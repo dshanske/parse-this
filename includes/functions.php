@@ -312,7 +312,7 @@ if ( ! function_exists( __NAMESPACE__ . '\\url_to_user' ) ) {
 			if ( class_exists( 'Indieweb_Plugin' ) && ( get_option( 'iw_single_author' ) || ! is_multi_author() ) ) {
 				return get_user_by( 'id', get_option( 'iw_default_author' ) );
 			}
-			$users = get_users( array( 'who' => 'authors' ) );
+			$users = get_users( array( 'capability' => array( 'edit_posts' ) ) );
 			if ( 1 === count( $users ) ) {
 				return $users[0];
 			}
@@ -571,8 +571,13 @@ if ( ! function_exists( __NAMESPACE__ . '\\pt_load_domdocument' ) ) {
 		} else {
 			$doc = new \DOMDocument();
 			libxml_use_internal_errors( true );
-			if ( function_exists( __NAMESPACE__ . '\\mb_convert_encoding' ) ) {
-				$content = mb_convert_encoding( $content, 'HTML-ENTITIES', mb_detect_encoding( $content ) );
+			if ( function_exists( 'mb_encode_numericentity' ) ) {
+				// DOMDocument assumes ISO-8859-1, so convert to UTF-8 and encode non-ASCII characters as entities.
+				$encoding = mb_detect_encoding( $content, array( 'UTF-8', 'ISO-8859-1' ), true );
+				if ( $encoding && 'UTF-8' !== $encoding ) {
+					$content = mb_convert_encoding( $content, 'UTF-8', $encoding );
+				}
+				$content = mb_encode_numericentity( $content, array( 0x80, 0x10FFFF, 0, 0x1FFFFF ), 'UTF-8' );
 			}
 			$doc->loadHTML( $content );
 			libxml_use_internal_errors( false );
@@ -651,6 +656,7 @@ if ( ! function_exists( __NAMESPACE__ . '\\pt_secure_rewrite' ) ) {
 			'lwn.net',
 			'tumblr.com',
 			'twitter.com',
+			'x.com',
 			'vimeo.com',
 			'wikipedia.org',
 			'wordpress.com',
