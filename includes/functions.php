@@ -510,23 +510,23 @@ if ( ! function_exists( __NAMESPACE__ . '\\post_type_discovery' ) ) {
 					return $key;
 				}
 			}
-			if ( isset( $jf2['name'] ) && ! empty( $jf2['name'] ) ) {
-				$jf2['name'] = $jf2['name'];
-				$content     = $jf2['content'] ?? null;
-				if ( ! $content ) {
-					$content = $jf2['summary'] ?? null;
+			// https://www.w3.org/TR/post-type-discovery/#algorithm: a name that is not
+			// a prefix of the content (or summary, or nothing) makes an article.
+			$name = ( isset( $jf2['name'] ) && is_string( $jf2['name'] ) ) ? trim( preg_replace( '/\s+/u', ' ', $jf2['name'] ) ) : '';
+			if ( '' !== $name ) {
+				$content = $jf2['content'] ?? null;
+				if ( is_array( $content ) ) {
+					$content = $content['text'] ?? ( $content['value'] ?? null );
 				}
-				if ( is_array( $content ) && array_key_exists( 'text', $content ) ) {
-					$content = $content['text'];
+				if ( ! is_string( $content ) || '' === trim( $content ) ) {
+					$content = $jf2['summary'] ?? '';
 				}
-				if ( is_string( $content ) ) {
-					$content = trim( $content );
-					if ( 0 !== strpos( $content, $jf2['name'] ) ) {
-						return 'article';
-					}
+				$content = is_string( $content ) ? trim( preg_replace( '/\s+/u', ' ', $content ) ) : '';
+				if ( 0 !== strpos( $content, $name ) ) {
+					return 'article';
 				}
 			}
-				return 'note';
+			return 'note';
 		}
 		return '';
 	}
