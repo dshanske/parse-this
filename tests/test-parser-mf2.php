@@ -58,14 +58,13 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 		$this->assertSame( 'reply', $jf2['post-type'] );
 		$this->assertSame( array( 'https://example.org/original-post/' ), $jf2['in-reply-to'] );
 		$this->assertSame( 'The original post', $jf2['refs']['https://example.org/original-post/']['name'] );
+		$this->assertSame( array( 'testing', 'indieweb' ), $jf2['category'] );
 	}
 
 	/**
 	 * Every value of a multi-valued property is kept.
 	 */
 	public function test_multiple_categories() {
-		$this->markTestSkipped( 'Known bug C-40 (issue 122): only the last value of a property is kept.' );
-
 		$jf2 = ParseThis\MF2::parse(
 			'<div class="h-entry"><a class="u-url" href="https://example.com/1/">1</a><span class="p-category">a</span><span class="p-category">b</span></div>',
 			'https://example.com/1/',

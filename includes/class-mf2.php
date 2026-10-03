@@ -178,8 +178,9 @@ class MF2 extends MF2_Utils {
 	/**
 	 * Returns the values of several properties.
 	 *
-	 * Nested microformats are converted to jf2 with parse_item(). Only the last
-	 * value of each property is kept.
+	 * Nested microformats are converted to jf2 with parse_item(). A property
+	 * with one value gets that value; one with several gets a list of them,
+	 * as jf2 requires.
 	 *
 	 * @since 1.0.0
 	 *
@@ -198,12 +199,15 @@ class MF2 extends MF2_Utils {
 		$data = array();
 		foreach ( $properties as $p ) {
 			if ( array_key_exists( $p, $mf['properties'] ) ) {
+				$values = array();
 				foreach ( $mf['properties'][ $p ] as $v ) {
 					if ( self::is_microformat( $v ) ) {
 						$v = self::parse_item( $v, $mf, $args );
 					}
-					$data[ $p ] = $v;
+					$values[] = $v;
 				}
+				// Per jf2, a single value is not wrapped in an array.
+				$data[ $p ] = ( 1 === count( $values ) ) ? $values[0] : $values;
 			}
 		}
 		return $data;
