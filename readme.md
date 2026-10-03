@@ -120,6 +120,7 @@ Yes. It is tested with ClassicPress 2.7 on PHP 7.4 to 8.3.
 * Move all classes and functions into the `ParseThis` namespace, with the `Parse_This_` prefix dropped from class names. The old names used by Post Kinds and Yarns remain as deprecated aliases; see "Upgrading from 1.x".
 * Add `ParseThis\pt_remote_get()`, used for all remote requests.
 * Remove the Instagram parser. Instagram stopped embedding the data it read; Instagram pages are now parsed from their Open Graph tags like any other page.
+* Remove the `ifset()` helper in favour of PHP's `??` operator. It was only needed for PHP 5.6; it also added missing keys to the arrays it read.
 * Microformats always win: other sources (JSON-LD, meta tags, the REST API) only fill in missing properties, and likes, bookmarks and other responses keep their microformats even without content. Add the `require_content` parse argument.
 * Microformats: keep every value of a property (for example several categories), parse nested citations without warnings, keep the type of h-review, h-product, h-resume, h-listing, h-recipe, h-item and h-leg, parse unrecognized h-* types, return a page's single top-level item (an h-feed with its URL) directly, and keep feed item author URLs as strings.
 * Give JSON Feed items and authors, and posts read through the WordPress REST API, their jf2 types. Add the `parse_this_rest_api_jf2_type` filter.
