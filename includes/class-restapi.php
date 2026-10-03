@@ -428,6 +428,32 @@ class RESTAPI {
 	}
 
 	/**
+	 * Returns the category and tag names embedded in a REST API post.
+	 *
+	 * Requires the post to have been requested with _embed, which every
+	 * request from this class is.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $item REST API post object.
+	 * @return string[] Category and tag names, without "Uncategorized".
+	 */
+	public static function get_categories( $item ) {
+		$names = array();
+		if ( empty( $item['_embedded']['wp:term'] ) || ! is_array( $item['_embedded']['wp:term'] ) ) {
+			return $names;
+		}
+		foreach ( $item['_embedded']['wp:term'] as $terms ) {
+			foreach ( (array) $terms as $term ) {
+				if ( isset( $term['taxonomy'], $term['name'] ) && in_array( $term['taxonomy'], array( 'category', 'post_tag' ), true ) && 'Uncategorized' !== $term['name'] ) {
+					$names[] = $term['name'];
+				}
+			}
+		}
+		return array_values( array_unique( $names ) );
+	}
+
+	/**
 	 * Converts a single REST API post into a jf2 entry.
 	 *
 	 * @since 1.0.0
@@ -460,19 +486,9 @@ class RESTAPI {
 		);
 
 		if ( array_key_exists( '_embedded', $item ) ) {
-			if ( array_key_exists( 'featured_media', $item ) && 0 !== $item['featured_media'] ) {
-				$newitem['featured'] = $item['_embedded']['wp:featuredmedia'][0]['source_url'];
-			}
-			if ( array_key_exists( 'tags', $item ) && ! empty( $item['tags'] ) ) {
-				foreach ( $item['_links']['wp:term'] as $term ) {
-					if ( 'post_tag' === $term['taxonomy'] ) {
-						$tag_path            = self::get_rest_path( $rest_url, $term['href'] );
-						$tags                = self::fetch( $rest_url, $tag_path );
-						$newitem['category'] = wp_list_pluck( $tags['items'], 'name' );
-					}
-				}
-			}
-			$newitem['author'] = self::get_author( $item );
+			$newitem['featured'] = $item['_embedded']['wp:featuredmedia'][0]['source_url'] ?? null;
+			$newitem['category'] = self::get_categories( $item );
+			$newitem['author']   = self::get_author( $item );
 		}
 		return array_filter( $newitem );
 	}
@@ -523,20 +539,8 @@ class RESTAPI {
 				)
 			);
 			if ( array_key_exists( '_embedded', $item ) ) {
-				if ( array_key_exists( 'wp:term', $item['_embedded'] ) ) {
-					$category = array();
-					foreach ( $item['_embedded']['wp:term'] as $terms ) {
-						foreach ( $terms as $term ) {
-							if ( in_array( $term['taxonomy'], array( 'category', 'post_tags' ), true ) && 'Uncategorized' !== $term['name'] ) {
-								$category[] = $term['name'];
-							}
-						}
-					}
-					$newitem['category'] = $category;
-				}
-				if ( array_key_exists( 'wp:featuredmedia', $item['_embedded'] ) ) {
-					$newitem['featured'] = $item['_embedded']['wp:featuredmedia'][0]['source_url'];
-				}
+				$newitem['category'] = self::get_categories( $item );
+				$newitem['featured'] = $item['_embedded']['wp:featuredmedia'][0]['source_url'] ?? null;
 			}
 			if ( WP_DEBUG ) {
 				$newitem['_rest'] = $item;

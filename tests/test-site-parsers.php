@@ -165,4 +165,34 @@ class Site_Parsers_Test extends Parse_This_TestCase {
 		$this->assertSame( 'https://i.ytimg.com/vi/abc123XYZ00/maxresdefault.jpg', $jf2['featured'] );
 		$this->assertSame( array(), ParseThis\YouTube::parse( '<html>no player</html>', 'https://www.youtube.com/watch?v=x', array() ) ); // C-26.
 	}
+
+	/**
+	 * Categories and tags come from the embedded terms, without extra requests (P-3).
+	 */
+	public function test_rest_post_terms_from_embedded_data() {
+		$this->respond( 'https://example.com/wp-json/?_embed=1', wp_json_encode( array( 'name' => 'Example Site' ) ), 'application/json' );
+		$post = array(
+			'id'        => 5,
+			'link'      => 'https://example.com/hello/',
+			'title'     => array( 'rendered' => 'Hello' ),
+			'tags'      => array( 7 ),
+			'_links'    => array( 'wp:term' => array( array( 'taxonomy' => 'post_tag', 'href' => 'https://example.com/wp-json/wp/v2/tags?post=5' ) ) ),
+			'_embedded' => array(
+				'wp:term' => array(
+					array(
+						array( 'taxonomy' => 'category', 'name' => 'News' ),
+						array( 'taxonomy' => 'category', 'name' => 'Uncategorized' ),
+					),
+					array( array( 'taxonomy' => 'post_tag', 'name' => 'release' ) ),
+				),
+			),
+		);
+
+		$single = ParseThis\RESTAPI::get_post( $post, 'https://example.com/wp-json/' );
+		$feed   = ParseThis\RESTAPI::posts_to_feed( array( 'items' => array( $post ) ), 'https://example.com/wp-json/' );
+
+		$this->assertSame( array( 'News', 'release' ), $single['category'] );
+		$this->assertSame( array( 'News', 'release' ), $feed['items'][0]['category'] );
+		$this->assertNotContains( 'https://example.com/wp-json/wp/v2/tags?post=5&_embed=1', wp_list_pluck( $this->requests, 'url' ) );
+	}
 }
