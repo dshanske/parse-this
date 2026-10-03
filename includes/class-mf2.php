@@ -145,9 +145,9 @@ class MF2 extends MF2_Utils {
 		}
 		// 7. "if there is an author-page URL" ...
 		if ( $authorpage ) {
-			if ( $follow && ! self::urls_match( $authorpage, self::get_plaintext( $mf2, 'url' ) ) ) {
-				// Feed items often share an author, so fetch each author page once per request.
-				$key = normalize_url( $authorpage );
+			// Feed items often share an author, so fetch each author page once per request.
+			$key = normalize_url( $authorpage );
+			if ( $follow && ! self::urls_match( $authorpage, self::get_plaintext( $mf2, 'url' ) ) && ( isset( self::$author_pages[ $key ] ) || Parser::use_request_budget() ) ) {
 				if ( ! isset( self::$author_pages[ $key ] ) ) {
 					$parse = new Parser( $authorpage );
 					$parse->fetch();

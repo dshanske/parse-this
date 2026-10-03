@@ -253,4 +253,22 @@ class Parser_Fallbacks_Test extends Parse_This_TestCase {
 		$this->assertArrayHasKey( '_meta', $jf2 );
 		$this->assertArrayHasKey( '_jsonld', $jf2 );
 	}
+
+	/**
+	 * Short-link expansion counts against the per-parse request budget (S-5).
+	 */
+	public function test_short_links_respect_request_budget() {
+		foreach ( array( 'a', 'b', 'c' ) as $id ) {
+			$this->respond( 'https://bit.ly/' . $id, '', 'text/html', array( 'location' => 'https://example.org/' . $id . '/' ), 301 );
+		}
+		$limit = function () {
+			return 1;
+		};
+		add_filter( 'parse_this_max_requests', $limit );
+		$jf2 = $this->parse_html( '<html><head><meta property="og:type" content="article"><meta property="og:description" content="https://bit.ly/a https://bit.ly/b https://bit.ly/c"></head><body></body></html>' );
+		remove_filter( 'parse_this_max_requests', $limit );
+
+		$this->assertSame( 'https://example.org/a/ https://bit.ly/b https://bit.ly/c', $jf2['summary'] );
+		$this->assertCount( 1, $this->requests );
+	}
 }

@@ -29,6 +29,23 @@ defined( 'ABSPATH' ) || exit;
  */
 class Parser {
 	/**
+	 * Further requests the current top-level parse may still make, or null
+	 * when no parse() is running.
+	 *
+	 * @since 2.0.0
+	 * @var int|null
+	 */
+	private static $request_budget = null;
+
+	/**
+	 * How many parse() calls are running, so nested parses share the budget.
+	 *
+	 * @since 2.0.0
+	 * @var int
+	 */
+	private static $depth = 0;
+
+	/**
 	 * URL being parsed.
 	 *
 	 * @since 1.0.0
@@ -321,6 +338,26 @@ class Parser {
 	}
 
 	/**
+	 * Uses up one of the further requests the current parse may make.
+	 *
+	 * Outside parse() there is no budget, and every request is allowed.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @return bool Whether the request may be made.
+	 */
+	public static function use_request_budget() {
+		if ( null === self::$request_budget ) {
+			return true;
+		}
+		if ( self::$request_budget <= 0 ) {
+			return false;
+		}
+		--self::$request_budget;
+		return true;
+	}
+
+	/**
 	 * Returns where a URL redirects to, without following the redirect.
 	 *
 	 * Used to expand short links in summaries, where only known link
@@ -353,6 +390,9 @@ class Parser {
 			 */
 			$shorteners = apply_filters( 'parse_this_url_shorteners', array( 'bit.ly', 'buff.ly', 'dlvr.it', 'fb.me', 'goo.gl', 'is.gd', 'lnkd.in', 'ow.ly', 't.co', 'tinyurl.com', 'trib.al', 'youtu.be' ) );
 			if ( ! is_string( $domain ) || ! in_array( strtolower( $domain ), (array) $shorteners, true ) ) {
+				return false;
+			}
+			if ( ! self::use_request_budget() ) {
 				return false;
 			}
 		}
@@ -521,7 +561,30 @@ class Parser {
 		if ( ! in_array( $args['return'], array( 'single', 'feed' ), true ) ) {
 			$args['return'] = 'single';
 		}
+		// Pages decide what else gets fetched (author pages, short links), so one
+		// top-level parse, including the parses nested in it, gets a fixed budget.
+		$outer = 0 === self::$depth;
+		if ( $outer ) {
+			/**
+			 * Filters how many further requests one parse may make.
+			 *
+			 * Counts the author pages fetched with the follow argument and the
+			 * short links expanded in summaries. Once it is used up, authors are
+			 * left as URLs and links are left as they are.
+			 *
+			 * @since 2.0.0
+			 *
+			 * @param int    $limit Maximum number of requests. Default 10.
+			 * @param string $url   URL being parsed.
+			 */
+			self::$request_budget = max( 0, (int) apply_filters( 'parse_this_max_requests', 10, $this->url ) );
+		}
+		++self::$depth;
 		$result = $this->parse_sources( $args );
+		--self::$depth;
+		if ( $outer ) {
+			self::$request_budget = null;
+		}
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
