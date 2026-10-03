@@ -65,8 +65,6 @@ class Parser_Feeds_Test extends Parse_This_TestCase {
 	 * Items without enclosures or dates parse without warnings.
 	 */
 	public function test_item_without_enclosure() {
-		$this->markTestSkipped( 'Known bug C-36 (issue 114): get_enclosures() returns null on newer SimplePie.' );
-
 		$jf2 = ParseThis\RSS::parse( $this->simplepie( '<?xml version="1.0"?><rss version="2.0"><channel><title>T</title><item><title>I</title><link>https://example.com/1</link></item></channel></rss>' ), 'https://example.com/feed' );
 		$this->assertArrayNotHasKey( 'published', $jf2['items'][0] ); // C-24: no invented date.
 	}
