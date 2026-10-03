@@ -192,4 +192,34 @@ class Site_Parsers_Test extends Parse_This_TestCase {
 		$this->assertSame( array( 'News', 'release' ), $feed['items'][0]['category'] );
 		$this->assertNotContains( 'https://example.com/wp-json/wp/v2/tags?post=5&_embed=1', wp_list_pluck( $this->requests, 'url' ) );
 	}
+
+	/**
+	 * REST API dates come from date_gmt, shown in the site's timezone when known.
+	 */
+	public function test_rest_post_dates_from_gmt() {
+		$post = array(
+			'id'           => 5,
+			'link'         => 'https://example.com/hello/',
+			'title'        => array( 'rendered' => 'Hello' ),
+			'date'         => '2026-09-29T10:00:00',
+			'date_gmt'     => '2026-09-29T14:00:00',
+			'modified'     => '2026-09-29T11:00:00',
+			'modified_gmt' => '2026-09-29T15:00:00',
+		);
+
+		// Without site data the instant is still right, in UTC.
+		$jf2 = ParseThis\RESTAPI::get_post( $post, 'https://example.com/wp-json/' );
+		$this->assertSame( '2026-09-29T14:00:00+00:00', $jf2['published'] );
+		$this->assertSame( '2026-09-29T15:00:00+00:00', $jf2['updated'] );
+
+		// With the site's timezone it is shown in local time.
+		$this->respond_site_data( 'https://example.org/wp-json/', array( 'timezone_string' => 'America/New_York' ) );
+		$jf2 = ParseThis\RESTAPI::get_post( $post, 'https://example.org/wp-json/' );
+		$this->assertSame( '2026-09-29T10:00:00-04:00', $jf2['published'] );
+
+		// Without date_gmt, the local date is read in the site's timezone as before.
+		unset( $post['date_gmt'] );
+		$jf2 = ParseThis\RESTAPI::get_post( $post, 'https://example.org/wp-json/' );
+		$this->assertSame( '2026-09-29T10:00:00-04:00', $jf2['published'] );
+	}
 }

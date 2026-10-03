@@ -366,6 +366,37 @@ class RESTAPI {
 	}
 
 	/**
+	 * Returns a REST API post's date in W3C format.
+	 *
+	 * Uses the UTC <field>_gmt value, converted to the site's timezone when it is
+	 * known. Falls back to the site-local <field> value, interpreted in $timezone,
+	 * only if the GMT value is missing.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array             $item     REST API post object.
+	 * @param string            $field    'date' or 'modified'.
+	 * @param DateTimeZone|null $timezone Optional. The site's timezone.
+	 * @return string|null The date, or null if the post has none.
+	 */
+	public static function post_datetime( $item, $field, $timezone = null ) {
+		$gmt = $item[ $field . '_gmt' ] ?? null;
+		if ( is_string( $gmt ) && '' !== $gmt ) {
+			try {
+				$datetime = new \DateTime( $gmt, new \DateTimeZone( 'UTC' ) );
+				if ( $timezone instanceof \DateTimeZone ) {
+					$datetime->setTimezone( $timezone );
+				}
+				return $datetime->format( DATE_W3C );
+			} catch ( \Exception $e ) {
+				// Fall back to the local date below.
+				unset( $e );
+			}
+		}
+		return self::get_datetime( $item[ $field ] ?? null, $timezone );
+	}
+
+	/**
 	 * Returns a site's name, URL, timezone and description from its REST API root.
 	 *
 	 * Only those fields are requested (_fields), rather than the whole embedded
@@ -487,8 +518,8 @@ class RESTAPI {
 					)
 				),
 				'summary'   => self::get_rendered( 'excerpt', $item ),
-				'published' => self::get_datetime( $item['date'] ?? null, $timezone ),
-				'updated'   => self::get_datetime( $item['modified'] ?? null, $timezone ),
+				'published' => self::post_datetime( $item, 'date', $timezone ),
+				'updated'   => self::post_datetime( $item, 'modified', $timezone ),
 				'kind'      => $item['kind'] ?? null,
 			)
 		);
@@ -540,8 +571,8 @@ class RESTAPI {
 						)
 					),
 					'summary'   => self::get_rendered( 'excerpt', $item ),
-					'published' => self::get_datetime( $item['date'] ?? null, $timezone ),
-					'updated'   => self::get_datetime( $item['modified'] ?? null, $timezone ),
+					'published' => self::post_datetime( $item, 'date', $timezone ),
+					'updated'   => self::post_datetime( $item, 'modified', $timezone ),
 					'author'    => self::get_author( $item ),
 					'kind'      => $item['kind'] ?? null,
 				)
