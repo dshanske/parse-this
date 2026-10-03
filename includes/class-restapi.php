@@ -172,7 +172,8 @@ class RESTAPI {
 		}
 
 		$url = self::get_rest_url( $rest_url, $path );
-		$key = 'pt_rest_' . self::base64url_encode( $url );
+		// Transient names are limited to 172 characters, so hash the URL.
+		$key = 'pt_rest_' . md5( $url );
 		if ( $cache ) {
 			$transient = get_transient( $key );
 			if ( false !== $transient ) {
