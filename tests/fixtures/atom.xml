@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+	<title>Example Atom Feed</title>
+	<link href="https://example.com/"/>
+	<updated>2026-09-02T10:00:00Z</updated>
+	<id>https://example.com/atom</id>
+	<author><name>Jane Doe</name><uri>https://example.com/</uri></author>
+	<entry>
+		<title>An Atom Entry</title>
+		<link href="https://example.com/atom/1/"/>
+		<id>https://example.com/atom/1/</id>
+		<updated>2026-09-02T10:00:00Z</updated>
+		<published>2026-09-01T10:00:00Z</published>
+		<content type="html">&lt;p&gt;Atom &lt;em&gt;content&lt;/em&gt;.&lt;/p&gt;</content>
+		<source><title>Original Feed</title><link href="https://example.org/"/><id>https://example.org/feed</id></source>
+		<link rel="enclosure" type="audio/mpeg" href="https://example.com/atom/1.mp3"/>
+	</entry>
+</feed>
