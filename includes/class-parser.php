@@ -7,6 +7,8 @@
 
 namespace ParseThis;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Fetches a URL and converts it into jf2.
  *
@@ -26,6 +28,23 @@ namespace ParseThis;
  * @since 1.0.0
  */
 class Parser {
+	/**
+	 * Further requests the current top-level parse may still make, or null
+	 * when no parse() is running.
+	 *
+	 * @since 2.0.0
+	 * @var int|null
+	 */
+	private static $request_budget = null;
+
+	/**
+	 * How many parse() calls are running, so nested parses share the budget.
+	 *
+	 * @since 2.0.0
+	 * @var int
+	 */
+	private static $depth = 0;
+
 	/**
 	 * URL being parsed.
 	 *
@@ -116,35 +135,17 @@ class Parser {
 	}
 
 	/**
-	 * Sanitizes HTML content for display.
+	 * Returns the tags and attributes allowed in HTML taken from remote documents.
 	 *
-	 * Decodes entities, removes comments and <script> elements, then filters
-	 * the result through wp_kses() with an allow-list of text, media and
-	 * structural tags.
+	 * Used by clean_content() for content, and by sanitize_output() for other
+	 * rich-text (e-*) values.
 	 *
-	 * @since 1.0.0
+	 * @since 2.0.0
 	 *
-	 * @param string $content HTML to clean. Non-strings are returned unchanged.
-	 * @param array  $strip   Optional. Tags to remove from the allow-list, as keys
-	 *                        (for example array( 'blockquote' => array() )).
-	 * @return string|mixed The cleaned HTML.
+	 * @return array Allowed tags and attributes, in the wp_kses() format.
 	 */
-	public static function clean_content( $content, $strip = array() ) {
-		if ( ! is_string( $content ) ) {
-			return $content;
-		}
-		// Decode escaped entities so that they can be stripped.
-		$content     = html_entity_decode( $content, ENT_COMPAT | ENT_HTML401, 'UTF-8' );
-		$content     = preg_replace( '/<!--(.|\s)*?-->/', '', $content );
-		$domdocument = pt_load_domdocument( $content );
-		$scripts     = $domdocument->getElementsByTagName( 'script' );
-		foreach ( $scripts as $item ) {
-			$item->parentNode->removeChild( $item ); // phpcs:ignore
-		}
-
-		$content = $domdocument->saveHTML();
-
-		$allowed = array(
+	public static function allowed_html() {
+		return array(
 			'a'          => array(
 				'href' => array(),
 				'name' => array(),
@@ -212,6 +213,38 @@ class Parser {
 			),
 			'hr'         => array(),
 		);
+	}
+
+	/**
+	 * Sanitizes HTML content for display.
+	 *
+	 * Decodes entities, removes comments and <script> elements, then filters
+	 * the result through wp_kses() with an allow-list of text, media and
+	 * structural tags.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $content HTML to clean. Non-strings are returned unchanged.
+	 * @param array  $strip   Optional. Tags to remove from the allow-list, as keys
+	 *                        (for example array( 'blockquote' => array() )).
+	 * @return string|mixed The cleaned HTML.
+	 */
+	public static function clean_content( $content, $strip = array() ) {
+		if ( ! is_string( $content ) ) {
+			return $content;
+		}
+		// Decode escaped entities so that they can be stripped.
+		$content     = html_entity_decode( $content, ENT_COMPAT | ENT_HTML401, 'UTF-8' );
+		$content     = preg_replace( '/<!--(.|\s)*?-->/', '', $content );
+		$domdocument = pt_load_domdocument( $content );
+		$scripts     = $domdocument->getElementsByTagName( 'script' );
+		foreach ( $scripts as $item ) {
+			$item->parentNode->removeChild( $item ); // phpcs:ignore
+		}
+
+		$content = $domdocument->saveHTML();
+
+		$allowed = self::allowed_html();
 		if ( ! empty( $strip ) ) {
 			$allowed = array_diff_key( $allowed, $strip );
 		}
@@ -238,7 +271,8 @@ class Parser {
 			$this->domain = wp_parse_url( $url, PHP_URL_HOST );
 		}
 		if ( $jf2 ) {
-			$this->jf2 = $source_content;
+			// Finished jf2 from a remote document skips the parsers, which clean HTML.
+			$this->jf2 = self::clean_jf2_html( $source_content );
 		} elseif ( is_string( $this->content ) ) {
 			$this->doc = pt_load_domdocument( $this->content );
 		}
@@ -319,6 +353,26 @@ class Parser {
 	}
 
 	/**
+	 * Uses up one of the further requests the current parse may make.
+	 *
+	 * Outside parse() there is no budget, and every request is allowed.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @return bool Whether the request may be made.
+	 */
+	public static function use_request_budget() {
+		if ( null === self::$request_budget ) {
+			return true;
+		}
+		if ( self::$request_budget <= 0 ) {
+			return false;
+		}
+		--self::$request_budget;
+		return true;
+	}
+
+	/**
 	 * Returns where a URL redirects to, without following the redirect.
 	 *
 	 * Used to expand short links in summaries, where only known link
@@ -351,6 +405,9 @@ class Parser {
 			 */
 			$shorteners = apply_filters( 'parse_this_url_shorteners', array( 'bit.ly', 'buff.ly', 'dlvr.it', 'fb.me', 'goo.gl', 'is.gd', 'lnkd.in', 'ow.ly', 't.co', 'tinyurl.com', 'trib.al', 'youtu.be' ) );
 			if ( ! is_string( $domain ) || ! in_array( strtolower( $domain ), (array) $shorteners, true ) ) {
+				return false;
+			}
+			if ( ! self::use_request_budget() ) {
 				return false;
 			}
 		}
@@ -519,7 +576,30 @@ class Parser {
 		if ( ! in_array( $args['return'], array( 'single', 'feed' ), true ) ) {
 			$args['return'] = 'single';
 		}
+		// Pages decide what else gets fetched (author pages, short links), so one
+		// top-level parse, including the parses nested in it, gets a fixed budget.
+		$outer = 0 === self::$depth;
+		if ( $outer ) {
+			/**
+			 * Filters how many further requests one parse may make.
+			 *
+			 * Counts the author pages fetched with the follow argument and the
+			 * short links expanded in summaries. Once it is used up, authors are
+			 * left as URLs and links are left as they are.
+			 *
+			 * @since 2.0.0
+			 *
+			 * @param int    $limit Maximum number of requests. Default 10.
+			 * @param string $url   URL being parsed.
+			 */
+			self::$request_budget = max( 0, (int) apply_filters( 'parse_this_max_requests', 10, $this->url ) );
+		}
+		++self::$depth;
 		$result = $this->parse_sources( $args );
+		--self::$depth;
+		if ( $outer ) {
+			self::$request_budget = null;
+		}
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
@@ -533,6 +613,7 @@ class Parser {
 	 *
 	 * Every author becomes a jf2 card (see jf2_author_to_card()). With
 	 * $args['always_arrays'], the properties in ARRAY_PROPERTIES are always arrays.
+	 * Values from remote documents are sanitized first (see sanitize_output()).
 	 *
 	 * @since 2.0.0
 	 *
@@ -541,12 +622,290 @@ class Parser {
 	 * @return array The normalized result.
 	 */
 	public static function format_output( $jf2, $args ) {
-		$jf2 = self::format_object( $jf2, $args );
+		// Sanitize first, so author strings are checked before they become cards.
+		$jf2 = self::format_object( self::sanitize_output( $jf2 ), $args );
 		if ( isset( $jf2['items'] ) && is_array( $jf2['items'] ) ) {
 			foreach ( $jf2['items'] as $key => $item ) {
 				if ( is_array( $item ) ) {
 					$jf2['items'][ $key ] = self::format_object( $item, $args );
 				}
+			}
+		}
+		return $jf2;
+	}
+
+	/**
+	 * Properties whose values are URLs, limited to http and https by sanitize_output().
+	 *
+	 * Response properties (RESPONSE_PROPERTIES) are treated as URLs too.
+	 *
+	 * @since 2.0.0
+	 * @var string[]
+	 */
+	const URL_PROPERTIES = array(
+		'url',
+		'photo',
+		'featured',
+		'video',
+		'audio',
+		'syndication',
+		'logo',
+	);
+
+	/**
+	 * Plain-text properties whose HTML tags are stripped by sanitize_output().
+	 *
+	 * @since 2.0.0
+	 * @var string[]
+	 */
+	const TEXT_PROPERTIES = array(
+		'name',
+		'summary',
+		'category',
+	);
+
+	/**
+	 * Sanitizes values taken from remote documents.
+	 *
+	 * Applied to every object in the result, nested ones included (authors,
+	 * references, feed items, citations). In microformats any property can be
+	 * a URL (u-*), plain text (p-*) or rich text (e-*), so values are judged by
+	 * their shape, not only by the property name:
+	 * - In URL properties (URL_PROPERTIES and RESPONSE_PROPERTIES), and for an
+	 *   author or uid given as a string, see sanitize_url_value(): javascript:,
+	 *   data: and vbscript: values are removed, scheme:// values keep only http
+	 *   and https, and anything else is plain text (a p-* value such as an rsvp
+	 *   of "yes") with its tags stripped.
+	 * - Plain-text properties (TEXT_PROPERTIES and content's text) have their
+	 *   HTML tags stripped. Line breaks are kept.
+	 * - A rich-text object ('html' with 'value' or 'text') outside content has
+	 *   its html filtered with allowed_html() and its text stripped of tags.
+	 * - Any string with a javascript:, data: or vbscript: scheme is removed,
+	 *   whatever the property: any property can be a URL, or hold a nested
+	 *   h-* object that jf2_references() replaces with its URL.
+	 * - refs is keyed by URL: entries whose key isn't an http or https URL are
+	 *   removed, and each referenced object is sanitized.
+	 * - content's html is left as it is: every source runs it through
+	 *   clean_content().
+	 * - Keys starting with an underscore (internal and debug data) are skipped.
+	 *
+	 * Consumers must still escape values when they output them.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $item jf2 object.
+	 * @return array The sanitized object.
+	 */
+	public static function sanitize_output( $item ) {
+		if ( ! is_array( $item ) ) {
+			return $item;
+		}
+		// A rich-text (e-*) value outside content: no parser has cleaned its HTML.
+		if ( isset( $item['html'] ) && is_string( $item['html'] ) ) {
+			$item['html'] = trim( wp_kses( $item['html'], self::allowed_html() ) );
+			foreach ( array( 'value', 'text' ) as $text_key ) {
+				if ( isset( $item[ $text_key ] ) && is_string( $item[ $text_key ] ) ) {
+					$item[ $text_key ] = wp_strip_all_tags( $item[ $text_key ] );
+				}
+			}
+		}
+		foreach ( $item as $key => $value ) {
+			if ( is_string( $key ) && '_' === substr( $key, 0, 1 ) ) {
+				continue;
+			}
+			if ( is_string( $value ) && self::has_unsafe_scheme( $value ) ) {
+				$value = '';
+			} elseif ( 'refs' === $key && is_array( $value ) ) {
+				$value = self::sanitize_refs( $value );
+			} elseif ( in_array( $key, self::URL_PROPERTIES, true ) || in_array( $key, self::RESPONSE_PROPERTIES, true ) ) {
+				$value = self::sanitize_urls( $value );
+			} elseif ( 'author' === $key && is_string( $value ) ) {
+				// Becomes a card later: a URL, or else a name.
+				$value = self::sanitize_url_value( $value );
+			} elseif ( 'uid' === $key ) {
+				// Often not a URL at all (tag: URIs, feed GUIDs), so only unsafe schemes go.
+				if ( is_string( $value ) && self::has_unsafe_scheme( $value ) ) {
+					$value = '';
+				}
+			} elseif ( 'content' === $key ) {
+				if ( is_string( $value ) ) {
+					$value = wp_strip_all_tags( $value );
+				} elseif ( is_array( $value ) && isset( $value['text'] ) && is_string( $value['text'] ) ) {
+					$value['text'] = wp_strip_all_tags( $value['text'] );
+				}
+			} elseif ( in_array( $key, self::TEXT_PROPERTIES, true ) ) {
+				$value = self::sanitize_text( $value );
+			} elseif ( is_array( $value ) ) {
+				$value = self::sanitize_output( $value );
+			}
+
+			if ( '' === $value || array() === $value ) {
+				unset( $item[ $key ] );
+			} else {
+				$item[ $key ] = $value;
+			}
+		}
+		return $item;
+	}
+
+	/**
+	 * Sanitizes the value of a URL property.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param mixed $value A URL or text, a list of values, or an object (a
+	 *                     citation, a photo with 'value' and 'alt', or a
+	 *                     rich-text value).
+	 * @return mixed The sanitized value (see sanitize_url_value()); an empty
+	 *               string or array if nothing is left.
+	 */
+	private static function sanitize_urls( $value ) {
+		if ( is_string( $value ) ) {
+			return self::sanitize_url_value( $value );
+		}
+		if ( ! is_array( $value ) ) {
+			return $value;
+		}
+		if ( wp_is_numeric_array( $value ) ) {
+			return array_values(
+				array_filter(
+					array_map( array( __CLASS__, 'sanitize_urls' ), $value ),
+					function ( $v ) {
+						return '' !== $v && array() !== $v;
+					}
+				)
+			);
+		}
+		$value = self::sanitize_output( $value );
+		if ( isset( $value['value'] ) && is_string( $value['value'] ) ) {
+			$value['value'] = self::sanitize_url_value( $value['value'] );
+			if ( '' === $value['value'] ) {
+				return array();
+			}
+		}
+		return $value;
+	}
+
+	/**
+	 * Sanitizes a string from a property that usually holds a URL.
+	 *
+	 * Any microformats property can be a URL (u-*) or plain text (p-*), so the
+	 * value's shape decides:
+	 * - a javascript:, data: or vbscript: value is removed;
+	 * - a scheme:// value is passed through esc_url_raw() and kept only if it
+	 *   is http or https;
+	 * - anything else ("yes", "A conversation at the pub", "Re: hello",
+	 *   mailto: or tag: URIs) is plain text, with HTML tags stripped.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $value Value to sanitize.
+	 * @return string The sanitized value, or an empty string if it was unsafe.
+	 */
+	private static function sanitize_url_value( $value ) {
+		if ( self::has_unsafe_scheme( $value ) ) {
+			return '';
+		}
+		if ( preg_match( '#^[a-z][a-z0-9+.-]*://#i', self::scheme_probe( $value ) ) ) {
+			return esc_url_raw( trim( $value ), array( 'http', 'https' ) );
+		}
+		return wp_strip_all_tags( $value );
+	}
+
+	/**
+	 * Checks whether a value starts with a scheme that runs script.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $value Value to check.
+	 * @return bool True for javascript:, data: and vbscript: values.
+	 */
+	private static function has_unsafe_scheme( $value ) {
+		return (bool) preg_match( '#^(javascript|data|vbscript):#i', self::scheme_probe( $value ) );
+	}
+
+	/**
+	 * Normalizes a value the way browsers do before reading its scheme.
+	 *
+	 * Browsers drop leading control characters and spaces, and tabs and line
+	 * breaks anywhere, so "java\tscript:" still runs as javascript:.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $value Value to normalize.
+	 * @return string The value as a browser would read its scheme.
+	 */
+	private static function scheme_probe( $value ) {
+		return preg_replace( '/^[\x00-\x20]+/', '', str_replace( array( "\t", "\n", "\r" ), '', $value ) );
+	}
+
+	/**
+	 * Strips HTML tags from the value of a plain-text property.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param mixed $value A string, a list of values, or an object (such as a
+	 *                     card in category).
+	 * @return mixed The value with tags stripped; an empty string for a value
+	 *               with an unsafe scheme, which is dropped from lists.
+	 */
+	private static function sanitize_text( $value ) {
+		if ( is_string( $value ) ) {
+			return self::has_unsafe_scheme( $value ) ? '' : wp_strip_all_tags( $value );
+		}
+		if ( ! is_array( $value ) ) {
+			return $value;
+		}
+		if ( wp_is_numeric_array( $value ) ) {
+			return array_values(
+				array_filter(
+					array_map( array( __CLASS__, 'sanitize_text' ), $value ),
+					function ( $v ) {
+						return '' !== $v && array() !== $v;
+					}
+				)
+			);
+		}
+		return self::sanitize_output( $value );
+	}
+
+	/**
+	 * Sanitizes a refs map, which is keyed by the URL of each referenced object.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $refs Referenced objects keyed by URL.
+	 * @return array The entries whose key is an http or https URL, keyed by the
+	 *               sanitized URL, with each object sanitized.
+	 */
+	private static function sanitize_refs( $refs ) {
+		$clean = array();
+		foreach ( $refs as $url => $ref ) {
+			$url = is_string( $url ) ? esc_url_raw( trim( $url ), array( 'http', 'https' ) ) : '';
+			if ( '' !== $url && ! self::has_unsafe_scheme( $url ) ) {
+				$clean[ $url ] = self::sanitize_output( $ref );
+			}
+		}
+		return $clean;
+	}
+
+	/**
+	 * Cleans the HTML content of finished jf2 that came from a remote document.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param mixed $jf2 jf2 object or list.
+	 * @return mixed The jf2 with every content html run through clean_content().
+	 */
+	private static function clean_jf2_html( $jf2 ) {
+		if ( ! is_array( $jf2 ) ) {
+			return $jf2;
+		}
+		foreach ( $jf2 as $key => $value ) {
+			if ( 'content' === $key && is_array( $value ) && isset( $value['html'] ) && is_string( $value['html'] ) ) {
+				$jf2[ $key ]['html'] = self::clean_content( $value['html'] );
+			} elseif ( is_array( $value ) ) {
+				$jf2[ $key ] = self::clean_jf2_html( $value );
 			}
 		}
 		return $jf2;

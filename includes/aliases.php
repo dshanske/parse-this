@@ -12,6 +12,8 @@
  * @package Parse_This
  */
 
+defined( 'ABSPATH' ) || exit;
+
 /*
  * Maps the old global class names to their namespaced classes on demand.
  * class_exists( 'REST_Parse_This' ), which Post Kinds uses to decide whether

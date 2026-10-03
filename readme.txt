@@ -61,6 +61,8 @@ Results follow [jf2](https://jf2.spec.indieweb.org/), with a few deliberate diff
 * `author` is always a card (or a list of cards), never a plain string.
 * Properties starting with an underscore (`_links`, `_rest`, ...) are internal or debugging data.
 
+Values from fetched pages are sanitized: URL properties only contain `http` and `https` URLs, plain-text properties (`name`, `summary`, `category`, `content`'s `text`) have no HTML tags, and `content`'s `html` is limited to a safe set of tags. Escape values when you output them all the same, as with any remote data. Debugging data (`_jsonld`, `_meta`, ...) is not sanitized.
+
 = REST API =
 
 `GET /wp-json/parse-this/1.0/parse?url=https://example.com/`
@@ -73,13 +75,14 @@ Results follow [jf2](https://jf2.spec.indieweb.org/), with a few deliberate diff
 
 Results are cached for 15 minutes per URL and set of parameters, so pasting the same link again doesn't fetch it again. Requests with `debug` are never cached.
 
-The endpoint is available to any logged-in user. Administrators can try it from **Tools > Parse This**.
+The endpoint requires the `edit_posts` capability (Contributors and above); the `parse_this_rest_capability` filter changes it. Anyone who can use it can also try it from **Tools > Parse This**.
 
 = Filters =
 
 * `pt_rewrite_secure`: the list of domains whose `http://` URLs are upgraded to `https://` before fetching.
 * `parse_this_img_filters`: an image URL found in a page, after the built-in exclusions (ads, spinners, tracking pixels and so on). Return an empty string to drop it.
 * `parse_this_url_shorteners`: the hosts treated as link shorteners. Links to them in a summary are expanded to where they redirect; other links are left as they are, without a request.
+* `parse_this_max_requests`: how many further requests one parse may make for followed author pages and short-link expansion. Default 10. Receives the URL.
 * `parse_this_cache_lifetime`: how long REST endpoint results are cached, in seconds. Default 15 minutes. Return 0 to turn caching off. Receives the URL.
 * `parse_this_rest_api_jf2_type`: the jf2 type for a post read through a site's WordPress REST API. Default `entry`. Receives the REST API post object, which includes its WordPress post type, and the site's REST API root URL.
 
@@ -156,6 +159,7 @@ Yes. It is tested with ClassicPress 2.7 on PHP 7.4 to 8.3.
 * Performance: download feeds once rather than twice; only expand links in summaries from known link shorteners (filterable with `parse_this_url_shorteners`), which removes a request per link; read REST API tags from the embedded data instead of one request per post; request only the site details needed from a site's REST API index (177 bytes instead of about 580 KB); fetch each followed author page once per request; stop parsing feed items once the limit is reached; and fix REST API caching, which never worked for long URLs.
 * Cache REST endpoint results for 15 minutes. Add the `nocache` parameter and the `parse_this_cache_lifetime` filter.
 * Include raw source data (`_meta`, `_jsonld`, `_yt` and so on) only with the new `debug` argument, rather than whenever `WP_DEBUG` is on.
+* Security: the REST endpoint and the Tools > Parse This page require `edit_posts` (filterable with `parse_this_rest_capability`); the endpoint's parameters are declared and validated; the debug page sends its nonce in a header instead of the URL; output from fetched pages is sanitized; one parse makes at most 10 further requests (`parse_this_max_requests`); plugin files exit when loaded outside WordPress; and the OPML class handles invalid input safely.
 * Date posts read through the WordPress REST API from their GMT dates, so they are correct even without the site's timezone.
 * Read YouTube pages in full (they exceed the 1 MB limit) and extract the player data reliably.
 * Recognize x.com post URLs, and use the publish.x.com oEmbed endpoint.

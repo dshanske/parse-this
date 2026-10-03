@@ -15,6 +15,8 @@
  * @package Parse_This
  */
 
+defined( 'ABSPATH' ) || exit;
+
 if ( ! function_exists( 'parse_this_loader' ) ) {
 	/**
 	 * Loads Parse This.

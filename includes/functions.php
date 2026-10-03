@@ -12,6 +12,8 @@
 
 namespace ParseThis;
 
+defined( 'ABSPATH' ) || exit;
+
 if ( ! function_exists( __NAMESPACE__ . '\\jf2_to_mf2' ) ) {
 	/**
 	 * Converts jf2 into microformats2 JSON.
@@ -601,6 +603,11 @@ if ( ! function_exists( __NAMESPACE__ . '\\pt_load_domdocument' ) ) {
 if ( ! function_exists( __NAMESPACE__ . '\\pt_remote_get' ) ) {
 	/**
 	 * Retrieves a remote URL, retrying once with a browser user agent if the site rejects the request.
+	 *
+	 * Fetched documents decide which further URLs are requested (author pages,
+	 * alternates, REST API links), so this must stay on wp_safe_remote_get(),
+	 * which refuses local and private addresses. Don't switch it to
+	 * wp_remote_get().
 	 *
 	 * @param string $url         URL to retrieve.
 	 * @param array  $args        Optional. Arguments passed to wp_safe_remote_get().

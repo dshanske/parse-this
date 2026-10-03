@@ -7,6 +7,8 @@
 
 namespace ParseThis;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Provides the parse REST endpoint and the Tools > Parse This debug page.
  *
@@ -26,15 +28,17 @@ class REST_Endpoint {
 	}
 
 	/**
-	 * Adds the Tools > Parse This page for users who can manage options.
+	 * Adds the Tools > Parse This page for users who can use the parse route.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Uses the route's capability (see required_capability()) instead
+	 *              of manage_options.
 	 */
 	public function admin_menu() {
 		add_management_page(
 			__( 'Parse This', 'parse-this' ), // Page title.
 			__( 'Parse This', 'parse-this' ), // Menu title.
-			'manage_options', // Capability.
+			self::required_capability(), // Capability.
 			'parse_this',
 			array( $this, 'debug' )
 		);
@@ -43,10 +47,12 @@ class REST_Endpoint {
 	/**
 	 * Renders the debug page.
 	 *
-	 * The form submits directly to the parse endpoint, with a wp_rest nonce for
-	 * cookie authentication.
+	 * The form is sent to the parse endpoint by a script, with the wp_rest nonce
+	 * in an X-WP-Nonce header rather than in the URL, and the result is shown on
+	 * the page.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Submits with fetch() and shows the result on the page.
 	 */
 	public static function debug() {
 		?>
@@ -64,7 +70,7 @@ class REST_Endpoint {
 							?>
 							</p>
 						<hr />
-			<form method="get" action="<?php echo esc_url( rest_url( '/parse-this/1.0/parse/' ) ); ?> ">
+			<form id="parse-this-debug">
 				<p>
 					<label for="url"><?php esc_html_e( 'URL', 'parse-this' ); ?></label><input type="url" class="widefat" name="url" id="url" />
 				</p>
@@ -75,7 +81,7 @@ class REST_Endpoint {
 							<label for="mf2"><?php esc_html_e( 'MF2', 'parse-this' ); ?></label>
 						</th>
 						<td>
-							<input type="checkbox" name="mf2" id="mf2" />
+							<input type="checkbox" name="mf2" id="mf2" value="1" />
 						</td>
 					</tr>
 					<tr>
@@ -83,7 +89,7 @@ class REST_Endpoint {
 							<label for="discovery"><?php esc_html_e( 'Feed Discovery', 'parse-this' ); ?></label>
 						</th>
 						<td>
-							<input type="checkbox" name="discovery" id="discovery" />
+							<input type="checkbox" name="discovery" id="discovery" value="1" />
 						</td>
 					</tr>
 					<tr>
@@ -91,7 +97,7 @@ class REST_Endpoint {
 							<label for="references"><?php esc_html_e( 'References', 'parse-this' ); ?></label>
 						</th>
 						<td>
-							<input type="checkbox" name="references" id="references" checked />
+							<input type="checkbox" name="references" id="references" value="1" checked />
 						</td>
 					</tr>
 					<tr>
@@ -99,7 +105,7 @@ class REST_Endpoint {
 							<label for="location"><?php esc_html_e( 'Clean up Location', 'parse-this' ); ?></label>
 						</th>
 						<td>
-							<input type="checkbox" name="location" id="location" />
+							<input type="checkbox" name="location" id="location" value="1" />
 						</td>
 					</tr>
 					<tr>
@@ -118,7 +124,7 @@ class REST_Endpoint {
 							<label for="follow"><?php esc_html_e( 'Follow Author Links', 'parse-this' ); ?></label>
 						</th>
 						<td>
-							<input type="checkbox" name="follow" id="follow" />
+							<input type="checkbox" name="follow" id="follow" value="1" />
 						</td>
 					</tr>
 					<tr>
@@ -126,23 +132,30 @@ class REST_Endpoint {
 							<label for="debug"><?php esc_html_e( 'Include Source Data', 'parse-this' ); ?></label>
 						</th>
 						<td>
-							<input type="checkbox" name="debug" id="debug" checked />
+							<input type="checkbox" name="debug" id="debug" value="1" checked />
 						</td>
 					</tr>
 					</tbody>
 				</table>
-			<?php wp_nonce_field( 'wp_rest' ); ?>
 			<?php submit_button( __( 'Parse', 'parse-this' ) ); ?>
 						</form>
+			<pre id="parse-this-result" style="white-space: pre-wrap; word-break: break-all;"></pre>
 				</div>
 				<?php
+				$settings = array(
+					'endpoint' => rest_url( '/parse-this/1.0/parse/' ),
+					'nonce'    => wp_create_nonce( 'wp_rest' ),
+					'parsing'  => __( 'Parsing…', 'parse-this' ),
+				);
+				wp_enqueue_script( 'parse-this-debug', plugins_url( 'js/debug.js', __DIR__ ), array(), '2.0.0', true );
+				wp_add_inline_script( 'parse-this-debug', 'var parseThisDebug = ' . wp_json_encode( $settings ) . ';', 'before' );
 	}
 
 
 	/**
 	 * Registers the parse-this/1.0/parse route.
 	 *
-	 * Any logged-in user with the read capability may call it.
+	 * Requires the edit_posts capability (see permission_check()).
 	 *
 	 * @since 1.0.0
 	 */
@@ -156,18 +169,90 @@ class REST_Endpoint {
 					'methods'             => \WP_REST_Server::READABLE,
 					'callback'            => array( $cls, 'read' ),
 					'args'                => array(
-						'url' => array(
+						'url'             => array(
 							'required'          => true,
 							'validate_callback' => array( $cls, 'is_valid_url' ),
 							'sanitize_callback' => 'esc_url_raw',
 						),
+						'return'          => array(
+							'description' => __( 'Whether to return a single item or a feed.', 'parse-this' ),
+							'type'        => 'string',
+							'enum'        => array( 'single', 'feed' ),
+						),
+						'mf2'             => array(
+							'description' => __( 'Return mf2 instead of jf2.', 'parse-this' ),
+							'type'        => 'boolean',
+						),
+						'discovery'       => array(
+							'description' => __( 'List the URL\'s feeds instead of parsing it.', 'parse-this' ),
+							'type'        => 'boolean',
+						),
+						'references'      => array(
+							'description' => __( 'Move referenced items into refs.', 'parse-this' ),
+							'type'        => 'boolean',
+						),
+						'location'        => array(
+							'description' => __( 'Collapse location properties into one location.', 'parse-this' ),
+							'type'        => 'boolean',
+						),
+						'follow'          => array(
+							'description' => __( 'Fetch the author\'s page when the author is only a URL.', 'parse-this' ),
+							'type'        => 'boolean',
+						),
+						'require_content' => array(
+							'description' => __( 'Whether a result needs full content before fallbacks stop. Defaults to true for feeds and false otherwise.', 'parse-this' ),
+							'type'        => 'boolean',
+						),
+						'always_arrays'   => array(
+							'description' => __( 'Always return the array properties as arrays, as Microsub does.', 'parse-this' ),
+							'type'        => 'boolean',
+						),
+						'debug'           => array(
+							'description' => __( 'Include the raw data each source was read from.', 'parse-this' ),
+							'type'        => 'boolean',
+						),
+						'nocache'         => array(
+							'description' => __( 'Fetch the URL again instead of using a cached result.', 'parse-this' ),
+							'type'        => 'boolean',
+						),
 					),
-					'permission_callback' => function () {
-						return current_user_can( 'read' );
-					},
+					'permission_callback' => array( $cls, 'permission_check' ),
 				),
 			)
 		);
+	}
+
+	/**
+	 * Checks whether the current user may use the parse route.
+	 *
+	 * Parsing makes the server fetch arbitrary URLs, sometimes several per
+	 * request, so it is limited to users who can write posts.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @return bool True if the current user has the required capability.
+	 */
+	public static function permission_check() {
+		return current_user_can( self::required_capability() );
+	}
+
+	/**
+	 * Returns the capability required for the parse route and the debug page.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @return string Capability name.
+	 */
+	public static function required_capability() {
+		/**
+		 * Filters the capability required to use the parse-this/1.0/parse route
+		 * and the Tools > Parse This page.
+		 *
+		 * @since 2.0.0
+		 *
+		 * @param string $capability Capability name. Default 'edit_posts'.
+		 */
+		return apply_filters( 'parse_this_rest_capability', 'edit_posts' );
 	}
 
 	/**

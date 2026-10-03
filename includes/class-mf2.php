@@ -7,6 +7,8 @@
 
 namespace ParseThis;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Converts microformats2 into jf2.
  *
@@ -143,9 +145,9 @@ class MF2 extends MF2_Utils {
 		}
 		// 7. "if there is an author-page URL" ...
 		if ( $authorpage ) {
-			if ( $follow && ! self::urls_match( $authorpage, self::get_plaintext( $mf2, 'url' ) ) ) {
-				// Feed items often share an author, so fetch each author page once per request.
-				$key = normalize_url( $authorpage );
+			// Feed items often share an author, so fetch each author page once per request.
+			$key = normalize_url( $authorpage );
+			if ( $follow && ! self::urls_match( $authorpage, self::get_plaintext( $mf2, 'url' ) ) && ( isset( self::$author_pages[ $key ] ) || Parser::use_request_budget() ) ) {
 				if ( ! isset( self::$author_pages[ $key ] ) ) {
 					$parse = new Parser( $authorpage );
 					$parse->fetch();
@@ -750,6 +752,10 @@ class MF2 extends MF2_Utils {
 			$data[ $property ] = self::get_plaintext( $entry, $property );
 		}
 		$data = array_filter( $data );
+		// rsvp values are an enumeration (yes, no, maybe, interested); compare without case.
+		if ( isset( $data['rsvp'] ) && is_string( $data['rsvp'] ) ) {
+			$data['rsvp'] = strtolower( trim( $data['rsvp'] ) );
+		}
 		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
 		if ( $args['references'] ) {
 			$data = jf2_references( $data );

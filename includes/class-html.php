@@ -7,6 +7,8 @@
 
 namespace ParseThis;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Extracts jf2 from HTML pages without microformats.
  *

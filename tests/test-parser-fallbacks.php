@@ -253,4 +253,183 @@ class Parser_Fallbacks_Test extends Parse_This_TestCase {
 		$this->assertArrayHasKey( '_meta', $jf2 );
 		$this->assertArrayHasKey( '_jsonld', $jf2 );
 	}
+
+	/**
+	 * Short-link expansion counts against the per-parse request budget (S-5).
+	 */
+	public function test_short_links_respect_request_budget() {
+		foreach ( array( 'a', 'b', 'c' ) as $id ) {
+			$this->respond( 'https://bit.ly/' . $id, '', 'text/html', array( 'location' => 'https://example.org/' . $id . '/' ), 301 );
+		}
+		$limit = function () {
+			return 1;
+		};
+		add_filter( 'parse_this_max_requests', $limit );
+		$jf2 = $this->parse_html( '<html><head><meta property="og:type" content="article"><meta property="og:description" content="https://bit.ly/a https://bit.ly/b https://bit.ly/c"></head><body></body></html>' );
+		remove_filter( 'parse_this_max_requests', $limit );
+
+		$this->assertSame( 'https://example.org/a/ https://bit.ly/b https://bit.ly/c', $jf2['summary'] );
+		$this->assertCount( 1, $this->requests );
+	}
+
+	/**
+	 * Values from remote documents are sanitized in the output (S-4).
+	 */
+	public function test_output_is_sanitized() {
+		$jf2 = ParseThis\Parser::format_output(
+			array(
+				'type'        => 'entry',
+				'uid'         => 'tag:example.com,2026:1',
+				'url'         => 'javascript:alert(1)',
+				'name'        => 'Hello <b>world</b>',
+				'summary'     => "Line one<script>x</script>\nLine two",
+				'photo'       => array( 'https://example.com/a.jpg', 'data:image/png;base64,AAAA' ),
+				'featured'    => 'https://example.com/f.jpg',
+				'category'    => array( '<i>news</i>', 'plain' ),
+				'in-reply-to' => array(
+					'type' => 'cite',
+					'url'  => 'vbscript:x',
+					'name' => '<b>Cited</b>',
+				),
+				'like-of'     => 'https://example.com/liked/',
+				'content'     => array(
+					'html' => '<p>Kept <strong>HTML</strong></p>',
+					'text' => '<p>Text</p>',
+				),
+				'author'      => array(
+					'type'  => 'card',
+					'name'  => '<em>Jane</em>',
+					'url'   => 'javascript:void(0)',
+					'photo' => 'https://example.com/jane.jpg',
+				),
+				'items'       => array(
+					array(
+						'type' => 'entry',
+						'url'  => 'https://example.com/1/',
+						'name' => '<b>One</b>',
+					),
+				),
+				'_jsonld'     => array( 'url' => 'javascript:raw' ),
+			),
+			array( 'always_arrays' => false )
+		);
+
+		$this->assertSame( 'tag:example.com,2026:1', $jf2['uid'] );
+		$this->assertArrayNotHasKey( 'url', $jf2 );
+		$this->assertSame( 'Hello world', $jf2['name'] );
+		$this->assertSame( "Line one\nLine two", $jf2['summary'] );
+		$this->assertSame( array( 'https://example.com/a.jpg' ), $jf2['photo'] );
+		$this->assertSame( array( 'news', 'plain' ), $jf2['category'] );
+		$this->assertArrayNotHasKey( 'url', $jf2['in-reply-to'] );
+		$this->assertSame( 'Cited', $jf2['in-reply-to']['name'] );
+		$this->assertSame( 'https://example.com/liked/', $jf2['like-of'] );
+		$this->assertSame( '<p>Kept <strong>HTML</strong></p>', $jf2['content']['html'] );
+		$this->assertSame( 'Text', $jf2['content']['text'] );
+		$this->assertSame( 'Jane', $jf2['author']['name'] );
+		$this->assertArrayNotHasKey( 'url', $jf2['author'] );
+		$this->assertSame( 'https://example.com/jane.jpg', $jf2['author']['photo'] );
+		$this->assertSame( 'One', $jf2['items'][0]['name'] );
+		// Debug data is left as it was.
+		$this->assertSame( 'javascript:raw', $jf2['_jsonld']['url'] );
+		// An author given as a URL string is sanitized before it becomes a card.
+		$jf2 = ParseThis\Parser::format_output(
+			array(
+				'type'   => 'entry',
+				'author' => 'javascript:alert(1)',
+			),
+			array()
+		);
+		$this->assertArrayNotHasKey( 'author', $jf2 );
+	}
+
+	/**
+	 * Finished jf2 from a remote document has its HTML cleaned (S-4).
+	 */
+	public function test_remote_jf2_html_is_cleaned() {
+		$this->respond(
+			'https://example.com/post.jf2',
+			wp_json_encode(
+				array(
+					'type'    => 'entry',
+					'url'     => 'https://example.com/post/',
+					'content' => array(
+						'html' => '<p onclick="steal()">Hi</p><script>steal()</script>',
+						'text' => 'Hi',
+					),
+				)
+			),
+			'application/jf2+json'
+		);
+		$parser = new ParseThis\Parser( 'https://example.com/post.jf2' );
+		$parser->fetch();
+		$parser->parse();
+		$jf2 = $parser->get();
+
+		$this->assertSame( '<p>Hi</p>', $jf2['content']['html'] );
+	}
+
+	/**
+	 * Any microformats property can be u-, p- or e-, so values are sanitized by shape (C-48).
+	 */
+	public function test_sanitizing_follows_the_value_not_the_property() {
+		$jf2 = $this->parse_html(
+			'<div class="h-entry"><a class="u-url" href="/a/">a</a><span class="p-name">N</span>'
+			. '<data class="p-rsvp" value="YES">Yes</data>'
+			. '<span class="p-in-reply-to">A conversation at the pub</span>'
+			. '<span class="p-photo">a photo of a cat</span>'
+			. '<a class="u-category" href="https://tags.example/t">t</a><span class="p-category">plain <i>cat</i></span>'
+			. '<div class="e-like-of">I <b>liked</b> <a href="javascript:x()">this</a></div>'
+			. '<a class="u-syndication" href="javascript:alert(1)">s</a>'
+			. '<div class="e-content">Text</div></div>'
+		);
+
+		$this->assertSame( 'yes', $jf2['rsvp'] );
+		$this->assertSame( 'A conversation at the pub', $jf2['in-reply-to'] );
+		$this->assertSame( 'a photo of a cat', $jf2['photo'] );
+		$this->assertSame( array( 'plain cat', 'https://tags.example/t' ), $jf2['category'] );
+		$this->assertSame( 'I liked this', $jf2['like-of']['value'] );
+		$this->assertStringNotContainsString( 'javascript', $jf2['like-of']['html'] );
+		$this->assertStringContainsString( '<b>liked</b>', $jf2['like-of']['html'] );
+		$this->assertArrayNotHasKey( 'syndication', $jf2 );
+
+		$jf2 = ParseThis\Parser::format_output(
+			array(
+				'type'        => 'entry',
+				'in-reply-to' => array( 'Re: hello', "java\tscript:alert(1)", ' javascript:alert(2)', 'mailto:jane@example.com', 'ftp://example.com/file' ),
+			),
+			array()
+		);
+		$this->assertSame( array( 'Re: hello', 'mailto:jane@example.com' ), $jf2['in-reply-to'] );
+	}
+
+	/**
+	 * Nested h-* objects in properties are sanitized, with and without references (C-48).
+	 */
+	public function test_nested_objects_are_sanitized() {
+		$html = '<div class="h-entry"><a class="u-url" href="/a/">a</a><span class="p-name">N</span>'
+			. '<div class="p-in-reply-to h-cite"><span class="p-name">A <b>chat</b></span><span class="p-author h-card"><span class="p-name">Bob</span><a class="u-url" href="javascript:bad()">x</a></span></div>'
+			. '<div class="u-like-of h-cite"><a class="u-url" href="javascript:alert(1)">liked</a><span class="p-name">Liked</span></div>'
+			. '<div class="u-bookmark-of h-cite"><a class="u-url" href="https://example.org/b">B</a><span class="p-name">Bookmarked</span></div>'
+			. '<span class="p-category h-card"><a class="u-url p-name" href="javascript:c()">Alice</a></span>'
+			. '<span class="p-category h-card"><a class="u-url p-name" href="https://alice.example/">Alice</a></span>'
+			. '<div class="p-location h-card"><span class="p-name">Venue <i>x</i></span><a class="u-url" href="vbscript:v">v</a></div>'
+			. '<div class="e-content">Text</div></div>';
+
+		foreach ( array( false, true ) as $references ) {
+			$jf2  = $this->parse_html( $html, array( 'references' => $references ) );
+			$json = wp_json_encode( $jf2 );
+			$this->assertStringNotContainsString( 'javascript', $json );
+			$this->assertStringNotContainsString( 'vbscript', $json );
+			$this->assertSame( 'A chat', $jf2['in-reply-to']['name'] );
+			$this->assertSame( 'Bob', $jf2['in-reply-to']['author']['name'] );
+			$this->assertSame( 'Venue x', $jf2['location']['name'] );
+		}
+
+		// With references, nested objects move to refs, keyed only by safe URLs.
+		$keys = array_keys( $jf2['refs'] );
+		sort( $keys );
+		$this->assertSame( array( 'https://alice.example/', 'https://example.org/b' ), $keys );
+		$this->assertSame( 'Bookmarked', $jf2['refs']['https://example.org/b']['name'] );
+		$this->assertSame( array( 'https://alice.example/' ), $jf2['category'] );
+	}
 }

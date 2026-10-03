@@ -7,6 +7,8 @@
 
 namespace ParseThis;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Converts JSON Feed (versions 1 and 1.1) documents into jf2 feeds.
  *

@@ -266,4 +266,37 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 		$this->assertSame( array( 'https://example.org/jane/' ), array_values( array_unique( wp_list_pluck( $this->requests, 'url' ) ) ) );
 		$this->assertCount( 1, $this->requests );
 	}
+
+	/**
+	 * Followed author pages count against the per-parse request budget (S-5).
+	 */
+	public function test_follow_respects_request_budget() {
+		$html = '<div class="h-feed">';
+		for ( $i = 1; $i <= 3; $i++ ) {
+			$this->respond( 'https://example.org/author' . $i . '/', '<div class="h-card"><a class="u-url p-name" href="https://example.org/author' . $i . '/">Author ' . $i . '</a></div>' );
+			$html .= '<div class="h-entry"><a class="u-url" href="https://example.com/' . $i . '/">' . $i . '</a><a class="u-author" href="https://example.org/author' . $i . '/">a</a></div>';
+		}
+		$html .= '</div>';
+		$limit = function () {
+			return 2;
+		};
+		add_filter( 'parse_this_max_requests', $limit );
+
+		$parser = new ParseThis\Parser();
+		$parser->set( $html, 'https://example.com/' );
+		$parser->parse(
+			array(
+				'return' => 'feed',
+				'follow' => true,
+			)
+		);
+		remove_filter( 'parse_this_max_requests', $limit );
+		$jf2 = $parser->get();
+
+		$this->assertCount( 2, $this->requests );
+		$this->assertSame( 'Author 1', $jf2['items'][0]['author']['name'] );
+		$this->assertSame( 'Author 2', $jf2['items'][1]['author']['name'] );
+		// Over budget: left as the author's URL.
+		$this->assertSame( 'https://example.org/author3/', $jf2['items'][2]['author']['url'] );
+	}
 }

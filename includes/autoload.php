@@ -5,6 +5,8 @@
  * @package Parse_This
  */
 
+defined( 'ABSPATH' ) || exit;
+
 /*
  * Maps classes in the ParseThis namespace to files in this directory, for
  * example ParseThis\MF2_Utils to class-mf2-utils.php.
