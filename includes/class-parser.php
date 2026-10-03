@@ -135,35 +135,17 @@ class Parser {
 	}
 
 	/**
-	 * Sanitizes HTML content for display.
+	 * Returns the tags and attributes allowed in HTML taken from remote documents.
 	 *
-	 * Decodes entities, removes comments and <script> elements, then filters
-	 * the result through wp_kses() with an allow-list of text, media and
-	 * structural tags.
+	 * Used by clean_content() for content, and by sanitize_output() for other
+	 * rich-text (e-*) values.
 	 *
-	 * @since 1.0.0
+	 * @since 2.0.0
 	 *
-	 * @param string $content HTML to clean. Non-strings are returned unchanged.
-	 * @param array  $strip   Optional. Tags to remove from the allow-list, as keys
-	 *                        (for example array( 'blockquote' => array() )).
-	 * @return string|mixed The cleaned HTML.
+	 * @return array Allowed tags and attributes, in the wp_kses() format.
 	 */
-	public static function clean_content( $content, $strip = array() ) {
-		if ( ! is_string( $content ) ) {
-			return $content;
-		}
-		// Decode escaped entities so that they can be stripped.
-		$content     = html_entity_decode( $content, ENT_COMPAT | ENT_HTML401, 'UTF-8' );
-		$content     = preg_replace( '/<!--(.|\s)*?-->/', '', $content );
-		$domdocument = pt_load_domdocument( $content );
-		$scripts     = $domdocument->getElementsByTagName( 'script' );
-		foreach ( $scripts as $item ) {
-			$item->parentNode->removeChild( $item ); // phpcs:ignore
-		}
-
-		$content = $domdocument->saveHTML();
-
-		$allowed = array(
+	public static function allowed_html() {
+		return array(
 			'a'          => array(
 				'href' => array(),
 				'name' => array(),
@@ -231,6 +213,38 @@ class Parser {
 			),
 			'hr'         => array(),
 		);
+	}
+
+	/**
+	 * Sanitizes HTML content for display.
+	 *
+	 * Decodes entities, removes comments and <script> elements, then filters
+	 * the result through wp_kses() with an allow-list of text, media and
+	 * structural tags.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $content HTML to clean. Non-strings are returned unchanged.
+	 * @param array  $strip   Optional. Tags to remove from the allow-list, as keys
+	 *                        (for example array( 'blockquote' => array() )).
+	 * @return string|mixed The cleaned HTML.
+	 */
+	public static function clean_content( $content, $strip = array() ) {
+		if ( ! is_string( $content ) ) {
+			return $content;
+		}
+		// Decode escaped entities so that they can be stripped.
+		$content     = html_entity_decode( $content, ENT_COMPAT | ENT_HTML401, 'UTF-8' );
+		$content     = preg_replace( '/<!--(.|\s)*?-->/', '', $content );
+		$domdocument = pt_load_domdocument( $content );
+		$scripts     = $domdocument->getElementsByTagName( 'script' );
+		foreach ( $scripts as $item ) {
+			$item->parentNode->removeChild( $item ); // phpcs:ignore
+		}
+
+		$content = $domdocument->saveHTML();
+
+		$allowed = self::allowed_html();
 		if ( ! empty( $strip ) ) {
 			$allowed = array_diff_key( $allowed, $strip );
 		}
@@ -654,15 +668,18 @@ class Parser {
 	 * Sanitizes values taken from remote documents.
 	 *
 	 * Applied to every object in the result, nested ones included (authors,
-	 * references, feed items, citations):
-	 * - URL properties (URL_PROPERTIES and RESPONSE_PROPERTIES) keep only http
-	 *   and https URLs, through esc_url_raw(); others are removed.
-	 * - An author given as a string is treated as a URL if it has a scheme, and
-	 *   as text otherwise.
-	 * - uid is removed if it uses a javascript:, data: or vbscript: URL. Other
-	 *   values, such as tag: URIs or plain IDs, are kept.
+	 * references, feed items, citations). In microformats any property can be
+	 * a URL (u-*), plain text (p-*) or rich text (e-*), so values are judged by
+	 * their shape, not only by the property name:
+	 * - In URL properties (URL_PROPERTIES and RESPONSE_PROPERTIES), and for an
+	 *   author or uid given as a string, see sanitize_url_value(): javascript:,
+	 *   data: and vbscript: values are removed, scheme:// values keep only http
+	 *   and https, and anything else is plain text (a p-* value such as an rsvp
+	 *   of "yes") with its tags stripped.
 	 * - Plain-text properties (TEXT_PROPERTIES and content's text) have their
 	 *   HTML tags stripped. Line breaks are kept.
+	 * - A rich-text object ('html' with 'value' or 'text') outside content has
+	 *   its html filtered with allowed_html() and its text stripped of tags.
 	 * - content's html is left as it is: every source runs it through
 	 *   clean_content().
 	 * - Keys starting with an underscore (internal and debug data) are skipped.
@@ -678,6 +695,15 @@ class Parser {
 		if ( ! is_array( $item ) ) {
 			return $item;
 		}
+		// A rich-text (e-*) value outside content: no parser has cleaned its HTML.
+		if ( isset( $item['html'] ) && is_string( $item['html'] ) ) {
+			$item['html'] = trim( wp_kses( $item['html'], self::allowed_html() ) );
+			foreach ( array( 'value', 'text' ) as $text_key ) {
+				if ( isset( $item[ $text_key ] ) && is_string( $item[ $text_key ] ) ) {
+					$item[ $text_key ] = wp_strip_all_tags( $item[ $text_key ] );
+				}
+			}
+		}
 		foreach ( $item as $key => $value ) {
 			if ( is_string( $key ) && '_' === substr( $key, 0, 1 ) ) {
 				continue;
@@ -686,9 +712,10 @@ class Parser {
 				$value = self::sanitize_urls( $value );
 			} elseif ( 'author' === $key && is_string( $value ) ) {
 				// Becomes a card later: a URL, or else a name.
-				$value = preg_match( '#^\s*[a-z][a-z0-9+.-]*:#i', $value ) ? self::sanitize_urls( $value ) : wp_strip_all_tags( $value );
+				$value = self::sanitize_url_value( $value );
 			} elseif ( 'uid' === $key ) {
-				if ( is_string( $value ) && preg_match( '#^\s*(javascript|data|vbscript):#i', $value ) ) {
+				// Often not a URL at all (tag: URIs, feed GUIDs), so only unsafe schemes go.
+				if ( is_string( $value ) && self::has_unsafe_scheme( $value ) ) {
 					$value = '';
 				}
 			} elseif ( 'content' === $key ) {
@@ -717,14 +744,15 @@ class Parser {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param mixed $value A URL, a list of values, or an object (a citation, or
-	 *                     a photo with 'value' and 'alt').
-	 * @return mixed The value with only http and https URLs; an empty string or
-	 *               array if none are left.
+	 * @param mixed $value A URL or text, a list of values, or an object (a
+	 *                     citation, a photo with 'value' and 'alt', or a
+	 *                     rich-text value).
+	 * @return mixed The sanitized value (see sanitize_url_value()); an empty
+	 *               string or array if nothing is left.
 	 */
 	private static function sanitize_urls( $value ) {
 		if ( is_string( $value ) ) {
-			return esc_url_raw( trim( $value ), array( 'http', 'https' ) );
+			return self::sanitize_url_value( $value );
 		}
 		if ( ! is_array( $value ) ) {
 			return $value;
@@ -741,12 +769,65 @@ class Parser {
 		}
 		$value = self::sanitize_output( $value );
 		if ( isset( $value['value'] ) && is_string( $value['value'] ) ) {
-			$value['value'] = esc_url_raw( trim( $value['value'] ), array( 'http', 'https' ) );
+			$value['value'] = self::sanitize_url_value( $value['value'] );
 			if ( '' === $value['value'] ) {
 				return array();
 			}
 		}
 		return $value;
+	}
+
+	/**
+	 * Sanitizes a string from a property that usually holds a URL.
+	 *
+	 * Any microformats property can be a URL (u-*) or plain text (p-*), so the
+	 * value's shape decides:
+	 * - a javascript:, data: or vbscript: value is removed;
+	 * - a scheme:// value is passed through esc_url_raw() and kept only if it
+	 *   is http or https;
+	 * - anything else ("yes", "A conversation at the pub", "Re: hello",
+	 *   mailto: or tag: URIs) is plain text, with HTML tags stripped.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $value Value to sanitize.
+	 * @return string The sanitized value, or an empty string if it was unsafe.
+	 */
+	private static function sanitize_url_value( $value ) {
+		if ( self::has_unsafe_scheme( $value ) ) {
+			return '';
+		}
+		if ( preg_match( '#^[a-z][a-z0-9+.-]*://#i', self::scheme_probe( $value ) ) ) {
+			return esc_url_raw( trim( $value ), array( 'http', 'https' ) );
+		}
+		return wp_strip_all_tags( $value );
+	}
+
+	/**
+	 * Checks whether a value starts with a scheme that runs script.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $value Value to check.
+	 * @return bool True for javascript:, data: and vbscript: values.
+	 */
+	private static function has_unsafe_scheme( $value ) {
+		return (bool) preg_match( '#^(javascript|data|vbscript):#i', self::scheme_probe( $value ) );
+	}
+
+	/**
+	 * Normalizes a value the way browsers do before reading its scheme.
+	 *
+	 * Browsers drop leading control characters and spaces, and tabs and line
+	 * breaks anywhere, so "java\tscript:" still runs as javascript:.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $value Value to normalize.
+	 * @return string The value as a browser would read its scheme.
+	 */
+	private static function scheme_probe( $value ) {
+		return preg_replace( '/^[\x00-\x20]+/', '', str_replace( array( "\t", "\n", "\r" ), '', $value ) );
 	}
 
 	/**

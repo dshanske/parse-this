@@ -752,6 +752,10 @@ class MF2 extends MF2_Utils {
 			$data[ $property ] = self::get_plaintext( $entry, $property );
 		}
 		$data = array_filter( $data );
+		// rsvp values are an enumeration (yes, no, maybe, interested); compare without case.
+		if ( isset( $data['rsvp'] ) && is_string( $data['rsvp'] ) ) {
+			$data['rsvp'] = strtolower( trim( $data['rsvp'] ) );
+		}
 		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
 		if ( $args['references'] ) {
 			$data = jf2_references( $data );

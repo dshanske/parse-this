@@ -367,4 +367,38 @@ class Parser_Fallbacks_Test extends Parse_This_TestCase {
 
 		$this->assertSame( '<p>Hi</p>', $jf2['content']['html'] );
 	}
+
+	/**
+	 * Any microformats property can be u-, p- or e-, so values are sanitized by shape (C-48).
+	 */
+	public function test_sanitizing_follows_the_value_not_the_property() {
+		$jf2 = $this->parse_html(
+			'<div class="h-entry"><a class="u-url" href="/a/">a</a><span class="p-name">N</span>'
+			. '<data class="p-rsvp" value="YES">Yes</data>'
+			. '<span class="p-in-reply-to">A conversation at the pub</span>'
+			. '<span class="p-photo">a photo of a cat</span>'
+			. '<a class="u-category" href="https://tags.example/t">t</a><span class="p-category">plain <i>cat</i></span>'
+			. '<div class="e-like-of">I <b>liked</b> <a href="javascript:x()">this</a></div>'
+			. '<a class="u-syndication" href="javascript:alert(1)">s</a>'
+			. '<div class="e-content">Text</div></div>'
+		);
+
+		$this->assertSame( 'yes', $jf2['rsvp'] );
+		$this->assertSame( 'A conversation at the pub', $jf2['in-reply-to'] );
+		$this->assertSame( 'a photo of a cat', $jf2['photo'] );
+		$this->assertSame( array( 'plain cat', 'https://tags.example/t' ), $jf2['category'] );
+		$this->assertSame( 'I liked this', $jf2['like-of']['value'] );
+		$this->assertStringNotContainsString( 'javascript', $jf2['like-of']['html'] );
+		$this->assertStringContainsString( '<b>liked</b>', $jf2['like-of']['html'] );
+		$this->assertArrayNotHasKey( 'syndication', $jf2 );
+
+		$jf2 = ParseThis\Parser::format_output(
+			array(
+				'type'        => 'entry',
+				'in-reply-to' => array( 'Re: hello', "java\tscript:alert(1)", ' javascript:alert(2)', 'mailto:jane@example.com', 'ftp://example.com/file' ),
+			),
+			array()
+		);
+		$this->assertSame( array( 'Re: hello', 'mailto:jane@example.com' ), $jf2['in-reply-to'] );
+	}
 }
