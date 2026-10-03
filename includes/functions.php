@@ -12,6 +12,8 @@
 
 namespace ParseThis;
 
+defined( 'ABSPATH' ) || exit;
+
 if ( ! function_exists( __NAMESPACE__ . '\\jf2_to_mf2' ) ) {
 	/**
 	 * Converts jf2 into microformats2 JSON.

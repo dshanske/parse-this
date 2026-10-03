@@ -7,6 +7,8 @@
 
 namespace ParseThis;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Converts schema.org JSON-LD embedded in HTML pages into jf2.
  *

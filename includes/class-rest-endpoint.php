@@ -7,6 +7,8 @@
 
 namespace ParseThis;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Provides the parse REST endpoint and the Tools > Parse This debug page.
  *

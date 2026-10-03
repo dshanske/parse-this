@@ -7,6 +7,8 @@
 
 namespace ParseThis;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Builds jf2 for individual posts on X (formerly Twitter) from its public
  * oEmbed endpoint.

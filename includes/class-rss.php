@@ -7,6 +7,8 @@
 
 namespace ParseThis;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Converts RSS and Atom feeds, as parsed by SimplePie, into jf2.
  *
