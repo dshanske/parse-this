@@ -271,4 +271,100 @@ class Parser_Fallbacks_Test extends Parse_This_TestCase {
 		$this->assertSame( 'https://example.org/a/ https://bit.ly/b https://bit.ly/c', $jf2['summary'] );
 		$this->assertCount( 1, $this->requests );
 	}
+
+	/**
+	 * Values from remote documents are sanitized in the output (S-4).
+	 */
+	public function test_output_is_sanitized() {
+		$jf2 = ParseThis\Parser::format_output(
+			array(
+				'type'        => 'entry',
+				'uid'         => 'tag:example.com,2026:1',
+				'url'         => 'javascript:alert(1)',
+				'name'        => 'Hello <b>world</b>',
+				'summary'     => "Line one<script>x</script>\nLine two",
+				'photo'       => array( 'https://example.com/a.jpg', 'data:image/png;base64,AAAA' ),
+				'featured'    => 'https://example.com/f.jpg',
+				'category'    => array( '<i>news</i>', 'plain' ),
+				'in-reply-to' => array(
+					'type' => 'cite',
+					'url'  => 'vbscript:x',
+					'name' => '<b>Cited</b>',
+				),
+				'like-of'     => 'https://example.com/liked/',
+				'content'     => array(
+					'html' => '<p>Kept <strong>HTML</strong></p>',
+					'text' => '<p>Text</p>',
+				),
+				'author'      => array(
+					'type'  => 'card',
+					'name'  => '<em>Jane</em>',
+					'url'   => 'javascript:void(0)',
+					'photo' => 'https://example.com/jane.jpg',
+				),
+				'items'       => array(
+					array(
+						'type' => 'entry',
+						'url'  => 'https://example.com/1/',
+						'name' => '<b>One</b>',
+					),
+				),
+				'_jsonld'     => array( 'url' => 'javascript:raw' ),
+			),
+			array( 'always_arrays' => false )
+		);
+
+		$this->assertSame( 'tag:example.com,2026:1', $jf2['uid'] );
+		$this->assertArrayNotHasKey( 'url', $jf2 );
+		$this->assertSame( 'Hello world', $jf2['name'] );
+		$this->assertSame( "Line one\nLine two", $jf2['summary'] );
+		$this->assertSame( array( 'https://example.com/a.jpg' ), $jf2['photo'] );
+		$this->assertSame( array( 'news', 'plain' ), $jf2['category'] );
+		$this->assertArrayNotHasKey( 'url', $jf2['in-reply-to'] );
+		$this->assertSame( 'Cited', $jf2['in-reply-to']['name'] );
+		$this->assertSame( 'https://example.com/liked/', $jf2['like-of'] );
+		$this->assertSame( '<p>Kept <strong>HTML</strong></p>', $jf2['content']['html'] );
+		$this->assertSame( 'Text', $jf2['content']['text'] );
+		$this->assertSame( 'Jane', $jf2['author']['name'] );
+		$this->assertArrayNotHasKey( 'url', $jf2['author'] );
+		$this->assertSame( 'https://example.com/jane.jpg', $jf2['author']['photo'] );
+		$this->assertSame( 'One', $jf2['items'][0]['name'] );
+		// Debug data is left as it was.
+		$this->assertSame( 'javascript:raw', $jf2['_jsonld']['url'] );
+		// An author given as a URL string is sanitized before it becomes a card.
+		$jf2 = ParseThis\Parser::format_output(
+			array(
+				'type'   => 'entry',
+				'author' => 'javascript:alert(1)',
+			),
+			array()
+		);
+		$this->assertArrayNotHasKey( 'author', $jf2 );
+	}
+
+	/**
+	 * Finished jf2 from a remote document has its HTML cleaned (S-4).
+	 */
+	public function test_remote_jf2_html_is_cleaned() {
+		$this->respond(
+			'https://example.com/post.jf2',
+			wp_json_encode(
+				array(
+					'type'    => 'entry',
+					'url'     => 'https://example.com/post/',
+					'content' => array(
+						'html' => '<p onclick="steal()">Hi</p><script>steal()</script>',
+						'text' => 'Hi',
+					),
+				)
+			),
+			'application/jf2+json'
+		);
+		$parser = new ParseThis\Parser( 'https://example.com/post.jf2' );
+		$parser->fetch();
+		$parser->parse();
+		$jf2 = $parser->get();
+
+		$this->assertSame( '<p>Hi</p>', $jf2['content']['html'] );
+	}
 }
