@@ -110,6 +110,21 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 	}
 
 	/**
+	 * Feed authors without a url don't break author matching (C-37).
+	 */
+	public function test_feed_author_without_url() {
+		$result = ParseThis\MF2::parse(
+			'<div class="h-feed"><div class="p-author h-card"><span class="p-name">Jane</span></div>'
+			. '<div class="h-entry"><span class="p-name">A</span><span class="p-author">Bob</span></div></div>',
+			'https://example.com/',
+			array( 'return' => 'feed' )
+		);
+		$feed = isset( $result['type'] ) ? $result : $result[0];
+		$this->assertSame( 'Jane', $feed['author']['name'] );
+		$this->assertCount( 1, $feed['items'] );
+	}
+
+	/**
 	 * Feed item authors have a string url.
 	 */
 	public function test_feed_item_author_url_is_string() {

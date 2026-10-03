@@ -427,10 +427,13 @@ class MF2 extends MF2_Utils {
 		if ( isset( $data['items'] ) ) {
 			foreach ( $data['items'] as $key => $item ) {
 				foreach ( $authors as $author ) {
+					if ( ! is_array( $author ) || empty( $author['url'] ) || ! isset( $item['author']['url'] ) ) {
+						continue;
+					}
 					if ( is_string( $author['url'] ) ) {
 						$author['url'] = array( $author['url'] );
 					}
-					if ( array_key_exists( 'author', $item ) && in_array( $item['author']['url'], $author['url'], true ) ) {
+					if ( in_array( $item['author']['url'], $author['url'], true ) ) {
 						$item['author'] = $author;
 						break;
 					}
