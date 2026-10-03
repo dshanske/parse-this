@@ -185,8 +185,8 @@ class Parser_Fetch_Test extends Parse_This_TestCase {
 		// The raw mf2 document is not merged into the result (C-45).
 		$this->assertArrayNotHasKey( 'items', $result );
 		$this->assertArrayNotHasKey( 'rels', $result );
-		// A content-less entry is currently kept under _jf2 (C-47, issue 132).
-		$entry = isset( $result['name'] ) ? $result : $result['_jf2'];
-		$this->assertSame( 'From mf2', $entry['name'] );
+		// The microformats result is the result, even without content (C-47).
+		$this->assertSame( 'From mf2', $result['name'] );
+		$this->assertArrayNotHasKey( '_jf2', $result );
 	}
 }
