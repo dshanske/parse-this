@@ -59,13 +59,16 @@ class JSONFeed extends Base {
 			if ( ! is_array( $element ) ) {
 				continue;
 			}
-			$return[] = array_filter(
+			$card = array_filter(
 				array(
 					'name'  => self::ifset( 'name', $element ),
 					'url'   => self::ifset( 'url', $element ),
 					'photo' => self::ifset( 'avatar', $element ),
 				)
 			);
+			if ( $card ) {
+				$return[] = array( 'type' => 'card' ) + $card;
+			}
 		}
 		$return = array_values( array_filter( $return ) );
 		if ( 1 === count( $return ) ) {
@@ -106,6 +109,7 @@ class JSONFeed extends Base {
 		foreach ( $items as $item ) {
 			$newitem = array_filter(
 				array(
+					'type'        => 'entry',
 					'uid'         => self::ifset( 'id', $item ),
 					'url'         => self::ifset( 'url', $item ),
 					'in-reply-to' => self::ifset( 'external_url', $item ),
