@@ -38,6 +38,7 @@ It also runs on ClassicPress 2.x.
 * `alternate`: use a `rel=alternate` jf2 or mf2 version of the page if it has one. Default false.
 * `require_content`: whether a summary alone isn't enough, so the page's WordPress REST API version is fetched for full content. Default: true for feeds, false otherwise.
 * `always_arrays`: always return `category`, `photo`, `video`, `audio`, `syndication`, `like-of`, `repost-of`, `bookmark-of` and `in-reply-to` as arrays, as Microsub does. Default false, which follows jf2: a single value is not wrapped in an array.
+* `debug`: include the raw data each source was read from (`_meta`, `_jsonld`, `_json`, `_yt`, `_ombed`, `_rest`). Default false. Before 2.0.0 this was added whenever `WP_DEBUG` was on.
 
 To list a page's feeds instead, use `( new ParseThis\Discovery() )->fetch( $url )`.
 
@@ -56,7 +57,7 @@ Results follow [jf2](https://jf2.spec.indieweb.org/), with a few deliberate diff
 `GET /wp-json/parse-this/1.0/parse?url=https://example.com/`
 
 * `url` (required): the URL to parse.
-* `return`, `follow`, `references`, `location`, `require_content`, `always_arrays`: as for `parse()` above.
+* `return`, `follow`, `references`, `location`, `require_content`, `always_arrays`, `debug`: as for `parse()` above.
 * `mf2`: return mf2 instead of jf2.
 * `discovery`: list the URL's feeds instead of parsing it.
 

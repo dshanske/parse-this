@@ -281,7 +281,7 @@ class RESTAPI {
 					return $content;
 				}
 
-				$content = self::posts_to_feed( $content, $rest_url );
+				$content = self::posts_to_feed( $content, $rest_url, $args );
 				return $content;
 			}
 		}
@@ -540,10 +540,12 @@ class RESTAPI {
 	 * @param array  $input Array with 'items' (REST API posts) and optionally
 	 *                      '_total' and '_pages'.
 	 * @param string $url   REST API root URL, used to look up site data.
+	 * @param array  $args  Optional. Parse arguments. With 'debug', each item
+	 *                      includes the raw REST API post under '_rest'.
 	 * @return array jf2 feed with '_feed_type' => 'WordPress', the site's name,
 	 *               summary and url, and 'items'.
 	 */
-	public static function posts_to_feed( $input, $url ) {
+	public static function posts_to_feed( $input, $url, $args = array() ) {
 		$return            = array_filter(
 			array(
 				'type'       => 'feed',
@@ -581,7 +583,7 @@ class RESTAPI {
 				$newitem['category'] = self::get_categories( $item );
 				$newitem['featured'] = $item['_embedded']['wp:featuredmedia'][0]['source_url'] ?? null;
 			}
-			if ( WP_DEBUG ) {
+			if ( ! empty( $args['debug'] ) ) {
 				$newitem['_rest'] = $item;
 			}
 			$return['items'][] = array_filter( $newitem );

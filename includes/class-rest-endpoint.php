@@ -121,6 +121,14 @@ class REST_Endpoint {
 							<input type="checkbox" name="follow" id="follow" />
 						</td>
 					</tr>
+					<tr>
+						<th scope="row">
+							<label for="debug"><?php esc_html_e( 'Include Source Data', 'parse-this' ); ?></label>
+						</th>
+						<td>
+							<input type="checkbox" name="debug" id="debug" checked />
+						</td>
+					</tr>
 					</tbody>
 				</table>
 			<?php wp_nonce_field( 'wp_rest' ); ?>
@@ -167,8 +175,8 @@ class REST_Endpoint {
 	 *
 	 * Accepted parameters: url (required); mf2, to return mf2 instead of jf2;
 	 * discovery, to list the URL's feeds instead of parsing it; and return,
-	 * references, location, follow, require_content and always_arrays, which
-	 * are passed to Parser::parse().
+	 * references, location, follow, require_content, always_arrays and debug,
+	 * which are passed to Parser::parse().
 	 *
 	 * @since 1.0.0
 	 *
@@ -206,6 +214,7 @@ class REST_Endpoint {
 			$args['require_content'] = rest_sanitize_boolean( $require_content );
 		}
 		$args['always_arrays'] = rest_sanitize_boolean( $request->get_param( 'always_arrays' ) );
+		$args['debug']         = rest_sanitize_boolean( $request->get_param( 'debug' ) );
 		$parse->parse( $args );
 		if ( $mf2 ) {
 			return $parse->get( 'mf2' );

@@ -23,10 +23,10 @@ class Parser_Fallbacks_Test extends Parse_This_TestCase {
 	 * @param string $html Markup.
 	 * @return array jf2.
 	 */
-	private function parse_html( $html ) {
+	private function parse_html( $html, $args = array() ) {
 		$parser = new ParseThis\Parser();
 		$parser->set( $html, 'https://example.com/a/' );
-		$parser->parse();
+		$parser->parse( $args );
 		return $parser->get();
 	}
 
@@ -236,5 +236,21 @@ class Parser_Fallbacks_Test extends Parse_This_TestCase {
 
 		$this->assertSame( 'Read https://example.org/full-article/ and https://example.net/page', $jf2['summary'] );
 		$this->assertSame( array( 'https://bit.ly/abc' ), wp_list_pluck( $this->requests, 'url' ) );
+	}
+
+	/**
+	 * Raw source data is included only with the debug argument, not because of WP_DEBUG (P-8).
+	 */
+	public function test_source_data_only_with_debug() {
+		$this->assertTrue( WP_DEBUG );
+		$html = '<html><head><meta property="og:title" content="Hello"><script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Hello"}</script></head><body></body></html>';
+
+		$jf2 = $this->parse_html( $html );
+		$this->assertArrayNotHasKey( '_meta', $jf2 );
+		$this->assertArrayNotHasKey( '_jsonld', $jf2 );
+
+		$jf2 = $this->parse_html( $html, array( 'debug' => true ) );
+		$this->assertArrayHasKey( '_meta', $jf2 );
+		$this->assertArrayHasKey( '_jsonld', $jf2 );
 	}
 }

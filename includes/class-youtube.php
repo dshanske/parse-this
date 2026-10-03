@@ -73,7 +73,7 @@ class YouTube extends Base {
 		if ( isset( $microformat['embed'] ) ) {
 			$jf2['video'] = $microformat['embed']['iframeUrl'] ?? null;
 		}
-		if ( WP_DEBUG ) {
+		if ( ! empty( $args['debug'] ) ) {
 			$jf2['_yt'] = $decode;
 		}
 		return array_filter( $jf2 );

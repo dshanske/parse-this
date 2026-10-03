@@ -494,6 +494,9 @@ class Parser {
 	 *                              bookmark-of and in-reply-to as arrays, as Microsub
 	 *                              does. Default false, which follows jf2: a single
 	 *                              value is not wrapped in an array.
+	 *     @type bool   $debug      Whether to include the raw source data each
+	 *                              fallback read (_meta, _jsonld, _json, _yt,
+	 *                              _ombed, _rest). Default false.
 	 * }
 	 * @return WP_Error|void WP_Error if there is no content to parse.
 	 */
@@ -509,6 +512,7 @@ class Parser {
 			'location'        => false,
 			'require_content' => null,
 			'always_arrays'   => false,
+			'debug'           => false,
 		);
 		$args     = wp_parse_args( $args, $defaults );
 		// If not an option then revert to single.
