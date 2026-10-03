@@ -407,7 +407,9 @@ class Parser {
 				$this->set( $content, $url, true );
 				// This means we are probing a specific REST Endpoint as they return this.
 			} elseif ( wp_remote_retrieve_header( $response, 'x-wp-total' ) ) {
-				$content           = RESTAPI::posts_to_feed( array( 'items' => $content ), $url );
+				// Site details come from the REST API root, not the collection URL.
+				$root              = RESTAPI::get_rest_root( $url );
+				$content           = RESTAPI::posts_to_feed( array( 'items' => $content ), $root ? $root : '' );
 				$content['_total'] = wp_remote_retrieve_header( $response, 'x-wp-total' );
 				$content['_pages'] = wp_remote_retrieve_header( $response, 'x-wp-totalpages' );
 

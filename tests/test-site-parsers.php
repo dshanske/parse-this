@@ -21,6 +21,17 @@ class Site_Parsers_Test extends Parse_This_TestCase {
 	}
 
 	/**
+	 * The REST API root is worked out from REST API URLs (C-46).
+	 */
+	public function test_rest_root() {
+		$this->assertSame( 'https://example.com/wp-json/', ParseThis\RESTAPI::get_rest_root( 'https://example.com/wp-json/wp/v2/posts' ) );
+		$this->assertSame( 'https://example.com/blog/wp-json/', ParseThis\RESTAPI::get_rest_root( 'https://example.com/blog/wp-json/wp/v2/posts?per_page=2' ) );
+		$this->assertSame( 'https://example.com/?rest_route=/', ParseThis\RESTAPI::get_rest_root( 'https://example.com/?rest_route=/wp/v2/posts' ) );
+		$this->assertSame( 'https://example.com/index.php?rest_route=/', ParseThis\RESTAPI::get_rest_root( 'https://example.com/index.php?rest_route=/wp/v2/posts' ) );
+		$this->assertFalse( ParseThis\RESTAPI::get_rest_root( 'https://example.com/api/wp/v2/posts' ) );
+	}
+
+	/**
 	 * A REST API post becomes an entry.
 	 */
 	public function test_rest_post() {
