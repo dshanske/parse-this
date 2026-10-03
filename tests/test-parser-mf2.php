@@ -219,4 +219,26 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 		$this->assertSame( 'Acme', $item['name'] );
 		$this->assertSame( 'org', $item['type'] );
 	}
+
+	/**
+	 * The limit stops parsing further children, also when given as a string (P-7).
+	 */
+	public function test_feed_limit() {
+		$html = '<div class="h-feed">';
+		for ( $i = 1; $i <= 4; $i++ ) {
+			$html .= '<div class="h-entry"><a class="u-url" href="https://example.com/' . $i . '/">' . $i . '</a></div>';
+		}
+		$html .= '</div>';
+		foreach ( array( 2, '2' ) as $limit ) {
+			$result = ParseThis\MF2::parse(
+				$html,
+				'https://example.com/',
+				array(
+					'return' => 'feed',
+					'limit'  => $limit,
+				)
+			);
+			$this->assertCount( 2, $result['items'] );
+		}
+	}
 }

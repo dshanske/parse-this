@@ -465,9 +465,10 @@ class MF2 extends MF2_Utils {
 	public static function parse_children( $children, $mf, $args ) {
 		$items = array();
 		$index = 0;
+		$limit = isset( $args['limit'] ) ? (int) $args['limit'] : 0;
 		foreach ( $children as $child ) {
-			if ( isset( $args['limit'] ) && $args['limit'] === $index ) {
-				continue;
+			if ( $limit > 0 && $index >= $limit ) {
+				break;
 			}
 			$item = self::parse_item( $child, $mf, $args );
 			if ( isset( $item['type'] ) ) {
