@@ -64,7 +64,7 @@ Results follow [jf2](https://jf2.spec.indieweb.org/), with a few deliberate diff
 
 Results are cached for 15 minutes per URL and set of parameters, so pasting the same link again doesn't fetch it again. Requests with `debug` are never cached.
 
-The endpoint is available to any logged-in user. Administrators can try it from **Tools > Parse This**.
+The endpoint requires the `edit_posts` capability (Authors and above); the `parse_this_rest_capability` filter changes it. Administrators can try it from **Tools > Parse This**.
 
 ### Filters
 

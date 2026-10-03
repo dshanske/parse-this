@@ -142,7 +142,7 @@ class REST_Endpoint {
 	/**
 	 * Registers the parse-this/1.0/parse route.
 	 *
-	 * Any logged-in user with the read capability may call it.
+	 * Requires the edit_posts capability (see permission_check()).
 	 *
 	 * @since 1.0.0
 	 */
@@ -162,12 +162,32 @@ class REST_Endpoint {
 							'sanitize_callback' => 'esc_url_raw',
 						),
 					),
-					'permission_callback' => function () {
-						return current_user_can( 'read' );
-					},
+					'permission_callback' => array( $cls, 'permission_check' ),
 				),
 			)
 		);
+	}
+
+	/**
+	 * Checks whether the current user may use the parse route.
+	 *
+	 * Parsing makes the server fetch arbitrary URLs, sometimes several per
+	 * request, so it is limited to users who can write posts.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @return bool True if the current user has the required capability.
+	 */
+	public static function permission_check() {
+		/**
+		 * Filters the capability required to use the parse-this/1.0/parse route.
+		 *
+		 * @since 2.0.0
+		 *
+		 * @param string $capability Capability name. Default 'edit_posts'.
+		 */
+		$capability = apply_filters( 'parse_this_rest_capability', 'edit_posts' );
+		return current_user_can( $capability );
 	}
 
 	/**

@@ -77,4 +77,27 @@ class REST_Endpoint_Test extends Parse_This_TestCase {
 		remove_filter( 'parse_this_cache_lifetime', '__return_zero' );
 		$this->assertCount( 2, $this->requests );
 	}
+
+	/**
+	 * The route requires edit_posts, and the capability is filterable (S-1).
+	 */
+	public function test_route_requires_edit_posts() {
+		$this->respond( 'https://example.com/perm/', self::PAGE );
+		do_action( 'rest_api_init' );
+		$request = new WP_REST_Request( 'GET', '/parse-this/1.0/parse' );
+		$request->set_param( 'url', 'https://example.com/perm/' );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
+		$this->assertSame( 403, rest_get_server()->dispatch( $request )->get_status() );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'author' ) ) );
+		$this->assertSame( 200, rest_get_server()->dispatch( $request )->get_status() );
+
+		$capability = function () {
+			return 'manage_options';
+		};
+		add_filter( 'parse_this_rest_capability', $capability );
+		$this->assertSame( 403, rest_get_server()->dispatch( $request )->get_status() );
+		remove_filter( 'parse_this_rest_capability', $capability );
+	}
 }
