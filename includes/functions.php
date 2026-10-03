@@ -487,9 +487,9 @@ if ( ! function_exists( __NAMESPACE__ . '\\post_type_discovery' ) ) {
 			}
 			if ( isset( $jf2['name'] ) && ! empty( $jf2['name'] ) ) {
 				$jf2['name'] = $jf2['name'];
-				$content     = ifset( $jf2['content'] );
+				$content     = $jf2['content'] ?? null;
 				if ( ! $content ) {
-					$content = ifset( $jf2['summary'] );
+					$content = $jf2['summary'] ?? null;
 				}
 				if ( is_array( $content ) && array_key_exists( 'text', $content ) ) {
 					$content = $content['text'];
@@ -747,7 +747,7 @@ if ( ! function_exists( __NAMESPACE__ . '\\pt_find_rest_alternate' ) ) {
 	 */
 	function pt_find_rest_alternate( $links ) {
 		foreach ( $links as $link ) {
-			if ( 'alternate' === ifset( $link['rel'] ) && 'application/json' === ifset( $link['type'] ) ) {
+			if ( 'alternate' === ( $link['rel'] ?? null ) && 'application/json' === ( $link['type'] ?? null ) ) {
 				return $link['uri'];
 			}
 		}
@@ -767,7 +767,7 @@ if ( ! function_exists( __NAMESPACE__ . '\\pt_find_rest_endpoint' ) ) {
 	 */
 	function pt_find_rest_endpoint( $links ) {
 		foreach ( $links as $link ) {
-			if ( 'https://api.w.org/' === ifset( $link['rel'] ) ) {
+			if ( 'https://api.w.org/' === ( $link['rel'] ?? null ) ) {
 				return $link['uri'];
 			}
 		}

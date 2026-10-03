@@ -51,10 +51,10 @@ class JSON extends Base {
 					$props = $props['pageProps'];
 					if ( array_key_exists( 'article', $props ) ) {
 						$jf2['type'] = 'entry';
-						$jf2['name'] = ifset( $props['article']['title'] );
+						$jf2['name'] = $props['article']['title'] ?? null;
 						if ( array_key_exists( 'meta', $props['article'] ) ) {
-							$jf2['published'] = normalize_iso8601( ifset( $props['article']['meta']['date'] ) );
-							$jf2['category']  = ifset( $props['article']['meta']['tags'] );
+							$jf2['published'] = normalize_iso8601( $props['article']['meta']['date'] ?? null );
+							$jf2['category']  = $props['article']['meta']['tags'] ?? null;
 						}
 					}
 				}

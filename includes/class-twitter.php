@@ -88,8 +88,8 @@ class Twitter extends Base {
 		$jf2['author']      = array_filter(
 			array(
 				'type' => 'card',
-				'name' => ifset( $oembed['author_name'] ),
-				'url'  => ifset( $oembed['author_url'] ),
+				'name' => $oembed['author_name'] ?? null,
+				'url'  => $oembed['author_url'] ?? null,
 			)
 		);
 		$jf2['publication'] = 'Twitter';
