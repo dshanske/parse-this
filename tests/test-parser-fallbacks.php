@@ -23,10 +23,10 @@ class Parser_Fallbacks_Test extends Parse_This_TestCase {
 	 * @param string $html Markup.
 	 * @return array jf2.
 	 */
-	private function parse_html( $html ) {
+	private function parse_html( $html, $args = array() ) {
 		$parser = new ParseThis\Parser();
 		$parser->set( $html, 'https://example.com/a/' );
-		$parser->parse();
+		$parser->parse( $args );
 		return $parser->get();
 	}
 
@@ -100,7 +100,7 @@ class Parser_Fallbacks_Test extends Parse_This_TestCase {
 			),
 			'application/json'
 		);
-		$this->respond( 'https://example.com/wp-json/?_embed=1', wp_json_encode( array( 'name' => 'Example' ) ), 'application/json' );
+		$this->respond_site_data( 'https://example.com/wp-json/', wp_json_encode( array( 'name' => 'Example' ) ) );
 	}
 
 	/**
@@ -223,5 +223,34 @@ class Parser_Fallbacks_Test extends Parse_This_TestCase {
 		);
 		$this->assertSame( array( 'https://example.com/1.jpg' ), $jf2['items'][0]['photo'] );
 		$this->assertCount( 2, $jf2['items'][1]['photo'] );
+	}
+
+	/**
+	 * Only link-shortener URLs in a summary are expanded (P-2).
+	 */
+	public function test_only_shortener_links_are_expanded() {
+		$this->respond( 'https://bit.ly/abc', '', 'text/html', array( 'location' => 'https://example.org/full-article/' ), 301 );
+		$html = '<html><head><meta property="og:type" content="article"><meta property="og:description" content="Read https://bit.ly/abc and https://example.net/page"></head><body></body></html>';
+
+		$jf2 = $this->parse_html( $html );
+
+		$this->assertSame( 'Read https://example.org/full-article/ and https://example.net/page', $jf2['summary'] );
+		$this->assertSame( array( 'https://bit.ly/abc' ), wp_list_pluck( $this->requests, 'url' ) );
+	}
+
+	/**
+	 * Raw source data is included only with the debug argument, not because of WP_DEBUG (P-8).
+	 */
+	public function test_source_data_only_with_debug() {
+		$this->assertTrue( WP_DEBUG );
+		$html = '<html><head><meta property="og:title" content="Hello"><script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Hello"}</script></head><body></body></html>';
+
+		$jf2 = $this->parse_html( $html );
+		$this->assertArrayNotHasKey( '_meta', $jf2 );
+		$this->assertArrayNotHasKey( '_jsonld', $jf2 );
+
+		$jf2 = $this->parse_html( $html, array( 'debug' => true ) );
+		$this->assertArrayHasKey( '_meta', $jf2 );
+		$this->assertArrayHasKey( '_jsonld', $jf2 );
 	}
 }

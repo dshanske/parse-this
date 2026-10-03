@@ -17,6 +17,14 @@ namespace ParseThis;
  * @since 1.0.0
  */
 class RESTAPI {
+
+	/**
+	 * Site index fields read by site_data().
+	 *
+	 * @since 2.0.0
+	 * @var string[]
+	 */
+	const SITE_FIELDS = array( 'name', 'url', 'timezone_string', 'gmt_offset', 'description' );
 	/**
 	 * Returns the rendered form of a REST API field such as title or content.
 	 *
@@ -56,33 +64,30 @@ class RESTAPI {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $rest_url REST API root URL.
-	 * @param string $path     Route, for example /wp/v2/posts.
+	 * @param string     $rest_url REST API root URL.
+	 * @param string     $path     Route, for example /wp/v2/posts.
+	 * @param array|null $query    Optional. Query arguments to add. Default null,
+	 *                             which adds _embed=1.
 	 * @return string|false The route URL, or false if $rest_url is invalid or has a
 	 *                      query string without rest_route.
 	 */
-	public static function get_rest_url( $rest_url, $path ) {
+	public static function get_rest_url( $rest_url, $path, $query = null ) {
 		if ( ! wp_http_validate_url( $rest_url ) ) {
 			return false;
 		}
+		$args  = is_array( $query ) ? $query : array( '_embed' => 1 );
 		$path  = '/' . ltrim( $path, '/' );
 		$query = wp_parse_url( $rest_url, PHP_URL_QUERY );
 		if ( ! empty( $query ) ) {
 			wp_parse_str( $query, $params );
 			if ( isset( $params['rest_route'] ) ) {
-				return add_query_arg(
-					array(
-						'rest_route' => $path,
-						'_embed'     => 1,
-					),
-					$rest_url
-				);
+				return add_query_arg( array_merge( array( 'rest_route' => $path ), $args ), $rest_url );
 			}
 			return false;
 		}
 
 		$rest_url = untrailingslashit( $rest_url );
-		return add_query_arg( '_embed', 1, $rest_url . $path );
+		return add_query_arg( $args, $rest_url . $path );
 	}
 
 	/**
@@ -157,22 +162,25 @@ class RESTAPI {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param string $rest_url REST API root URL.
-	 * @param string $path     Route to fetch.
-	 * @param bool   $cache    Optional. Whether to cache the raw response in a
-	 *                         transient for a week. Default false.
+	 * @param string     $rest_url REST API root URL.
+	 * @param string     $path     Route to fetch.
+	 * @param bool       $cache    Optional. Whether to cache the raw response in a
+	 *                             transient for a week. Default false.
+	 * @param array|null $query Optional. Query arguments for the request. Default
+	 *                         null, which adds _embed=1.
 	 * @return array|WP_Error The decoded response. Collection responses are wrapped
 	 *                        as array( 'items' => ..., '_total' => ..., '_pages' => ... )
 	 *                        from the X-WP-Total headers. WP_Error if the request
 	 *                        fails or the response is not application/json.
 	 */
-	public static function fetch( $rest_url, $path, $cache = false ) {
+	public static function fetch( $rest_url, $path, $cache = false, $query = null ) {
 		if ( empty( $rest_url ) || ! $rest_url ) {
 			return new \WP_Error( 'no_url', __( 'No URL provided', 'parse-this' ) );
 		}
 
-		$url = self::get_rest_url( $rest_url, $path );
-		$key = 'pt_rest_' . self::base64url_encode( $url );
+		$url = self::get_rest_url( $rest_url, $path, $query );
+		// Transient names are limited to 172 characters, so hash the URL.
+		$key = 'pt_rest_' . md5( $url );
 		if ( $cache ) {
 			$transient = get_transient( $key );
 			if ( false !== $transient ) {
@@ -273,7 +281,7 @@ class RESTAPI {
 					return $content;
 				}
 
-				$content = self::posts_to_feed( $content, $rest_url );
+				$content = self::posts_to_feed( $content, $rest_url, $args );
 				return $content;
 			}
 		}
@@ -293,7 +301,7 @@ class RESTAPI {
 		if ( ! isset( $item['_embedded']['author'][0] ) || ! is_array( $item['_embedded']['author'][0] ) ) {
 			return null;
 		}
-		$author      = $item['_embedded']['author'][0];
+		$author = $item['_embedded']['author'][0];
 		if ( array_key_exists( 'code', $author ) ) {
 			return null;
 		}
@@ -358,9 +366,41 @@ class RESTAPI {
 	}
 
 	/**
+	 * Returns a REST API post's date in W3C format.
+	 *
+	 * Uses the UTC <field>_gmt value, converted to the site's timezone when it is
+	 * known. Falls back to the site-local <field> value, interpreted in $timezone,
+	 * only if the GMT value is missing.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array             $item     REST API post object.
+	 * @param string            $field    'date' or 'modified'.
+	 * @param DateTimeZone|null $timezone Optional. The site's timezone.
+	 * @return string|null The date, or null if the post has none.
+	 */
+	public static function post_datetime( $item, $field, $timezone = null ) {
+		$gmt = $item[ $field . '_gmt' ] ?? null;
+		if ( is_string( $gmt ) && '' !== $gmt ) {
+			try {
+				$datetime = new \DateTime( $gmt, new \DateTimeZone( 'UTC' ) );
+				if ( $timezone instanceof \DateTimeZone ) {
+					$datetime->setTimezone( $timezone );
+				}
+				return $datetime->format( DATE_W3C );
+			} catch ( \Exception $e ) {
+				// Fall back to the local date below.
+				unset( $e );
+			}
+		}
+		return self::get_datetime( $item[ $field ] ?? null, $timezone );
+	}
+
+	/**
 	 * Returns a site's name, URL, timezone and description from its REST API root.
 	 *
-	 * The response is cached for a week.
+	 * Only those fields are requested (_fields), rather than the whole embedded
+	 * index, and the response is cached for a week.
 	 *
 	 * @since 2.0.0
 	 *
@@ -369,11 +409,11 @@ class RESTAPI {
 	 *               that are present, or an empty array if the request fails.
 	 */
 	public static function site_data( $rest_url ) {
-		$fetch = self::fetch( $rest_url, '', true );
+		$fetch = self::fetch( $rest_url, '', true, array( '_fields' => implode( ',', self::SITE_FIELDS ) ) );
 		if ( is_wp_error( $fetch ) || ! is_array( $fetch ) ) {
 			return array();
 		}
-		return wp_array_slice_assoc( $fetch, array( 'name', 'url', 'timezone_string', 'gmt_offset', 'description' ) );
+		return wp_array_slice_assoc( $fetch, self::SITE_FIELDS );
 	}
 
 	/**
@@ -427,6 +467,32 @@ class RESTAPI {
 	}
 
 	/**
+	 * Returns the category and tag names embedded in a REST API post.
+	 *
+	 * Requires the post to have been requested with _embed, which every
+	 * request from this class is.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $item REST API post object.
+	 * @return string[] Category and tag names, without "Uncategorized".
+	 */
+	public static function get_categories( $item ) {
+		$names = array();
+		if ( empty( $item['_embedded']['wp:term'] ) || ! is_array( $item['_embedded']['wp:term'] ) ) {
+			return $names;
+		}
+		foreach ( $item['_embedded']['wp:term'] as $terms ) {
+			foreach ( (array) $terms as $term ) {
+				if ( isset( $term['taxonomy'], $term['name'] ) && in_array( $term['taxonomy'], array( 'category', 'post_tag' ), true ) && 'Uncategorized' !== $term['name'] ) {
+					$names[] = $term['name'];
+				}
+			}
+		}
+		return array_values( array_unique( $names ) );
+	}
+
+	/**
 	 * Converts a single REST API post into a jf2 entry.
 	 *
 	 * @since 1.0.0
@@ -452,26 +518,16 @@ class RESTAPI {
 					)
 				),
 				'summary'   => self::get_rendered( 'excerpt', $item ),
-				'published' => self::get_datetime( $item['date'] ?? null, $timezone ),
-				'updated'   => self::get_datetime( $item['modified'] ?? null, $timezone ),
+				'published' => self::post_datetime( $item, 'date', $timezone ),
+				'updated'   => self::post_datetime( $item, 'modified', $timezone ),
 				'kind'      => $item['kind'] ?? null,
 			)
 		);
 
 		if ( array_key_exists( '_embedded', $item ) ) {
-			if ( array_key_exists( 'featured_media', $item ) && 0 !== $item['featured_media'] ) {
-				$newitem['featured'] = $item['_embedded']['wp:featuredmedia'][0]['source_url'];
-			}
-			if ( array_key_exists( 'tags', $item ) && ! empty( $item['tags'] ) ) {
-				foreach ( $item['_links']['wp:term'] as $term ) {
-					if ( 'post_tag' === $term['taxonomy'] ) {
-						$tag_path            = self::get_rest_path( $rest_url, $term['href'] );
-						$tags                = self::fetch( $rest_url, $tag_path );
-						$newitem['category'] = wp_list_pluck( $tags['items'], 'name' );
-					}
-				}
-			}
-			$newitem['author'] = self::get_author( $item );
+			$newitem['featured'] = $item['_embedded']['wp:featuredmedia'][0]['source_url'] ?? null;
+			$newitem['category'] = self::get_categories( $item );
+			$newitem['author']   = self::get_author( $item );
 		}
 		return array_filter( $newitem );
 	}
@@ -484,10 +540,12 @@ class RESTAPI {
 	 * @param array  $input Array with 'items' (REST API posts) and optionally
 	 *                      '_total' and '_pages'.
 	 * @param string $url   REST API root URL, used to look up site data.
-	 * @return array jf2 feed with '_feed_type' => 'wordpress', the site's name,
+	 * @param array  $args  Optional. Parse arguments. With 'debug', each item
+	 *                      includes the raw REST API post under '_rest'.
+	 * @return array jf2 feed with '_feed_type' => 'WordPress', the site's name,
 	 *               summary and url, and 'items'.
 	 */
-	public static function posts_to_feed( $input, $url ) {
+	public static function posts_to_feed( $input, $url, $args = array() ) {
 		$return            = array_filter(
 			array(
 				'type'       => 'feed',
@@ -515,29 +573,17 @@ class RESTAPI {
 						)
 					),
 					'summary'   => self::get_rendered( 'excerpt', $item ),
-					'published' => self::get_datetime( $item['date'] ?? null, $timezone ),
-					'updated'   => self::get_datetime( $item['modified'] ?? null, $timezone ),
+					'published' => self::post_datetime( $item, 'date', $timezone ),
+					'updated'   => self::post_datetime( $item, 'modified', $timezone ),
 					'author'    => self::get_author( $item ),
 					'kind'      => $item['kind'] ?? null,
 				)
 			);
 			if ( array_key_exists( '_embedded', $item ) ) {
-				if ( array_key_exists( 'wp:term', $item['_embedded'] ) ) {
-					$category = array();
-					foreach ( $item['_embedded']['wp:term'] as $terms ) {
-						foreach ( $terms as $term ) {
-							if ( in_array( $term['taxonomy'], array( 'category', 'post_tags' ), true ) && 'Uncategorized' !== $term['name'] ) {
-								$category[] = $term['name'];
-							}
-						}
-					}
-					$newitem['category'] = $category;
-				}
-				if ( array_key_exists( 'wp:featuredmedia', $item['_embedded'] ) ) {
-					$newitem['featured'] = $item['_embedded']['wp:featuredmedia'][0]['source_url'];
-				}
+				$newitem['category'] = self::get_categories( $item );
+				$newitem['featured'] = $item['_embedded']['wp:featuredmedia'][0]['source_url'] ?? null;
 			}
-			if ( WP_DEBUG ) {
+			if ( ! empty( $args['debug'] ) ) {
 				$newitem['_rest'] = $item;
 			}
 			$return['items'][] = array_filter( $newitem );

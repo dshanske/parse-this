@@ -219,4 +219,51 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 		$this->assertSame( 'Acme', $item['name'] );
 		$this->assertSame( 'org', $item['type'] );
 	}
+
+	/**
+	 * The limit stops parsing further children, also when given as a string (P-7).
+	 */
+	public function test_feed_limit() {
+		$html = '<div class="h-feed">';
+		for ( $i = 1; $i <= 4; $i++ ) {
+			$html .= '<div class="h-entry"><a class="u-url" href="https://example.com/' . $i . '/">' . $i . '</a></div>';
+		}
+		$html .= '</div>';
+		foreach ( array( 2, '2' ) as $limit ) {
+			$result = ParseThis\MF2::parse(
+				$html,
+				'https://example.com/',
+				array(
+					'return' => 'feed',
+					'limit'  => $limit,
+				)
+			);
+			$this->assertCount( 2, $result['items'] );
+		}
+	}
+
+	/**
+	 * With follow, an author page shared by several items is fetched once (P-4).
+	 */
+	public function test_follow_fetches_each_author_page_once() {
+		$this->respond( 'https://example.org/jane/', '<div class="h-card"><a class="u-url p-name" href="https://example.org/jane/">Jane Doe</a></div>' );
+		$html = '<div class="h-feed">';
+		for ( $i = 1; $i <= 3; $i++ ) {
+			$html .= '<div class="h-entry"><a class="u-url" href="https://example.com/' . $i . '/">' . $i . '</a><a class="u-author" href="https://example.org/jane/">a</a></div>';
+		}
+		$html .= '</div>';
+
+		$result = ParseThis\MF2::parse(
+			$html,
+			'https://example.com/',
+			array(
+				'return' => 'feed',
+				'follow' => true,
+			)
+		);
+
+		$this->assertSame( 'Jane Doe', $result['items'][2]['author']['name'] );
+		$this->assertSame( array( 'https://example.org/jane/' ), array_values( array_unique( wp_list_pluck( $this->requests, 'url' ) ) ) );
+		$this->assertCount( 1, $this->requests );
+	}
 }

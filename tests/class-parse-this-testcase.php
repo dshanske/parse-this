@@ -31,14 +31,14 @@ abstract class Parse_This_TestCase extends WP_UnitTestCase {
 		parent::set_up();
 		$this->responses = array();
 		$this->requests  = array();
-		add_filter( 'pre_http_request', array( $this, 'mock_http' ), 10, 3 );
+		add_filter( 'pre_http_request', array( $this, 'mock_http' ), 20, 3 );
 	}
 
 	/**
 	 * Removes the HTTP mock.
 	 */
 	public function tear_down() {
-		remove_filter( 'pre_http_request', array( $this, 'mock_http' ), 10 );
+		remove_filter( 'pre_http_request', array( $this, 'mock_http' ), 20 );
 		parent::tear_down();
 	}
 
@@ -75,6 +75,17 @@ abstract class Parse_This_TestCase extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Registers a mocked REST API site index, as requested by RESTAPI::site_data().
+	 *
+	 * @param string $rest_url REST API root URL.
+	 * @param array  $data     Site fields (name, description, url, ...).
+	 */
+	protected function respond_site_data( $rest_url, $data ) {
+		$url = ParseThis\RESTAPI::get_rest_url( $rest_url, '', array( '_fields' => implode( ',', ParseThis\RESTAPI::SITE_FIELDS ) ) );
+		$this->respond( $url, wp_json_encode( $data ), 'application/json' );
+	}
+
+	/**
 	 * Serves mocked responses. Unmocked URLs fail, so no test touches the network.
 	 *
 	 * @param false|array $pre  Short-circuit value.
@@ -83,6 +94,10 @@ abstract class Parse_This_TestCase extends WP_UnitTestCase {
 	 * @return array|WP_Error Mocked response, or WP_Error for an unmocked URL.
 	 */
 	public function mock_http( $pre, $args, $url ) {
+		// Another filter (such as Parser::fetch_feed() reusing a response) already answered.
+		if ( false !== $pre ) {
+			return $pre;
+		}
 		$this->requests[] = array(
 			'url'  => $url,
 			'args' => $args,

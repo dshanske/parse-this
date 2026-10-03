@@ -23,6 +23,14 @@ namespace ParseThis;
 class MF2 extends MF2_Utils {
 
 	/**
+	 * Author pages already fetched during this request, keyed by URL.
+	 *
+	 * @since 2.0.0
+	 * @var array[]
+	 */
+	private static $author_pages = array();
+
+	/**
 	 * Finds the h-feeds in a document.
 	 *
 	 * Top-level h-feeds and h-feeds nested one level inside another item are
@@ -136,10 +144,15 @@ class MF2 extends MF2_Utils {
 		// 7. "if there is an author-page URL" ...
 		if ( $authorpage ) {
 			if ( $follow && ! self::urls_match( $authorpage, self::get_plaintext( $mf2, 'url' ) ) ) {
-				$parse = new Parser( $authorpage );
-				$parse->fetch();
-				$parse->parse();
-				return $parse->get();
+				// Feed items often share an author, so fetch each author page once per request.
+				$key = normalize_url( $authorpage );
+				if ( ! isset( self::$author_pages[ $key ] ) ) {
+					$parse = new Parser( $authorpage );
+					$parse->fetch();
+					$parse->parse();
+					self::$author_pages[ $key ] = $parse->get();
+				}
+				return self::$author_pages[ $key ];
 			} else {
 				$rel = self::get_rel_urls( $mf2, $authorpage );
 				if ( $rel ) {
@@ -465,9 +478,10 @@ class MF2 extends MF2_Utils {
 	public static function parse_children( $children, $mf, $args ) {
 		$items = array();
 		$index = 0;
+		$limit = isset( $args['limit'] ) ? (int) $args['limit'] : 0;
 		foreach ( $children as $child ) {
-			if ( isset( $args['limit'] ) && $args['limit'] === $index ) {
-				continue;
+			if ( $limit > 0 && $index >= $limit ) {
+				break;
 			}
 			$item = self::parse_item( $child, $mf, $args );
 			if ( isset( $item['type'] ) ) {

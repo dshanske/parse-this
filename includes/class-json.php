@@ -25,7 +25,7 @@ class JSON extends Base {
 	 * @param string           $url  URL of the page.
 	 * @param array            $args Parse arguments (see Parser::parse()). Unused.
 	 * @return array jf2 properties found (type, name, published, category). When
-	 *               WP_DEBUG is on, the decoded JSON is included under '_json'.
+	 *               $args['debug'] is set, the decoded JSON is included under '_json'.
 	 */
 	public static function parse( $doc, $url, $args ) {
 		if ( ! $doc ) {
@@ -62,7 +62,7 @@ class JSON extends Base {
 		}
 		$jf2 = array_filter( $jf2 );
 
-		if ( WP_DEBUG ) {
+		if ( ! empty( $args['debug'] ) ) {
 			$jf2['_json'] = $json;
 		}
 		return array_filter( $jf2 );

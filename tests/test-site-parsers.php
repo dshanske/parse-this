@@ -35,16 +35,13 @@ class Site_Parsers_Test extends Parse_This_TestCase {
 	 * A REST API post becomes an entry.
 	 */
 	public function test_rest_post() {
-		$this->respond(
-			'https://example.com/wp-json/?_embed=1',
-			wp_json_encode(
-				array(
-					'name'            => 'Example Site',
-					'url'             => 'https://example.com',
-					'timezone_string' => 'UTC',
-				)
-			),
-			'application/json'
+		$this->respond_site_data(
+			'https://example.com/wp-json/',
+			array(
+				'name'            => 'Example Site',
+				'url'             => 'https://example.com',
+				'timezone_string' => 'UTC',
+			)
 		);
 		$post = array(
 			'id'        => 5,
@@ -76,7 +73,7 @@ class Site_Parsers_Test extends Parse_This_TestCase {
 	 * REST API posts carry a jf2 type.
 	 */
 	public function test_rest_post_type() {
-		$this->respond( 'https://example.com/wp-json/?_embed=1', wp_json_encode( array( 'name' => 'Example Site' ) ), 'application/json' );
+		$this->respond_site_data( 'https://example.com/wp-json/', wp_json_encode( array( 'name' => 'Example Site' ) ) );
 		$jf2 = ParseThis\RESTAPI::parse(
 			array(
 				'id'    => 5,
@@ -93,7 +90,7 @@ class Site_Parsers_Test extends Parse_This_TestCase {
 	 * The parse_this_rest_api_jf2_type filter can choose another type.
 	 */
 	public function test_rest_post_type_filter() {
-		$this->respond( 'https://example.com/wp-json/?_embed=1', wp_json_encode( array( 'name' => 'Example Site' ) ), 'application/json' );
+		$this->respond_site_data( 'https://example.com/wp-json/', wp_json_encode( array( 'name' => 'Example Site' ) ) );
 		$callback = function ( $type, $item ) {
 			return ( isset( $item['type'] ) && 'tribe_events' === $item['type'] ) ? 'event' : $type;
 		};
@@ -164,5 +161,84 @@ class Site_Parsers_Test extends Parse_This_TestCase {
 		$this->assertSame( 'Test Channel', $jf2['author']['name'] );
 		$this->assertSame( 'https://i.ytimg.com/vi/abc123XYZ00/maxresdefault.jpg', $jf2['featured'] );
 		$this->assertSame( array(), ParseThis\YouTube::parse( '<html>no player</html>', 'https://www.youtube.com/watch?v=x', array() ) ); // C-26.
+	}
+
+	/**
+	 * Categories and tags come from the embedded terms, without extra requests (P-3).
+	 */
+	public function test_rest_post_terms_from_embedded_data() {
+		$this->respond_site_data( 'https://example.com/wp-json/', wp_json_encode( array( 'name' => 'Example Site' ) ) );
+		$post = array(
+			'id'        => 5,
+			'link'      => 'https://example.com/hello/',
+			'title'     => array( 'rendered' => 'Hello' ),
+			'tags'      => array( 7 ),
+			'_links'    => array( 'wp:term' => array( array( 'taxonomy' => 'post_tag', 'href' => 'https://example.com/wp-json/wp/v2/tags?post=5' ) ) ),
+			'_embedded' => array(
+				'wp:term' => array(
+					array(
+						array( 'taxonomy' => 'category', 'name' => 'News' ),
+						array( 'taxonomy' => 'category', 'name' => 'Uncategorized' ),
+					),
+					array( array( 'taxonomy' => 'post_tag', 'name' => 'release' ) ),
+				),
+			),
+		);
+
+		$single = ParseThis\RESTAPI::get_post( $post, 'https://example.com/wp-json/' );
+		$feed   = ParseThis\RESTAPI::posts_to_feed( array( 'items' => array( $post ) ), 'https://example.com/wp-json/' );
+
+		$this->assertSame( array( 'News', 'release' ), $single['category'] );
+		$this->assertSame( array( 'News', 'release' ), $feed['items'][0]['category'] );
+		$this->assertNotContains( 'https://example.com/wp-json/wp/v2/tags?post=5&_embed=1', wp_list_pluck( $this->requests, 'url' ) );
+	}
+
+	/**
+	 * REST API dates come from date_gmt, shown in the site's timezone when known.
+	 */
+	public function test_rest_post_dates_from_gmt() {
+		$post = array(
+			'id'           => 5,
+			'link'         => 'https://example.com/hello/',
+			'title'        => array( 'rendered' => 'Hello' ),
+			'date'         => '2026-09-29T10:00:00',
+			'date_gmt'     => '2026-09-29T14:00:00',
+			'modified'     => '2026-09-29T11:00:00',
+			'modified_gmt' => '2026-09-29T15:00:00',
+		);
+
+		// Without site data the instant is still right, in UTC.
+		$jf2 = ParseThis\RESTAPI::get_post( $post, 'https://example.com/wp-json/' );
+		$this->assertSame( '2026-09-29T14:00:00+00:00', $jf2['published'] );
+		$this->assertSame( '2026-09-29T15:00:00+00:00', $jf2['updated'] );
+
+		// With the site's timezone it is shown in local time.
+		$this->respond_site_data( 'https://example.org/wp-json/', array( 'timezone_string' => 'America/New_York' ) );
+		$jf2 = ParseThis\RESTAPI::get_post( $post, 'https://example.org/wp-json/' );
+		$this->assertSame( '2026-09-29T10:00:00-04:00', $jf2['published'] );
+
+		// Without date_gmt, the local date is read in the site's timezone as before.
+		unset( $post['date_gmt'] );
+		$jf2 = ParseThis\RESTAPI::get_post( $post, 'https://example.org/wp-json/' );
+		$this->assertSame( '2026-09-29T10:00:00-04:00', $jf2['published'] );
+	}
+
+	/**
+	 * YouTube player data is extracted by matching braces, so "};" in a string doesn't cut it short (P-9).
+	 */
+	public function test_youtube_player_data_with_brace_in_string() {
+		$player = array(
+			'videoDetails' => array(
+				'videoId'          => 'abc123',
+				'title'            => 'Braces };',
+				'shortDescription' => 'A "quoted" }; description',
+				'author'           => 'Example Channel',
+			),
+		);
+		$html   = '<html><body><script>var ytInitialPlayerResponse = ' . wp_json_encode( $player ) . ';var other = {"a":1};</script></body></html>';
+
+		$jf2 = ParseThis\YouTube::parse( $html, 'https://www.youtube.com/watch?v=abc123', array() );
+
+		$this->assertSame( 'Braces };', $jf2['name'] );
 	}
 }

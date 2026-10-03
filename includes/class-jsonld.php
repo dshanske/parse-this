@@ -26,8 +26,8 @@ class JSONLD extends Base {
 	 *
 	 * @param DOMDocument|null $doc  Parsed HTML document.
 	 * @param string           $url  URL of the page. Unused.
-	 * @param array            $args Parse arguments (see Parser::parse()). Unused.
-	 * @return array jf2 properties. When WP_DEBUG is on, the decoded JSON-LD is included
+	 * @param array            $args Parse arguments (see Parser::parse()).
+	 * @return array jf2 properties. When $args['debug'] is set, the decoded JSON-LD is included
 	 *               under '_jsonld'.
 	 */
 	public static function parse( $doc, $url, $args ) {
@@ -55,7 +55,7 @@ class JSONLD extends Base {
 		}
 
 		$jf2 = self::jsonld_to_jf2( $jsonld );
-		if ( WP_DEBUG ) {
+		if ( ! empty( $args['debug'] ) ) {
 			$jf2['_jsonld'] = $jsonld;
 		}
 		return array_filter( $jf2 );

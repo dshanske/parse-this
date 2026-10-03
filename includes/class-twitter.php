@@ -93,7 +93,7 @@ class Twitter extends Base {
 			)
 		);
 		$jf2['publication'] = 'Twitter';
-		if ( WP_DEBUG ) {
+		if ( ! empty( $args['debug'] ) ) {
 			$jf2['_ombed'] = $oembed;
 		}
 
