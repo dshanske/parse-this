@@ -203,10 +203,9 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 	 * Unknown microformat types keep their generic properties.
 	 */
 	public function test_unknown_type() {
-		$this->markTestSkipped( 'Known bug C-38 (issue 126): parse_hunknown() rejects every h-* type.' );
-
 		$result = ParseThis\MF2::parse( '<div class="h-org"><span class="p-name">Acme</span></div>', 'https://example.com/', array() );
 		$item   = isset( $result['type'] ) ? $result : $result[0];
 		$this->assertSame( 'Acme', $item['name'] );
+		$this->assertSame( 'org', $item['type'] );
 	}
 }

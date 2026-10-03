@@ -537,21 +537,21 @@ class MF2 extends MF2_Utils {
 	/**
 	 * Converts a microformat of an unrecognized type into jf2.
 	 *
-	 * Note: only types without a hyphen pass the check below, so in practice
-	 * every h-* type returns an empty array.
+	 * Microformats2 parsing is vocabulary-agnostic, so any h-* root gets the
+	 * generic properties from parse_h() and its type without the h- prefix,
+	 * as jf2 does for known types (h-org becomes org).
 	 *
 	 * @since 1.0.0
 	 *
 	 * @param array $unknown Microformat.
 	 * @param array $mf      Parsed mf2 document.
-	 * @param array $args  Parse arguments (see Parser::parse()).
-	 * @return array jf2 with the generic properties from parse_h() and the original type,
-	 *               or an empty array.
+	 * @param array $args    Parse arguments (see Parser::parse()).
+	 * @return array jf2 with the generic properties and the type, or an empty
+	 *               array if the type isn't h-* or no properties were found.
 	 */
 	public static function parse_hunknown( $unknown, $mf, $args ) {
 		$type = $unknown['type'][0];
-		$type = explode( '-', $type );
-		if ( 1 !== count( $type ) ) {
+		if ( ! is_string( $type ) || 0 !== strpos( $type, 'h-' ) || 'h-' === $type ) {
 			return array();
 		}
 		// Parse unknown h property.
@@ -559,7 +559,7 @@ class MF2 extends MF2_Utils {
 		if ( empty( $data ) ) {
 			return array();
 		}
-		$data['type'] = $unknown['type'][0];
+		$data['type'] = substr( $type, 2 );
 
 		return $data;
 	}
