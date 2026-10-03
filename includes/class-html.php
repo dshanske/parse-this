@@ -23,18 +23,19 @@ class HTML extends Base {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param DOMDocument|mixed $doc Parsed HTML document. Any other non-empty value
-	 *                               is returned unchanged.
-	 * @param string            $url URL of the page.
-	 * @return array jf2 properties. When WP_DEBUG is on, the collected meta tags are
+	 * @since 2.0.0 Returns an empty array for anything that isn't a DOMDocument,
+	 *              rather than returning that value unchanged.
+	 *
+	 * @param \DOMDocument|mixed $doc Parsed HTML document.
+	 * @param string             $url URL of the page.
+	 * @return array jf2 properties, or an empty array if $doc is not a
+	 *               DOMDocument. When WP_DEBUG is on, the collected meta tags are
 	 *               included under '_meta'.
 	 */
 	public static function parse( $doc, $url ) {
-		if ( ! $doc ) {
+		// Only HTML has meta tags. Decoded JSON (mf2 or jf2) must not be merged into results as is.
+		if ( ! $doc instanceof \DOMDocument ) {
 			return array();
-		}
-		if ( ! is_object( $doc ) ) {
-			return $doc;
 		}
 		$xpath = new \DOMXPath( $doc );
 

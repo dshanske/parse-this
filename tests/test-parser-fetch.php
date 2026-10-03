@@ -168,8 +168,6 @@ class Parser_Fetch_Test extends Parse_This_TestCase {
 	 * An mf2 JSON response is parsed by the MF2 parser (C-2).
 	 */
 	public function test_mf2_json() {
-		$this->markTestSkipped( 'Known bug C-45 (issue 129): the raw mf2 document is merged into the result.' );
-
 		$mf2 = array(
 			'items' => array(
 				array(
@@ -184,6 +182,11 @@ class Parser_Fetch_Test extends Parse_This_TestCase {
 		);
 		$this->respond( 'https://example.com/mf2/', wp_json_encode( $mf2 ), 'application/mf2+json' );
 		$result = $this->fetch_and_parse( 'https://example.com/mf2/' );
-		$this->assertSame( 'From mf2', $result['name'] );
+		// The raw mf2 document is not merged into the result (C-45).
+		$this->assertArrayNotHasKey( 'items', $result );
+		$this->assertArrayNotHasKey( 'rels', $result );
+		// A content-less entry is currently kept under _jf2 (C-47, issue 132).
+		$entry = isset( $result['name'] ) ? $result : $result['_jf2'];
+		$this->assertSame( 'From mf2', $entry['name'] );
 	}
 }
