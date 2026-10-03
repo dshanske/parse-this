@@ -849,9 +849,14 @@ class MF2 extends MF2_Utils {
 	/**
 	 * Converts an h-event into jf2.
 	 *
-	 * Reads category, attendee, organizer, location, start, end, photo, uid and url, plus the common properties from parse_h().
+	 * Reads category, attendee, organizer, location, start, end, duration,
+	 * photo, video, audio, featured, syndication, uid and url, plus the common
+	 * properties from parse_h(). Without content, description is used, as in
+	 * older markup. Adds post-type.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Reads duration, video, audio, featured, syndication and
+	 *              description, and adds post-type.
 	 *
 	 * @param array $event h-event microformat.
 	 * @param array $mf    Parsed mf2 document.
@@ -866,17 +871,32 @@ class MF2 extends MF2_Utils {
 			'type' => 'event',
 		);
 		$data       = array_merge( $data, self::parse_h( $event, $mf, $args ) );
-		$properties = array( 'category', 'attendee', 'organizer', 'location', 'start', 'end', 'photo', 'uid', 'url' );
+		$properties = array( 'category', 'attendee', 'organizer', 'location', 'start', 'end', 'duration', 'photo', 'video', 'audio', 'featured', 'syndication', 'uid', 'url' );
 		$data       = array_merge( $data, self::get_prop_array( $event, $properties, $args ) );
-		return self::filter_empty( $data );
+		// Older markup describes an event with description rather than content.
+		if ( empty( $data['content'] ) ) {
+			$data['content'] = self::parse_html_value( $event, 'description' );
+			if ( empty( $data['summary'] ) && is_array( $data['content'] ) && isset( $data['content']['text'] ) ) {
+				$data['summary'] = self::get_summary( $event, $data['content'] );
+			}
+		}
+		$data              = self::filter_empty( $data );
+		$data['post-type'] = post_type_discovery( $data );
+		return $data;
 	}
 
 	/**
 	 * Converts an h-review into jf2.
 	 *
-	 * Reads category, item, summary, published, rating, best and worst, plus the common properties from parse_h().
+	 * Reads category, item, the media and syndication properties, the
+	 * responses (in-reply-to, like-of, repost-of, bookmark-of), summary,
+	 * published, rating, best and worst, plus the common properties from
+	 * parse_h(). Without content, description is used, as in hReview markup.
+	 * Adds post-type.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Reads media, syndication, responses and description, and
+	 *              adds post-type.
 	 *
 	 * @param array $entry h-review microformat.
 	 * @param array $mf    Parsed mf2 document.
@@ -892,7 +912,8 @@ class MF2 extends MF2_Utils {
 			'name' => null,
 			'url'  => null,
 		);
-		$properties = array( 'category', 'item' );
+		// A review is often also a reply to, or a like of, what it reviews.
+		$properties = array( 'category', 'item', 'photo', 'video', 'audio', 'syndication', 'in-reply-to', 'like-of', 'repost-of', 'bookmark-of' );
 		$data       = array_merge( $data, self::get_prop_array( $entry, $properties, $args ) );
 		$properties = array( 'summary', 'published', 'rating', 'best', 'worst' );
 		foreach ( $properties as $p ) {
@@ -902,7 +923,13 @@ class MF2 extends MF2_Utils {
 			}
 		}
 		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
-		return self::filter_empty( $data );
+		// Older (hReview) markup uses description for the review text.
+		if ( empty( $data['content'] ) ) {
+			$data['content'] = self::parse_html_value( $entry, 'description' );
+		}
+		$data              = self::filter_empty( $data );
+		$data['post-type'] = post_type_discovery( $data );
+		return $data;
 	}
 
 
@@ -1012,9 +1039,13 @@ class MF2 extends MF2_Utils {
 	/**
 	 * Converts an h-recipe into jf2.
 	 *
-	 * Reads category and item, plus the common properties from parse_h().
+	 * Reads category, item, ingredient, photo, video, yield, duration,
+	 * nutrition and instructions (rich text), plus the common properties from
+	 * parse_h(). Adds post-type.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Reads ingredient, photo, video, yield, duration, nutrition
+	 *              and instructions, and adds post-type.
 	 *
 	 * @param array $recipe h-recipe microformat.
 	 * @param array $mf     Parsed mf2 document.
@@ -1030,17 +1061,20 @@ class MF2 extends MF2_Utils {
 			'name' => null,
 			'url'  => null,
 		);
-		$properties = array( 'category', 'item' );
+		$properties = array( 'category', 'item', 'ingredient', 'photo', 'video' );
 		$data       = array_merge( $data, self::get_prop_array( $recipe, $properties, $args ) );
-		$properties = array();
+		$properties = array( 'yield', 'duration', 'nutrition' );
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $recipe, $p );
 			if ( null !== $v ) {
 				$data[ $p ] = $v;
 			}
 		}
-		$data = array_merge( $data, self::parse_h( $recipe, $mf, $args ) );
-		return self::filter_empty( $data );
+		$data                 = array_merge( $data, self::parse_h( $recipe, $mf, $args ) );
+		$data['instructions'] = self::parse_html_value( $recipe, 'instructions' );
+		$data                 = self::filter_empty( $data );
+		$data['post-type']    = post_type_discovery( $data );
+		return $data;
 	}
 
 	/**

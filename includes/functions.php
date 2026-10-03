@@ -478,8 +478,9 @@ if ( ! function_exists( __NAMESPACE__ . '\\post_type_discovery' ) ) {
 		if ( ! array_key_exists( 'type', $jf2 ) ) {
 			return '';
 		}
-		if ( 'event' === $jf2['type'] ) {
-			return 'event';
+		// Events (as in the spec), and reviews and recipes (as XRay does), are their own type.
+		if ( in_array( $jf2['type'], array( 'event', 'review', 'recipe' ), true ) ) {
+			return $jf2['type'];
 		}
 		if ( 'entry' === $jf2['type'] ) {
 			$map = array(

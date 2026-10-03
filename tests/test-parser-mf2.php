@@ -373,4 +373,47 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 		$this->assertSame( 'https://realize.be/', $result['follow-of']['url'] );
 		$this->assertSame( 'follow', $result['post-type'] );
 	}
+
+	/**
+	 * h-event, h-review and h-recipe keep their properties and get a post-type (C-56).
+	 */
+	public function test_event_review_recipe() {
+		$args = array( 'references' => false );
+
+		$event = ParseThis\MF2::parse(
+			'<div class="h-event"><a class="u-url p-name" href="https://example.com/e">HWC</a><time class="dt-start">2016-03-09T18:30</time><time class="dt-end">2016-03-09T19:30</time><img class="u-featured" src="https://example.com/featured.jpg"><div class="e-description"><p>Come <b>by</b>.</p></div></div>',
+			'https://example.com/e',
+			$args
+		);
+		$this->assertSame( 'event', $event['post-type'] );
+		$this->assertSame( '2016-03-09T19:30', $event['end'] );
+		$this->assertSame( 'https://example.com/featured.jpg', $event['featured'] );
+		$this->assertSame( 'Come by.', $event['content']['text'] );
+
+		$review = ParseThis\MF2::parse(
+			'<div class="h-review"><span class="p-name">Review</span><a class="u-in-reply-to u-like-of" href="https://target.example/product">p</a><data class="p-rating" value="3"></data><div class="e-content">Full text</div></div>',
+			'https://example.com/r',
+			$args
+		);
+		$this->assertSame( 'review', $review['post-type'] );
+		$this->assertSame( 'https://target.example/product', $review['in-reply-to'] );
+		$this->assertSame( 'https://target.example/product', $review['like-of'] );
+		$this->assertSame( '3', $review['rating'] );
+
+		$hreview = ParseThis\MF2::parse( '<div class="h-review"><span class="p-name">Old</span><div class="e-description">Described</div></div>', 'https://example.com/r2', $args );
+		$this->assertSame( 'Described', $hreview['content']['text'] );
+
+		$recipe = ParseThis\MF2::parse(
+			'<div class="h-recipe"><span class="p-name">Cookies</span><span class="p-yield">12 Cookies</span><time class="dt-duration" datetime="PT30M">30 min</time><span class="p-ingredient">3 cups flour</span><span class="p-ingredient">chocolate chips</span><div class="e-instructions"><p>Mix <b>well</b>.</p></div><span class="p-nutrition">Lots</span></div>',
+			'https://example.com/c',
+			$args
+		);
+		$this->assertSame( 'recipe', $recipe['post-type'] );
+		$this->assertSame( '12 Cookies', $recipe['yield'] );
+		$this->assertSame( 'PT30M', $recipe['duration'] );
+		$this->assertSame( array( '3 cups flour', 'chocolate chips' ), $recipe['ingredient'] );
+		$this->assertSame( 'Mix well.', $recipe['instructions']['text'] );
+		$this->assertSame( '<p>Mix <b>well</b>.</p>', $recipe['instructions']['html'] );
+		$this->assertSame( 'Lots', $recipe['nutrition'] );
+	}
 }
