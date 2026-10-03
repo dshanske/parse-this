@@ -65,8 +65,6 @@ class Parser_Feeds_Test extends Parse_This_TestCase {
 	 * Items without enclosures or dates parse without warnings.
 	 */
 	public function test_item_without_enclosure() {
-		$this->markTestSkipped( 'Known bug C-36 (issue 114): get_enclosures() returns null on newer SimplePie.' );
-
 		$jf2 = ParseThis\RSS::parse( $this->simplepie( '<?xml version="1.0"?><rss version="2.0"><channel><title>T</title><item><title>I</title><link>https://example.com/1</link></item></channel></rss>' ), 'https://example.com/feed' );
 		$this->assertArrayNotHasKey( 'published', $jf2['items'][0] ); // C-24: no invented date.
 	}
@@ -94,10 +92,9 @@ class Parser_Feeds_Test extends Parse_This_TestCase {
 	 * JSON Feed items and authors carry jf2 types.
 	 */
 	public function test_jsonfeed_types() {
-		$this->markTestSkipped( 'Known bug C-43 (issue 125): JSON Feed items and authors have no jf2 type.' );
-
 		$jf2 = ParseThis\JSONFeed::to_jf2( json_decode( $this->fixture( 'jsonfeed.json' ), true ), 'https://example.com/feed.json' );
 		$this->assertSame( 'entry', $jf2['items'][0]['type'] );
 		$this->assertSame( 'card', $jf2['author']['type'] );
+		$this->assertArrayNotHasKey( 'author', $jf2['items'][1] ); // Empty authors list.
 	}
 }

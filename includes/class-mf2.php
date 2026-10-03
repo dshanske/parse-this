@@ -160,32 +160,54 @@ class MF2 extends MF2_Utils {
 	}
 
 	/**
+	 * Returns the default parse arguments.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @return array Default arguments; see parse().
+	 */
+	public static function default_args() {
+		return array(
+			'alternate'  => true, // Use rel-alternate if set for jf2 or mf2.
+			'return'     => 'single',
+			'follow'     => false, // Follow author links and return parsed data.
+			'references' => true, // Move nested citations into refs.
+		);
+	}
+
+	/**
 	 * Returns the values of several properties.
 	 *
-	 * Nested microformats are converted to jf2 with parse_item(). Only the last
-	 * value of each property is kept.
+	 * Nested microformats are converted to jf2 with parse_item(). A property
+	 * with one value gets that value; one with several gets a list of them,
+	 * as jf2 requires.
 	 *
 	 * @since 1.0.0
 	 *
 	 * @param array      $mf         Microformat.
 	 * @param string[]   $properties Property names to read.
 	 * @param array|null $args       Optional. Parse arguments for nested items.
+	 *                               Defaults to default_args().
 	 * @return array Values keyed by property name. Empty if $mf is not a microformat.
 	 */
 	public static function get_prop_array( array $mf, $properties, $args = null ) {
 		if ( ! self::is_microformat( $mf ) ) {
 			return array();
 		}
+		$args = wp_parse_args( (array) $args, self::default_args() );
 
 		$data = array();
 		foreach ( $properties as $p ) {
 			if ( array_key_exists( $p, $mf['properties'] ) ) {
+				$values = array();
 				foreach ( $mf['properties'][ $p ] as $v ) {
 					if ( self::is_microformat( $v ) ) {
 						$v = self::parse_item( $v, $mf, $args );
 					}
-					$data[ $p ] = $v;
+					$values[] = $v;
 				}
+				// Per jf2, a single value is not wrapped in an array.
+				$data[ $p ] = ( 1 === count( $values ) ) ? $values[0] : $values;
 			}
 		}
 		return $data;
@@ -215,12 +237,7 @@ class MF2 extends MF2_Utils {
 	 * @return array jf2 for one item, a list of jf2 items, or an empty array.
 	 */
 	public static function parse( $input, $url, $args = array() ) {
-		$defaults    = array(
-			'alternate' => true, // Use rel-alternate if set for jf2 or mf2.
-			'return'    => 'single',
-			'follow'    => false, // Follow author links and return parsed data.
-		);
-		$args        = wp_parse_args( $args, $defaults );
+		$args        = wp_parse_args( $args, self::default_args() );
 		$args['url'] = $url;
 		if ( ! in_array( $args['return'], array( 'single', 'feed' ), true ) ) {
 			$args['return'] = 'single';
@@ -297,12 +314,13 @@ class MF2 extends MF2_Utils {
 			$count = count( $input['items'] );
 		}
 
+		// A page with a single top-level item is that item.
 		if ( 1 === $count ) {
 			$return = self::parse_item( $input['items'][0], $input, $args );
-			if ( self::has_rel( $input, 'alternate' ) ) {
+			if ( is_array( $return ) && self::has_rel( $input, 'alternate' ) ) {
 				$return['_alternate'] = self::get_rel( $input, 'alternate' );
-				return $return;
 			}
+			return $return;
 		}
 
 		$return = array();
@@ -388,7 +406,13 @@ class MF2 extends MF2_Utils {
 			'items' => array(),
 		);
 		$data['name'] = self::get_plaintext( $entry, 'name' );
-		$author       = self::find_author( $entry, $mf, $args['follow'] );
+		// JF2 Feed: url SHOULD be defined and MUST be a single string. Fall back to the page.
+		$data['url'] = self::get_plaintext( $entry, 'url' );
+		if ( ! is_string( $data['url'] ) && isset( $args['url'] ) ) {
+			$data['url'] = $args['url'];
+		}
+		$data['url'] = normalize_url( $data['url'] );
+		$author      = self::find_author( $entry, $mf, $args['follow'] );
 		if ( self::is_microformat( $author ) ) {
 			$data['author'] = self::parse_hcard( $author, $mf, $args );
 		} else {
@@ -410,10 +434,12 @@ class MF2 extends MF2_Utils {
 		if ( isset( $data['items'] ) ) {
 			foreach ( $data['items'] as $key => $item ) {
 				foreach ( $authors as $author ) {
-					if ( is_string( $author['url'] ) ) {
-						$author['url'] = array( $author['url'] );
+					if ( ! is_array( $author ) || empty( $author['url'] ) || ! isset( $item['author']['url'] ) ) {
+						continue;
 					}
-					if ( array_key_exists( 'author', $item ) && in_array( $item['author']['url'], $author['url'], true ) ) {
+					// Compare against a list of URLs, but leave the card itself unchanged.
+					$author_urls = (array) $author['url'];
+					if ( in_array( $item['author']['url'], $author_urls, true ) ) {
 						$item['author'] = $author;
 						break;
 					}
@@ -520,21 +546,21 @@ class MF2 extends MF2_Utils {
 	/**
 	 * Converts a microformat of an unrecognized type into jf2.
 	 *
-	 * Note: only types without a hyphen pass the check below, so in practice
-	 * every h-* type returns an empty array.
+	 * Microformats2 parsing is vocabulary-agnostic, so any h-* root gets the
+	 * generic properties from parse_h() and its type without the h- prefix,
+	 * as jf2 does for known types (h-org becomes org).
 	 *
 	 * @since 1.0.0
 	 *
 	 * @param array $unknown Microformat.
 	 * @param array $mf      Parsed mf2 document.
-	 * @param array $args  Parse arguments (see Parser::parse()).
-	 * @return array jf2 with the generic properties from parse_h() and the original type,
-	 *               or an empty array.
+	 * @param array $args    Parse arguments (see Parser::parse()).
+	 * @return array jf2 with the generic properties and the type, or an empty
+	 *               array if the type isn't h-* or no properties were found.
 	 */
 	public static function parse_hunknown( $unknown, $mf, $args ) {
 		$type = $unknown['type'][0];
-		$type = explode( '-', $type );
-		if ( 1 !== count( $type ) ) {
+		if ( ! is_string( $type ) || 0 !== strpos( $type, 'h-' ) || 'h-' === $type ) {
 			return array();
 		}
 		// Parse unknown h property.
@@ -542,7 +568,7 @@ class MF2 extends MF2_Utils {
 		if ( empty( $data ) ) {
 			return array();
 		}
-		$data['type'] = $unknown['type'][0];
+		$data['type'] = substr( $type, 2 );
 
 		return $data;
 	}
@@ -633,7 +659,9 @@ class MF2 extends MF2_Utils {
 	 */
 	public static function parse_hleg( $leg, $mf, $args ) {
 		// The aaronpk special.
-		$data       = array();
+		$data       = array(
+			'type' => 'leg',
+		);
 		$properties = array(
 			'url',
 			'name',
@@ -701,7 +729,7 @@ class MF2 extends MF2_Utils {
 			'pk-drank',
 			'item',
 		);
-		$data         = self::get_prop_array( $entry, $properties );
+		$data         = self::get_prop_array( $entry, $properties, $args );
 		$data['type'] = self::is_type( $entry, 'h-entry' ) ? 'entry' : 'cite';
 		$properties   = array( 'url', 'weather', 'temperature', 'rsvp', 'featured', 'swarm-coins', 'latitude', 'longitude' );
 		foreach ( $properties as $property ) {
@@ -768,7 +796,7 @@ class MF2 extends MF2_Utils {
 			$data[ $property ] = self::get_plaintext( $hcard, $property );
 		}
 		$data = array_filter( $data );
-		$data = array_merge( self::get_prop_array( $hcard, array_keys( $hcard['properties'] ) ), $data );
+		$data = array_merge( self::get_prop_array( $hcard, array_keys( $hcard['properties'] ), $args ), $data );
 
 		$data['type'] = 'card';
 		if ( isset( $hcard['children'] ) ) {
@@ -806,7 +834,7 @@ class MF2 extends MF2_Utils {
 		);
 		$data       = array_merge( $data, self::parse_h( $event, $mf, $args ) );
 		$properties = array( 'category', 'attendee', 'organizer', 'location', 'start', 'end', 'photo', 'uid', 'url' );
-		$data       = array_merge( $data, self::get_prop_array( $event, $properties ) );
+		$data       = array_merge( $data, self::get_prop_array( $event, $properties, $args ) );
 		return array_filter( $data );
 	}
 
@@ -832,7 +860,7 @@ class MF2 extends MF2_Utils {
 			'url'  => null,
 		);
 		$properties = array( 'category', 'item' );
-		$data       = self::get_prop_array( $entry, $properties );
+		$data       = array_merge( $data, self::get_prop_array( $entry, $properties, $args ) );
 		$properties = array( 'summary', 'published', 'rating', 'best', 'worst' );
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $entry, $p );
@@ -867,7 +895,7 @@ class MF2 extends MF2_Utils {
 			'url'  => null,
 		);
 		$properties = array( 'category', 'brand', 'photo', 'audio', 'video' );
-		$data       = self::get_prop_array( $entry, $properties );
+		$data       = array_merge( $data, self::get_prop_array( $entry, $properties, $args ) );
 		$properties = array( 'identifier', 'price', 'description' );
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $entry, $p );
@@ -902,7 +930,7 @@ class MF2 extends MF2_Utils {
 			'url'  => null,
 		);
 		$properties = array( 'category', 'item' );
-		$data       = self::get_prop_array( $entry, $properties );
+		$data       = array_merge( $data, self::get_prop_array( $entry, $properties, $args ) );
 		$properties = array();
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $entry, $p );
@@ -936,7 +964,7 @@ class MF2 extends MF2_Utils {
 			'url'  => null,
 		);
 		$properties = array( 'category', 'item' );
-		$data       = self::get_prop_array( $entry, $properties );
+		$data       = array_merge( $data, self::get_prop_array( $entry, $properties, $args ) );
 		$properties = array();
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $entry, $p );
@@ -970,7 +998,7 @@ class MF2 extends MF2_Utils {
 			'url'  => null,
 		);
 		$properties = array( 'category', 'item' );
-		$data       = self::get_prop_array( $recipe, $properties );
+		$data       = array_merge( $data, self::get_prop_array( $recipe, $properties, $args ) );
 		$properties = array();
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $recipe, $p );
@@ -1004,7 +1032,7 @@ class MF2 extends MF2_Utils {
 			'url'  => null,
 		);
 		$properties = array( 'category', 'item' );
-		$data       = self::get_prop_array( $item, $properties );
+		$data       = array_merge( $data, self::get_prop_array( $item, $properties, $args ) );
 		$properties = array();
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $item, $p );
@@ -1039,7 +1067,7 @@ class MF2 extends MF2_Utils {
 			$data[ $property ] = self::get_plaintext( $hadr, $property );
 		}
 		$properties = array( 'temperature', 'geo' );
-		$props      = self::get_prop_array( $hadr, $properties );
+		$props      = self::get_prop_array( $hadr, $properties, $args );
 		$data       = array_merge( $data, $props );
 		return array_filter( $data );
 	}

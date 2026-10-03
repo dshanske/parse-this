@@ -197,38 +197,28 @@ if ( ! function_exists( __NAMESPACE__ . '\\jf2_references' ) ) {
 	 */
 	function jf2_references( $data ) {
 		foreach ( $data as $key => $val ) {
-			if ( ! is_array( $val ) ) {
+			if ( 'refs' === $key || ! is_array( $val ) ) {
 				continue;
 			}
-			if ( ! wp_is_numeric_array( $val ) ) {
-				$val = array( $val );
-			}
-			if ( wp_is_numeric_array( $val ) ) {
-				foreach ( $val as $value ) {
-					// Indicates nested type.
-					if ( is_array( $value ) && array_key_exists( 'type', $value ) && 'cite' === $value['type'] ) {
-						if ( ! isset( $data['refs'] ) ) {
-							$data['refs'] = array();
-						}
-						if ( isset( $value['url'] ) ) {
-							$data['refs'][ $value['url'] ] = $value;
-							$data[ $key ]                  = array( $value['url'] );
-						}
-					}
-					if ( 'category' === $key ) {
-						foreach ( $value as $k => $v ) {
-							if ( is_array( $v ) && array_key_exists( 'type', $v ) ) {
-								if ( ! isset( $data['refs'] ) ) {
-									$data['refs'] = array();
-								}
-								if ( isset( $v['url'] ) ) {
-									$data['refs'][ $v['url'] ] = $v;
-									$data['category'][ $k ]    = $v['url'];
-								}
-							}
-						}
-					}
+			$values  = wp_is_numeric_array( $val ) ? $val : array( $val );
+			$changed = false;
+			foreach ( $values as $i => $value ) {
+				if ( ! is_array( $value ) || ! isset( $value['url'] ) || ! is_string( $value['url'] ) || ! isset( $value['type'] ) ) {
+					continue;
 				}
+				// Any typed category (a person tag, say) is a reference; elsewhere only citations are.
+				if ( 'category' !== $key && 'cite' !== $value['type'] ) {
+					continue;
+				}
+				if ( ! isset( $data['refs'] ) ) {
+					$data['refs'] = array();
+				}
+				$data['refs'][ $value['url'] ] = $value;
+				$values[ $i ]                  = $value['url'];
+				$changed                       = true;
+			}
+			if ( $changed ) {
+				$data[ $key ] = $values;
 			}
 		}
 		return $data;

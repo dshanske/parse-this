@@ -286,7 +286,11 @@ class RSS extends Base {
 			'application/x-shockwave-flash' => 'video',
 		);
 
+		// Newer SimplePie returns null rather than an empty array when there are none.
 		$enclosures = $item->get_enclosures();
+		if ( ! is_array( $enclosures ) ) {
+			$enclosures = array();
+		}
 		foreach ( $enclosures as $enclosure ) {
 			$medium = $enclosure->get_type();
 			if ( ! $medium ) {

@@ -65,8 +65,6 @@ class Site_Parsers_Test extends Parse_This_TestCase {
 	 * REST API posts carry a jf2 type.
 	 */
 	public function test_rest_post_type() {
-		$this->markTestSkipped( 'Known bug C-39 (issue 127): REST API posts have no jf2 type.' );
-
 		$this->respond( 'https://example.com/wp-json/?_embed=1', wp_json_encode( array( 'name' => 'Example Site' ) ), 'application/json' );
 		$jf2 = ParseThis\RESTAPI::parse(
 			array(
@@ -78,6 +76,48 @@ class Site_Parsers_Test extends Parse_This_TestCase {
 			array( 'return' => 'single' )
 		);
 		$this->assertSame( 'entry', $jf2['type'] );
+	}
+
+	/**
+	 * The parse_this_rest_api_jf2_type filter can choose another type.
+	 */
+	public function test_rest_post_type_filter() {
+		$this->respond( 'https://example.com/wp-json/?_embed=1', wp_json_encode( array( 'name' => 'Example Site' ) ), 'application/json' );
+		$callback = function ( $type, $item ) {
+			return ( isset( $item['type'] ) && 'tribe_events' === $item['type'] ) ? 'event' : $type;
+		};
+		add_filter( 'parse_this_rest_api_jf2_type', $callback, 10, 2 );
+
+		$event = ParseThis\RESTAPI::parse(
+			array(
+				'id'   => 6,
+				'type' => 'tribe_events',
+				'link' => 'https://example.com/event/',
+			),
+			'https://example.com/wp-json/',
+			array( 'return' => 'single' )
+		);
+		$feed  = ParseThis\RESTAPI::posts_to_feed(
+			array(
+				'items' => array(
+					array(
+						'id'   => 7,
+						'type' => 'post',
+						'link' => 'https://example.com/post/',
+					),
+					array(
+						'id'   => 8,
+						'type' => 'tribe_events',
+						'link' => 'https://example.com/event-2/',
+					),
+				),
+			),
+			'https://example.com/wp-json/'
+		);
+		remove_filter( 'parse_this_rest_api_jf2_type', $callback, 10 );
+
+		$this->assertSame( 'event', $event['type'] );
+		$this->assertSame( array( 'entry', 'event' ), wp_list_pluck( $feed['items'], 'type' ) );
 	}
 
 	/**

@@ -379,6 +379,31 @@ class RESTAPI {
 	}
 
 	/**
+	 * Returns the jf2 type for a post read through the REST API.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array  $item     REST API post object.
+	 * @param string $rest_url REST API root URL.
+	 * @return string jf2 type. Default 'entry'.
+	 */
+	public static function jf2_type( $item, $rest_url ) {
+		/**
+		 * Filters the jf2 type given to a post read through the WordPress REST API.
+		 *
+		 * @since 2.0.0
+		 *
+		 * @param string $type     jf2 type. Default 'entry'.
+		 * @param array  $item     The REST API post object, including its WordPress
+		 *                         post type ('type' => 'post', 'page', ...) and any
+		 *                         extra fields such as Post Kinds' 'kind'.
+		 * @param string $rest_url REST API root URL of the site.
+		 */
+		$type = apply_filters( 'parse_this_rest_api_jf2_type', 'entry', $item, $rest_url );
+		return ( is_string( $type ) && '' !== $type ) ? $type : 'entry';
+	}
+
+	/**
 	 * Converts a single REST API post into a jf2 entry.
 	 *
 	 * @since 1.0.0
@@ -393,6 +418,7 @@ class RESTAPI {
 		$timezone  = self::timezone( $site_data );
 		$newitem   = array_filter(
 			array(
+				'type'      => self::jf2_type( $item, $rest_url ),
 				'uid'       => self::get_rendered( 'guid', $item ),
 				'url'       => self::ifset( 'link', $item ),
 				'name'      => self::get_rendered( 'title', $item ),
@@ -455,6 +481,7 @@ class RESTAPI {
 		foreach ( $items as $item ) {
 			$newitem = array_filter(
 				array(
+					'type'      => self::jf2_type( $item, $url ),
 					'uid'       => self::get_rendered( 'guid', $item ),
 					'url'       => self::ifset( 'link', $item ),
 					'name'      => self::get_rendered( 'title', $item ),

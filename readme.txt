@@ -63,6 +63,7 @@ The endpoint is available to any logged-in user. Administrators can try it from 
 
 * `pt_rewrite_secure`: the list of domains whose `http://` URLs are upgraded to `https://` before fetching.
 * `parse_this_img_filters`: an image URL found in a page, after the built-in exclusions (ads, spinners, tracking pixels and so on). Return an empty string to drop it.
+* `parse_this_rest_api_jf2_type`: the jf2 type for a post read through a site's WordPress REST API. Default `entry`. Receives the REST API post object, which includes its WordPress post type, and the site's REST API root URL.
 
 = Helper functions =
 
@@ -126,6 +127,9 @@ Yes. It is tested with ClassicPress 2.7 on PHP 7.4 to 8.3.
 * Move all classes and functions into the `ParseThis` namespace, with the `Parse_This_` prefix dropped from class names. The old names used by Post Kinds and Yarns remain as deprecated aliases; see "Upgrading from 1.x".
 * Add `ParseThis\pt_remote_get()`, used for all remote requests.
 * Remove the Instagram parser. Instagram stopped embedding the data it read; Instagram pages are now parsed from their Open Graph tags like any other page.
+* Microformats: keep every value of a property (for example several categories), parse nested citations without warnings, keep the type of h-review, h-product, h-resume, h-listing, h-recipe, h-item and h-leg, parse unrecognized h-* types, return a page's single top-level item (an h-feed with its URL) directly, and keep feed item author URLs as strings.
+* Give JSON Feed items and authors, and posts read through the WordPress REST API, their jf2 types. Add the `parse_this_rest_api_jf2_type` filter.
+* Keep JSON Feeds and REST API collections served as `application/json`, handle RSS items without enclosures on newer SimplePie, and no longer merge raw JSON into results.
 * Use core's `fetch_feed()` for RSS and Atom, now that core's SimplePie is current.
 * Recognize x.com post URLs, and use the publish.x.com oEmbed endpoint.
 * Fix YouTube feed discovery for `@handle` URLs and the video ID in parsed videos.

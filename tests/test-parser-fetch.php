@@ -101,12 +101,52 @@ class Parser_Fetch_Test extends Parse_This_TestCase {
 	 * A JSON Feed served as application/json is parsed too.
 	 */
 	public function test_jsonfeed_served_as_json() {
-		$this->markTestSkipped( 'Known bug C-35 (issue 113): parse() overwrites the converted feed with false.' );
-
 		$url = 'https://example.com/feed.json';
 		$this->respond( $url, $this->fixture( 'jsonfeed.json' ), 'application/json' );
 		$jf2 = $this->fetch_and_parse( $url );
 		$this->assertSame( 'jsonfeed', $jf2['_feed_type'] );
+	}
+
+	/**
+	 * A WordPress REST API collection served as application/json becomes a feed (C-35).
+	 */
+	public function test_rest_collection() {
+		$posts = array(
+			array(
+				'id'    => 2,
+				'link'  => 'https://example.com/two/',
+				'title' => array( 'rendered' => 'Two' ),
+			),
+			array(
+				'id'    => 1,
+				'link'  => 'https://example.com/one/',
+				'title' => array( 'rendered' => 'One' ),
+			),
+		);
+		$this->respond(
+			'https://example.com/wp-json/wp/v2/posts',
+			wp_json_encode( $posts ),
+			'application/json; charset=UTF-8',
+			array(
+				'x-wp-total'      => '2',
+				'x-wp-totalpages' => '1',
+			)
+		);
+
+		$jf2 = $this->fetch_and_parse( 'https://example.com/wp-json/wp/v2/posts' );
+		$this->assertSame( 'feed', $jf2['type'] );
+		$this->assertSame( array( 'Two', 'One' ), wp_list_pluck( $jf2['items'], 'name' ) );
+		$this->assertSame( '2', $jf2['_total'] );
+	}
+
+	/**
+	 * Unrecognized JSON is returned as raw content.
+	 */
+	public function test_unrecognized_json() {
+		$this->respond( 'https://example.com/data.json', wp_json_encode( array( 'hello' => 'world' ) ), 'application/json' );
+
+		$jf2 = $this->fetch_and_parse( 'https://example.com/data.json' );
+		$this->assertSame( array( 'hello' => 'world' ), $jf2['raw'] );
 	}
 
 	/**
@@ -128,8 +168,6 @@ class Parser_Fetch_Test extends Parse_This_TestCase {
 	 * An mf2 JSON response is parsed by the MF2 parser (C-2).
 	 */
 	public function test_mf2_json() {
-		$this->markTestSkipped( 'Known bug C-45 (issue 129): the raw mf2 document is merged into the result.' );
-
 		$mf2 = array(
 			'items' => array(
 				array(
@@ -144,6 +182,11 @@ class Parser_Fetch_Test extends Parse_This_TestCase {
 		);
 		$this->respond( 'https://example.com/mf2/', wp_json_encode( $mf2 ), 'application/mf2+json' );
 		$result = $this->fetch_and_parse( 'https://example.com/mf2/' );
-		$this->assertSame( 'From mf2', $result['name'] );
+		// The raw mf2 document is not merged into the result (C-45).
+		$this->assertArrayNotHasKey( 'items', $result );
+		$this->assertArrayNotHasKey( 'rels', $result );
+		// A content-less entry is currently kept under _jf2 (C-47, issue 132).
+		$entry = isset( $result['name'] ) ? $result : $result['_jf2'];
+		$this->assertSame( 'From mf2', $entry['name'] );
 	}
 }

@@ -54,20 +54,17 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 	 * A reply whose in-reply-to is a nested h-cite is stored as a reference.
 	 */
 	public function test_reply_with_nested_cite() {
-		$this->markTestSkipped( 'Known bug C-41 (issue 123): nested microformats are parsed without $args and raise warnings.' );
-
 		$jf2 = $this->parse_fixture( 'mf2-entry.html', 'https://example.com/2026/09/testing-parse-this/' );
 		$this->assertSame( 'reply', $jf2['post-type'] );
 		$this->assertSame( array( 'https://example.org/original-post/' ), $jf2['in-reply-to'] );
 		$this->assertSame( 'The original post', $jf2['refs']['https://example.org/original-post/']['name'] );
+		$this->assertSame( array( 'testing', 'indieweb' ), $jf2['category'] );
 	}
 
 	/**
 	 * Every value of a multi-valued property is kept.
 	 */
 	public function test_multiple_categories() {
-		$this->markTestSkipped( 'Known bug C-40 (issue 122): only the last value of a property is kept.' );
-
 		$jf2 = ParseThis\MF2::parse(
 			'<div class="h-entry"><a class="u-url" href="https://example.com/1/">1</a><span class="p-category">a</span><span class="p-category">b</span></div>',
 			'https://example.com/1/',
@@ -104,8 +101,6 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 	 * Parser::parse() with return=feed returns the feed itself, with its url.
 	 */
 	public function test_feed_via_parser() {
-		$this->markTestSkipped( 'Known bug C-42 (issue 124): a lone h-feed comes back wrapped in _jf2 and without its url.' );
-
 		$jf2 = $this->parse_fixture( 'mf2-feed.html', 'https://example.com/notes/', array( 'return' => 'feed' ) );
 		$this->assertSame( 'feed', $jf2['type'] );
 		$this->assertSame( 'https://example.com/notes/', $jf2['url'] );
@@ -113,11 +108,24 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 	}
 
 	/**
+	 * Feed authors without a url don't break author matching (C-37).
+	 */
+	public function test_feed_author_without_url() {
+		$result = ParseThis\MF2::parse(
+			'<div class="h-feed"><div class="p-author h-card"><span class="p-name">Jane</span></div>'
+			. '<div class="h-entry"><span class="p-name">A</span><span class="p-author">Bob</span></div></div>',
+			'https://example.com/',
+			array( 'return' => 'feed' )
+		);
+		$feed = isset( $result['type'] ) ? $result : $result[0];
+		$this->assertSame( 'Jane', $feed['author']['name'] );
+		$this->assertCount( 1, $feed['items'] );
+	}
+
+	/**
 	 * Feed item authors have a string url.
 	 */
 	public function test_feed_item_author_url_is_string() {
-		$this->markTestSkipped( 'Known bug, issue 45: feed item author url is an array.' );
-
 		$result = ParseThis\MF2::parse( $this->fixture( 'mf2-feed.html' ), 'https://example.com/notes/', array( 'return' => 'feed' ) );
 		$feed   = isset( $result['type'] ) ? $result : $result[0];
 		$this->assertSame( 'https://example.com/', $feed['items'][0]['author']['url'] );
@@ -170,8 +178,6 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 	 * @param string $expected Expected jf2 type.
 	 */
 	public function test_type_is_kept( $class, $expected ) {
-		$this->markTestSkipped( 'Known bug C-44 (issue 128): these types lose their jf2 type.' );
-
 		$result = ParseThis\MF2::parse( '<div class="' . $class . '"><span class="p-name">N</span></div>', 'https://example.com/', array() );
 		$item   = isset( $result['type'] ) ? $result : $result[0];
 		$this->assertSame( $expected, $item['type'] );
@@ -208,10 +214,9 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 	 * Unknown microformat types keep their generic properties.
 	 */
 	public function test_unknown_type() {
-		$this->markTestSkipped( 'Known bug C-38 (issue 126): parse_hunknown() rejects every h-* type.' );
-
 		$result = ParseThis\MF2::parse( '<div class="h-org"><span class="p-name">Acme</span></div>', 'https://example.com/', array() );
 		$item   = isset( $result['type'] ) ? $result : $result[0];
 		$this->assertSame( 'Acme', $item['name'] );
+		$this->assertSame( 'org', $item['type'] );
 	}
 }
