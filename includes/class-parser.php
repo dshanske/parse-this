@@ -450,6 +450,11 @@ class Parser {
 	 *                              content when the page has none of its own. Null
 	 *                              (the default) means true when return is 'feed',
 	 *                              false otherwise.
+	 *     @type bool   $always_arrays Whether to always return category, photo,
+	 *                              video, audio, syndication, like-of, repost-of,
+	 *                              bookmark-of and in-reply-to as arrays, as Microsub
+	 *                              does. Default false, which follows jf2: a single
+	 *                              value is not wrapped in an array.
 	 * }
 	 * @return WP_Error|void WP_Error if there is no content to parse.
 	 */
@@ -464,6 +469,7 @@ class Parser {
 			'references'      => true,
 			'location'        => false,
 			'require_content' => null,
+			'always_arrays'   => false,
 		);
 		$args     = wp_parse_args( $args, $defaults );
 		// If not an option then revert to single.
@@ -482,7 +488,8 @@ class Parser {
 	/**
 	 * Normalizes the parse result and, for feeds, each item.
 	 *
-	 * Every author becomes a jf2 card (see jf2_author_to_card()).
+	 * Every author becomes a jf2 card (see jf2_author_to_card()). With
+	 * $args['always_arrays'], the properties in ARRAY_PROPERTIES are always arrays.
 	 *
 	 * @since 2.0.0
 	 *
@@ -518,6 +525,13 @@ class Parser {
 				unset( $jf2['author'] );
 			} else {
 				$jf2['author'] = $card;
+			}
+		}
+		if ( ! empty( $args['always_arrays'] ) ) {
+			foreach ( self::ARRAY_PROPERTIES as $property ) {
+				if ( isset( $jf2[ $property ] ) && ! wp_is_numeric_array( $jf2[ $property ] ) ) {
+					$jf2[ $property ] = array( $jf2[ $property ] );
+				}
 			}
 		}
 		return $jf2;
@@ -651,6 +665,25 @@ class Parser {
 
 		$this->jf2['_links'] = $this->links;
 	}
+	/**
+	 * Properties that are always arrays with the always_arrays argument. These are
+	 * the properties Microsub specifies as arrays of values.
+	 *
+	 * @since 2.0.0
+	 * @var string[]
+	 */
+	const ARRAY_PROPERTIES = array(
+		'category',
+		'photo',
+		'video',
+		'audio',
+		'syndication',
+		'like-of',
+		'repost-of',
+		'bookmark-of',
+		'in-reply-to',
+	);
+
 	/**
 	 * Response properties. An entry with any of these was marked up on purpose,
 	 * so it counts as having content even without a summary or content.
