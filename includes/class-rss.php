@@ -372,7 +372,7 @@ class RSS extends Base {
 				$return['featured'] = $i;
 			}
 		}
-		$return['post_type'] = post_type_discovery( $return );
+		$return['post-type'] = post_type_discovery( $return );
 		foreach ( array( 'category', 'video', 'audio' ) as $prop ) {
 			if ( array_key_exists( $prop, $return ) && is_array( $return[ $prop ] ) ) {
 				$return[ $prop ] = array_unique( $return[ $prop ] );
