@@ -133,10 +133,53 @@ class Parser_Fetch_Test extends Parse_This_TestCase {
 			)
 		);
 
+		// Site details come from the REST API root (C-46).
+		$this->respond(
+			'https://example.com/wp-json/?_embed=1',
+			wp_json_encode(
+				array(
+					'name'        => 'Example Site',
+					'description' => 'Just another site',
+					'url'         => 'https://example.com',
+				)
+			),
+			'application/json'
+		);
+
 		$jf2 = $this->fetch_and_parse( 'https://example.com/wp-json/wp/v2/posts' );
 		$this->assertSame( 'feed', $jf2['type'] );
 		$this->assertSame( array( 'Two', 'One' ), wp_list_pluck( $jf2['items'], 'name' ) );
 		$this->assertSame( '2', $jf2['_total'] );
+		$this->assertSame( 'Example Site', $jf2['name'] );
+		$this->assertSame( 'Just another site', $jf2['summary'] );
+		$this->assertSame( 'https://example.com', $jf2['url'] );
+		$this->assertNotContains( 'https://example.com/wp-json/wp/v2/posts/?_embed=1', wp_list_pluck( $this->requests, 'url' ) );
+	}
+
+	/**
+	 * A collection on a plain-permalink site finds its site details too (C-46).
+	 */
+	public function test_rest_collection_plain_permalinks() {
+		$url = 'https://example.com/?rest_route=/wp/v2/posts&per_page=1';
+		$this->respond(
+			$url,
+			wp_json_encode(
+				array(
+					array(
+						'id'    => 1,
+						'link'  => 'https://example.com/?p=1',
+						'title' => array( 'rendered' => 'One' ),
+					),
+				)
+			),
+			'application/json',
+			array( 'x-wp-total' => '1' )
+		);
+		$this->respond( 'https://example.com/?rest_route=/&_embed=1', wp_json_encode( array( 'name' => 'Plain Site' ) ), 'application/json' );
+
+		$jf2 = $this->fetch_and_parse( $url );
+		$this->assertSame( 'Plain Site', $jf2['name'] );
+		$this->assertCount( 1, $jf2['items'] );
 	}
 
 	/**

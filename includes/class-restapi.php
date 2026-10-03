@@ -99,6 +99,42 @@ class RESTAPI {
 	}
 
 	/**
+	 * Returns the REST API root for a REST API URL.
+	 *
+	 * REST API responses don't say where the root is, so it is taken from the
+	 * URL: everything up to /wp-json/, or ?rest_route=/ on sites with plain
+	 * permalinks.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $url A REST API URL, such as a posts collection.
+	 * @return string|false The REST API root, or false if $url doesn't show one
+	 *                      (for example, a site with a custom REST prefix).
+	 */
+	public static function get_rest_root( $url ) {
+		$parts = wp_parse_url( $url );
+		if ( ! is_array( $parts ) || empty( $parts['host'] ) ) {
+			return false;
+		}
+		$base = ( isset( $parts['scheme'] ) ? $parts['scheme'] : 'https' ) . '://' . $parts['host'];
+		if ( isset( $parts['port'] ) ) {
+			$base .= ':' . $parts['port'];
+		}
+		$path = isset( $parts['path'] ) ? $parts['path'] : '/';
+		if ( ! empty( $parts['query'] ) ) {
+			wp_parse_str( $parts['query'], $params );
+			if ( isset( $params['rest_route'] ) ) {
+				return $base . $path . '?rest_route=/';
+			}
+		}
+		$position = strpos( $path, '/wp-json/' );
+		if ( false !== $position ) {
+			return $base . substr( $path, 0, $position ) . '/wp-json/';
+		}
+		return false;
+	}
+
+	/**
 	 * Returns the route part of a REST API URL relative to the API root.
 	 *
 	 * @since 2.0.0
