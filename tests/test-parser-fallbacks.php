@@ -432,4 +432,21 @@ class Parser_Fallbacks_Test extends Parse_This_TestCase {
 		$this->assertSame( 'Bookmarked', $jf2['refs']['https://example.org/b']['name'] );
 		$this->assertSame( array( 'https://alice.example/' ), $jf2['category'] );
 	}
+
+	/**
+	 * clean_content() keeps text before the first element (C-53).
+	 */
+	public function test_clean_content_keeps_leading_text() {
+		$this->assertSame( 'Plain <i>x</i> and more', ParseThis\Parser::clean_content( 'Plain <i>x</i> and more' ) );
+		$this->assertSame( 'Just text', ParseThis\Parser::clean_content( 'Just text' ) );
+		$this->assertSame(
+			'This page has a link to <a href="http://target.example.com">target.example.com</a> and some <b>formatted text</b>.',
+			ParseThis\Parser::clean_content( 'This page has a link to <a href="http://target.example.com">target.example.com</a> and some <b>formatted text</b>.' )
+		);
+		$this->assertSame( '<p>One</p><p>Two</p>', ParseThis\Parser::clean_content( '<p>One</p><script>a()</script><script>b()</script><p>Two</p>' ) );
+		$this->assertSame( 'Café ☕ <b>ok</b>', ParseThis\Parser::clean_content( 'Café ☕ <b>ok</b>' ) );
+
+		$jf2 = $this->parse_html( '<div class="h-entry"><div class="e-content">Hello <a href="https://example.org/">there</a></div></div>' );
+		$this->assertSame( 'Hello <a href="https://example.org/">there</a>', $jf2['content']['html'] );
+	}
 }

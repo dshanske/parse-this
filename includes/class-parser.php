@@ -235,14 +235,23 @@ class Parser {
 		}
 		// Decode escaped entities so that they can be stripped.
 		$content     = html_entity_decode( $content, ENT_COMPAT | ENT_HTML401, 'UTF-8' );
-		$content     = preg_replace( '/<!--(.|\s)*?-->/', '', $content );
-		$domdocument = pt_load_domdocument( $content );
+		$content = preg_replace( '/<!--(.|\s)*?-->/', '', $content );
+		// Parse it as a document body: parsed as a whole document, text before
+		// the first element was dropped.
+		$domdocument = pt_load_domdocument( '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' . $content . '</body></html>' );
 		$scripts     = $domdocument->getElementsByTagName( 'script' );
-		foreach ( $scripts as $item ) {
+		for ( $i = $scripts->length - 1; $i >= 0; $i-- ) {
+			$item = $scripts->item( $i );
 			$item->parentNode->removeChild( $item ); // phpcs:ignore
 		}
 
-		$content = $domdocument->saveHTML();
+		$body    = $domdocument->getElementsByTagName( 'body' )->item( 0 );
+		$content = '';
+		if ( $body ) {
+			foreach ( $body->childNodes as $node ) { // phpcs:ignore
+				$content .= $domdocument->saveHTML( $node );
+			}
+		}
 
 		$allowed = self::allowed_html();
 		if ( ! empty( $strip ) ) {
