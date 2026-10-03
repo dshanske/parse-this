@@ -923,6 +923,9 @@ class Parser {
 	/**
 	 * Normalizes one jf2 object; see format_output().
 	 *
+	 * A type is required by jf2, so an object without one that has any properties
+	 * besides url (as when only meta tags filled it) becomes an entry.
+	 *
 	 * @since 2.0.0
 	 *
 	 * @param array $jf2  jf2 object.
@@ -930,6 +933,17 @@ class Parser {
 	 * @return array The normalized object.
 	 */
 	private static function format_object( $jf2, $args ) {
+		if ( ! isset( $jf2['type'] ) && ! wp_is_numeric_array( $jf2 ) ) {
+			$properties = array_filter(
+				array_keys( $jf2 ),
+				function ( $key ) {
+					return is_string( $key ) && 'url' !== $key && '_' !== substr( $key, 0, 1 );
+				}
+			);
+			if ( $properties ) {
+				$jf2['type'] = 'entry';
+			}
+		}
 		if ( array_key_exists( 'author', $jf2 ) ) {
 			$card = jf2_author_to_card( $jf2['author'] );
 			if ( null === $card ) {

@@ -449,4 +449,17 @@ class Parser_Fallbacks_Test extends Parse_This_TestCase {
 		$jf2 = $this->parse_html( '<div class="h-entry"><div class="e-content">Hello <a href="https://example.org/">there</a></div></div>' );
 		$this->assertSame( 'Hello <a href="https://example.org/">there</a>', $jf2['content']['html'] );
 	}
+
+	/**
+	 * A result filled only by meta tags still gets a type (C-50).
+	 */
+	public function test_result_from_meta_tags_has_a_type() {
+		$jf2 = $this->parse_html( '<html><head><meta property="og:type" content="object"><meta property="og:title" content="A repository"><meta property="og:description" content="Some code"></head><body></body></html>' );
+		$this->assertSame( 'entry', $jf2['type'] );
+		$this->assertSame( 'A repository', $jf2['name'] );
+
+		// An explicit type is kept.
+		$jf2 = $this->parse_html( '<html><head><meta property="og:type" content="profile"><meta property="og:title" content="Jane"></head><body></body></html>' );
+		$this->assertSame( 'card', $jf2['type'] );
+	}
 }
