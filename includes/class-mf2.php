@@ -430,10 +430,9 @@ class MF2 extends MF2_Utils {
 					if ( ! is_array( $author ) || empty( $author['url'] ) || ! isset( $item['author']['url'] ) ) {
 						continue;
 					}
-					if ( is_string( $author['url'] ) ) {
-						$author['url'] = array( $author['url'] );
-					}
-					if ( in_array( $item['author']['url'], $author['url'], true ) ) {
+					// Compare against a list of URLs, but leave the card itself unchanged.
+					$author_urls = (array) $author['url'];
+					if ( in_array( $item['author']['url'], $author_urls, true ) ) {
 						$item['author'] = $author;
 						break;
 					}

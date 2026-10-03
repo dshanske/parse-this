@@ -128,8 +128,6 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 	 * Feed item authors have a string url.
 	 */
 	public function test_feed_item_author_url_is_string() {
-		$this->markTestSkipped( 'Known bug, issue 45: feed item author url is an array.' );
-
 		$result = ParseThis\MF2::parse( $this->fixture( 'mf2-feed.html' ), 'https://example.com/notes/', array( 'return' => 'feed' ) );
 		$feed   = isset( $result['type'] ) ? $result : $result[0];
 		$this->assertSame( 'https://example.com/', $feed['items'][0]['author']['url'] );
