@@ -224,4 +224,17 @@ class Parser_Fallbacks_Test extends Parse_This_TestCase {
 		$this->assertSame( array( 'https://example.com/1.jpg' ), $jf2['items'][0]['photo'] );
 		$this->assertCount( 2, $jf2['items'][1]['photo'] );
 	}
+
+	/**
+	 * Only link-shortener URLs in a summary are expanded (P-2).
+	 */
+	public function test_only_shortener_links_are_expanded() {
+		$this->respond( 'https://bit.ly/abc', '', 'text/html', array( 'location' => 'https://example.org/full-article/' ), 301 );
+		$html = '<html><head><meta property="og:type" content="article"><meta property="og:description" content="Read https://bit.ly/abc and https://example.net/page"></head><body></body></html>';
+
+		$jf2 = $this->parse_html( $html );
+
+		$this->assertSame( 'Read https://example.org/full-article/ and https://example.net/page', $jf2['summary'] );
+		$this->assertSame( array( 'https://bit.ly/abc' ), wp_list_pluck( $this->requests, 'url' ) );
+	}
 }

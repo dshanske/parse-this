@@ -298,30 +298,43 @@ class Parser {
 	/**
 	 * Returns where a URL redirects to, without following the redirect.
 	 *
-	 * Used to expand short links in summaries.
+	 * Used to expand short links in summaries, where only known link
+	 * shorteners are checked.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 The second parameter is named $any_host; it was $allowlist,
+	 *              which described the opposite of what it did.
 	 *
-	 * @param string $url       URL to check.
-	 * @param bool   $allowlist Optional. When false, only URLs on known
-	 *                          link-shortener hosts are checked; when true
-	 *                          (the default), any URL is. The name is the reverse
-	 *                          of what it does (review finding P-2).
+	 * @param string $url      URL to check.
+	 * @param bool   $any_host Optional. Whether to check a URL on any host (true,
+	 *                         the default) or only on the hosts of known link
+	 *                         shorteners (false; see the parse_this_url_shorteners
+	 *                         filter).
 	 * @return string|false|WP_Error The redirect target, false if there is no
 	 *                               redirect (or $url is not a shortener when
-	 *                               $allowlist is false), or WP_Error if $url is
+	 *                               $any_host is false), or WP_Error if $url is
 	 *                               invalid.
 	 */
-	public static function redirect( $url, $allowlist = true ) {
+	public static function redirect( $url, $any_host = true ) {
+		if ( ! $any_host ) {
+			// Check the host first: it is free, while validating the URL costs a DNS lookup.
+			$domain = is_string( $url ) ? wp_parse_url( $url, PHP_URL_HOST ) : null;
+			/**
+			 * Filters the hosts treated as link shorteners, whose links in summaries are expanded.
+			 *
+			 * @since 2.0.0
+			 *
+			 * @param string[] $shorteners Host names.
+			 */
+			$shorteners = apply_filters( 'parse_this_url_shorteners', array( 'bit.ly', 'buff.ly', 'dlvr.it', 'fb.me', 'goo.gl', 'is.gd', 'lnkd.in', 'ow.ly', 't.co', 'tinyurl.com', 'trib.al', 'youtu.be' ) );
+			if ( ! is_string( $domain ) || ! in_array( strtolower( $domain ), (array) $shorteners, true ) ) {
+				return false;
+			}
+		}
 		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
 			return new \WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'parse-this' ) );
 		}
-		$url        = pt_secure_rewrite( $url );
-		$domain     = wp_parse_url( $url, PHP_URL_HOST );
-		$shorteners = array( 'fb.me', 't.co', 'youtu.be', 'ow.ly', 'bit.ly', 'tinyurl.com' );
-		if ( ! $allowlist && ! in_array( $domain, $shorteners, true ) ) {
-			return false;
-		}
+		$url = pt_secure_rewrite( $url );
 		$response = pt_remote_get( $url, array( 'redirection' => 0 ), array() );
 		$redirect = wp_remote_retrieve_header( $response, 'location' );
 		if ( ! $redirect ) {
@@ -652,7 +665,7 @@ class Parser {
 		if ( isset( $this->jf2['summary'] ) ) {
 			$urls = wp_extract_urls( $this->jf2['summary'] );
 			foreach ( $urls as $url ) {
-				$redirect = self::redirect( $url );
+				$redirect = self::redirect( $url, false );
 				if ( $redirect && ! is_wp_error( $redirect ) ) {
 					$this->jf2['_urls'][] = $redirect;
 					$this->jf2['summary'] = str_replace( $url, $redirect, $this->jf2['summary'] );
