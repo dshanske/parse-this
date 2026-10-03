@@ -100,4 +100,28 @@ class REST_Endpoint_Test extends Parse_This_TestCase {
 		$this->assertSame( 403, rest_get_server()->dispatch( $request )->get_status() );
 		remove_filter( 'parse_this_rest_capability', $capability );
 	}
+
+	/**
+	 * Route parameters are typed: booleans and the return enum are validated (S-2).
+	 */
+	public function test_route_parameters_are_validated() {
+		$this->respond( 'https://example.com/typed/', self::PAGE );
+		do_action( 'rest_api_init' );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'author' ) ) );
+		$dispatch = function ( $params ) {
+			$request = new WP_REST_Request( 'GET', '/parse-this/1.0/parse' );
+			$request->set_query_params( array_merge( array( 'url' => 'https://example.com/typed/' ), $params ) );
+			return rest_get_server()->dispatch( $request );
+		};
+
+		// As Post Kinds sends it.
+		$this->assertSame( 200, $dispatch( array( 'follow' => 'true' ) )->get_status() );
+		$this->assertSame( 200, $dispatch( array( 'return' => 'feed' ) )->get_status() );
+		$this->assertSame( 400, $dispatch( array( 'return' => 'everything' ) )->get_status() );
+		$this->assertSame( 400, $dispatch( array( 'mf2' => 'maybe' ) )->get_status() );
+
+		// A typed boolean "0" means false: the result is jf2, not mf2.
+		$data = $dispatch( array( 'mf2' => '0' ) )->get_data();
+		$this->assertSame( 'Hello', $data['name'] );
+	}
 }

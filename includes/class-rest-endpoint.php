@@ -75,7 +75,7 @@ class REST_Endpoint {
 							<label for="mf2"><?php esc_html_e( 'MF2', 'parse-this' ); ?></label>
 						</th>
 						<td>
-							<input type="checkbox" name="mf2" id="mf2" />
+							<input type="checkbox" name="mf2" id="mf2" value="1" />
 						</td>
 					</tr>
 					<tr>
@@ -83,7 +83,7 @@ class REST_Endpoint {
 							<label for="discovery"><?php esc_html_e( 'Feed Discovery', 'parse-this' ); ?></label>
 						</th>
 						<td>
-							<input type="checkbox" name="discovery" id="discovery" />
+							<input type="checkbox" name="discovery" id="discovery" value="1" />
 						</td>
 					</tr>
 					<tr>
@@ -91,7 +91,7 @@ class REST_Endpoint {
 							<label for="references"><?php esc_html_e( 'References', 'parse-this' ); ?></label>
 						</th>
 						<td>
-							<input type="checkbox" name="references" id="references" checked />
+							<input type="checkbox" name="references" id="references" value="1" checked />
 						</td>
 					</tr>
 					<tr>
@@ -99,7 +99,7 @@ class REST_Endpoint {
 							<label for="location"><?php esc_html_e( 'Clean up Location', 'parse-this' ); ?></label>
 						</th>
 						<td>
-							<input type="checkbox" name="location" id="location" />
+							<input type="checkbox" name="location" id="location" value="1" />
 						</td>
 					</tr>
 					<tr>
@@ -118,7 +118,7 @@ class REST_Endpoint {
 							<label for="follow"><?php esc_html_e( 'Follow Author Links', 'parse-this' ); ?></label>
 						</th>
 						<td>
-							<input type="checkbox" name="follow" id="follow" />
+							<input type="checkbox" name="follow" id="follow" value="1" />
 						</td>
 					</tr>
 					<tr>
@@ -126,7 +126,7 @@ class REST_Endpoint {
 							<label for="debug"><?php esc_html_e( 'Include Source Data', 'parse-this' ); ?></label>
 						</th>
 						<td>
-							<input type="checkbox" name="debug" id="debug" checked />
+							<input type="checkbox" name="debug" id="debug" value="1" checked />
 						</td>
 					</tr>
 					</tbody>
@@ -156,10 +156,51 @@ class REST_Endpoint {
 					'methods'             => \WP_REST_Server::READABLE,
 					'callback'            => array( $cls, 'read' ),
 					'args'                => array(
-						'url' => array(
+						'url'             => array(
 							'required'          => true,
 							'validate_callback' => array( $cls, 'is_valid_url' ),
 							'sanitize_callback' => 'esc_url_raw',
+						),
+						'return'          => array(
+							'description' => __( 'Whether to return a single item or a feed.', 'parse-this' ),
+							'type'        => 'string',
+							'enum'        => array( 'single', 'feed' ),
+						),
+						'mf2'             => array(
+							'description' => __( 'Return mf2 instead of jf2.', 'parse-this' ),
+							'type'        => 'boolean',
+						),
+						'discovery'       => array(
+							'description' => __( 'List the URL\'s feeds instead of parsing it.', 'parse-this' ),
+							'type'        => 'boolean',
+						),
+						'references'      => array(
+							'description' => __( 'Move referenced items into refs.', 'parse-this' ),
+							'type'        => 'boolean',
+						),
+						'location'        => array(
+							'description' => __( 'Collapse location properties into one location.', 'parse-this' ),
+							'type'        => 'boolean',
+						),
+						'follow'          => array(
+							'description' => __( 'Fetch the author\'s page when the author is only a URL.', 'parse-this' ),
+							'type'        => 'boolean',
+						),
+						'require_content' => array(
+							'description' => __( 'Whether a result needs full content before fallbacks stop. Defaults to true for feeds and false otherwise.', 'parse-this' ),
+							'type'        => 'boolean',
+						),
+						'always_arrays'   => array(
+							'description' => __( 'Always return the array properties as arrays, as Microsub does.', 'parse-this' ),
+							'type'        => 'boolean',
+						),
+						'debug'           => array(
+							'description' => __( 'Include the raw data each source was read from.', 'parse-this' ),
+							'type'        => 'boolean',
+						),
+						'nocache'         => array(
+							'description' => __( 'Fetch the URL again instead of using a cached result.', 'parse-this' ),
+							'type'        => 'boolean',
 						),
 					),
 					'permission_callback' => array( $cls, 'permission_check' ),
