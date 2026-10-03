@@ -28,15 +28,17 @@ class REST_Endpoint {
 	}
 
 	/**
-	 * Adds the Tools > Parse This page for users who can manage options.
+	 * Adds the Tools > Parse This page for users who can use the parse route.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Uses the route's capability (see required_capability()) instead
+	 *              of manage_options.
 	 */
 	public function admin_menu() {
 		add_management_page(
 			__( 'Parse This', 'parse-this' ), // Page title.
 			__( 'Parse This', 'parse-this' ), // Menu title.
-			'manage_options', // Capability.
+			self::required_capability(), // Capability.
 			'parse_this',
 			array( $this, 'debug' )
 		);
@@ -45,10 +47,12 @@ class REST_Endpoint {
 	/**
 	 * Renders the debug page.
 	 *
-	 * The form submits directly to the parse endpoint, with a wp_rest nonce for
-	 * cookie authentication.
+	 * The form is sent to the parse endpoint by a script, with the wp_rest nonce
+	 * in an X-WP-Nonce header rather than in the URL, and the result is shown on
+	 * the page.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Submits with fetch() and shows the result on the page.
 	 */
 	public static function debug() {
 		?>
@@ -66,7 +70,7 @@ class REST_Endpoint {
 							?>
 							</p>
 						<hr />
-			<form method="get" action="<?php echo esc_url( rest_url( '/parse-this/1.0/parse/' ) ); ?> ">
+			<form id="parse-this-debug">
 				<p>
 					<label for="url"><?php esc_html_e( 'URL', 'parse-this' ); ?></label><input type="url" class="widefat" name="url" id="url" />
 				</p>
@@ -133,11 +137,18 @@ class REST_Endpoint {
 					</tr>
 					</tbody>
 				</table>
-			<?php wp_nonce_field( 'wp_rest' ); ?>
 			<?php submit_button( __( 'Parse', 'parse-this' ) ); ?>
 						</form>
+			<pre id="parse-this-result" style="white-space: pre-wrap; word-break: break-all;"></pre>
 				</div>
 				<?php
+				$settings = array(
+					'endpoint' => rest_url( '/parse-this/1.0/parse/' ),
+					'nonce'    => wp_create_nonce( 'wp_rest' ),
+					'parsing'  => __( 'Parsing…', 'parse-this' ),
+				);
+				wp_enqueue_script( 'parse-this-debug', plugins_url( 'js/debug.js', __DIR__ ), array(), '2.0.0', true );
+				wp_add_inline_script( 'parse-this-debug', 'var parseThisDebug = ' . wp_json_encode( $settings ) . ';', 'before' );
 	}
 
 
@@ -222,15 +233,26 @@ class REST_Endpoint {
 	 * @return bool True if the current user has the required capability.
 	 */
 	public static function permission_check() {
+		return current_user_can( self::required_capability() );
+	}
+
+	/**
+	 * Returns the capability required for the parse route and the debug page.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @return string Capability name.
+	 */
+	public static function required_capability() {
 		/**
-		 * Filters the capability required to use the parse-this/1.0/parse route.
+		 * Filters the capability required to use the parse-this/1.0/parse route
+		 * and the Tools > Parse This page.
 		 *
 		 * @since 2.0.0
 		 *
 		 * @param string $capability Capability name. Default 'edit_posts'.
 		 */
-		$capability = apply_filters( 'parse_this_rest_capability', 'edit_posts' );
-		return current_user_can( $capability );
+		return apply_filters( 'parse_this_rest_capability', 'edit_posts' );
 	}
 
 	/**

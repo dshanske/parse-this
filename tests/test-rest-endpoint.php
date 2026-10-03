@@ -124,4 +124,28 @@ class REST_Endpoint_Test extends Parse_This_TestCase {
 		$data = $dispatch( array( 'mf2' => '0' ) )->get_data();
 		$this->assertSame( 'Hello', $data['name'] );
 	}
+
+	/**
+	 * The debug page keeps the nonce out of the form and uses the route's capability (S-6).
+	 */
+	public function test_debug_page() {
+		require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		ob_start();
+		ParseThis\REST_Endpoint::debug();
+		$html = ob_get_clean();
+
+		$this->assertStringContainsString( 'id="parse-this-debug"', $html );
+		$this->assertStringNotContainsString( '_wpnonce', $html );
+		$this->assertStringNotContainsString( 'action=', $html );
+		$this->assertTrue( wp_script_is( 'parse-this-debug', 'enqueued' ) );
+		$this->assertStringContainsString( 'var parseThisDebug', implode( '', wp_scripts()->get_data( 'parse-this-debug', 'before' ) ) );
+
+		$capability = function () {
+			return 'manage_options';
+		};
+		add_filter( 'parse_this_rest_capability', $capability );
+		$this->assertSame( 'manage_options', ParseThis\REST_Endpoint::required_capability() );
+		remove_filter( 'parse_this_rest_capability', $capability );
+		$this->assertSame( 'edit_posts', ParseThis\REST_Endpoint::required_capability() );
+	}
 }
