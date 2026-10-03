@@ -165,4 +165,19 @@ class Parser_Fallbacks_Test extends Parse_This_TestCase {
 		$this->assertSame( '2006-03-21T00:00:00+00:00', $jf2['published'] );
 		$this->assertSame( 'just setting up my #twttr with @biz', $jf2['content']['value'] );
 	}
+
+	/**
+	 * An author found only as a string (here an Open Graph tag) comes back as a card.
+	 */
+	public function test_string_author_becomes_card() {
+		$jf2 = $this->parse_html( '<html><head>' . self::OG . '<meta property="article:author" content="Alex Writer"></head><body><p>Plain page</p></body></html>' );
+
+		$this->assertSame(
+			array(
+				'type' => 'card',
+				'name' => 'Alex Writer',
+			),
+			$jf2['author']
+		);
+	}
 }

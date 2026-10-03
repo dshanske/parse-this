@@ -180,6 +180,49 @@ if ( ! function_exists( __NAMESPACE__ . '\\jf2_location' ) ) {
 }
 
 
+if ( ! function_exists( __NAMESPACE__ . '\\jf2_author_to_card' ) ) {
+	/**
+	 * Converts an author value into a jf2 card.
+	 *
+	 * Microsub requires author to always be a card, and jf2 consumers generally
+	 * expect one. A URL string becomes a card with that url, any other string a
+	 * card with that name, and an object without a type gets type card. A list of
+	 * authors is converted item by item; a list of one becomes that card.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param mixed $author Author: a string, an object or a list of either.
+	 * @return array|null The card (or list of cards), or null if there is no author.
+	 */
+	function jf2_author_to_card( $author ) {
+		if ( is_string( $author ) ) {
+			$author = trim( $author );
+			if ( '' === $author ) {
+				return null;
+			}
+			$key = ( preg_match( '#^https?://#i', $author ) && filter_var( $author, FILTER_VALIDATE_URL ) ) ? 'url' : 'name';
+			return array(
+				'type' => 'card',
+				$key   => $author,
+			);
+		}
+		if ( ! is_array( $author ) || empty( $author ) ) {
+			return null;
+		}
+		if ( wp_is_numeric_array( $author ) ) {
+			$cards = array_values( array_filter( array_map( __NAMESPACE__ . '\\jf2_author_to_card', $author ) ) );
+			if ( empty( $cards ) ) {
+				return null;
+			}
+			return ( 1 === count( $cards ) ) ? $cards[0] : $cards;
+		}
+		if ( ! isset( $author['type'] ) ) {
+			$author = array( 'type' => 'card' ) + $author;
+		}
+		return $author;
+	}
+}
+
 if ( ! function_exists( __NAMESPACE__ . '\\jf2_references' ) ) {
 	/**
 	 * Moves nested citations into refs, per the jf2 spec.

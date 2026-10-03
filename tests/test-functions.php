@@ -126,4 +126,17 @@ class Functions_Test extends Parse_This_TestCase {
 		$this->assertSame( 'Cafe', $jf2['location'] );
 		$this->assertSame( '1', $jf2['latitude'] );
 	}
+
+	/**
+	 * Authors become jf2 cards.
+	 */
+	public function test_author_to_card() {
+		$this->assertSame( array( 'type' => 'card', 'name' => 'Jane Doe' ), ParseThis\jf2_author_to_card( 'Jane Doe' ) );
+		$this->assertSame( array( 'type' => 'card', 'url' => 'https://example.com/jane' ), ParseThis\jf2_author_to_card( 'https://example.com/jane' ) );
+		$this->assertSame( array( 'type' => 'card', 'name' => 'Jane' ), ParseThis\jf2_author_to_card( array( 'name' => 'Jane' ) ) );
+		$this->assertSame( array( 'type' => 'card', 'name' => 'Jane' ), ParseThis\jf2_author_to_card( array( 'Jane' ) ) ); // A list of one.
+		$this->assertCount( 2, ParseThis\jf2_author_to_card( array( 'Jane', array( 'name' => 'Bob' ) ) ) );
+		$this->assertNull( ParseThis\jf2_author_to_card( '' ) );
+		$this->assertNull( ParseThis\jf2_author_to_card( array() ) );
+	}
 }

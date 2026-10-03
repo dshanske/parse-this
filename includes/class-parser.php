@@ -470,6 +470,68 @@ class Parser {
 		if ( ! in_array( $args['return'], array( 'single', 'feed' ), true ) ) {
 			$args['return'] = 'single';
 		}
+		$result = $this->parse_sources( $args );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		if ( is_array( $this->jf2 ) ) {
+			$this->jf2 = self::format_output( $this->jf2, $args );
+		}
+	}
+
+	/**
+	 * Normalizes the parse result and, for feeds, each item.
+	 *
+	 * Every author becomes a jf2 card (see jf2_author_to_card()).
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $jf2  Parse result.
+	 * @param array $args Parse arguments (see parse()).
+	 * @return array The normalized result.
+	 */
+	public static function format_output( $jf2, $args ) {
+		$jf2 = self::format_object( $jf2, $args );
+		if ( isset( $jf2['items'] ) && is_array( $jf2['items'] ) ) {
+			foreach ( $jf2['items'] as $key => $item ) {
+				if ( is_array( $item ) ) {
+					$jf2['items'][ $key ] = self::format_object( $item, $args );
+				}
+			}
+		}
+		return $jf2;
+	}
+
+	/**
+	 * Normalizes one jf2 object; see format_output().
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $jf2  jf2 object.
+	 * @param array $args Parse arguments.
+	 * @return array The normalized object.
+	 */
+	private static function format_object( $jf2, $args ) {
+		if ( array_key_exists( 'author', $jf2 ) ) {
+			$card = jf2_author_to_card( $jf2['author'] );
+			if ( null === $card ) {
+				unset( $jf2['author'] );
+			} else {
+				$jf2['author'] = $card;
+			}
+		}
+		return $jf2;
+	}
+
+	/**
+	 * Runs the parsers for the fetched content and stores the result in $jf2.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $args Parse arguments, with defaults applied (see parse()).
+	 * @return WP_Error|void WP_Error if there is no content to parse.
+	 */
+	private function parse_sources( $args ) {
 		if ( class_exists( RSS::class ) && ( $this->content instanceof \SimplePie\SimplePie || $this->content instanceof \SimplePie ) ) {
 			$this->jf2 = RSS::parse( $this->content, $this->url );
 
