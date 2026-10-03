@@ -326,26 +326,6 @@ if ( ! function_exists( __NAMESPACE__ . '\\url_to_user' ) ) {
 	}
 }
 
-if ( ! function_exists( __NAMESPACE__ . '\\ifset' ) ) {
-	/**
-	 * Returns a variable if it is set, otherwise a default.
-	 *
-	 * Takes $var by reference, so passing a missing array key creates that key
-	 * with a null value (review finding C-31).
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param mixed $var    Variable to check.
-	 * @param mixed $return Optional. Value to return if $var is not set. Default false.
-	 * @return mixed $var if set, otherwise $return.
-	 */
-	function ifset( &$var, $return = false ) {
-
-			return isset( $var ) ? $var : $return;
-	}
-}
-
-
 if ( ! function_exists( __NAMESPACE__ . '\\build_url' ) ) {
 	/**
 	 * Builds a URL from its parts; the inverse of wp_parse_url().
