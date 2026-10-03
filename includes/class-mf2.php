@@ -314,12 +314,13 @@ class MF2 extends MF2_Utils {
 			$count = count( $input['items'] );
 		}
 
+		// A page with a single top-level item is that item.
 		if ( 1 === $count ) {
 			$return = self::parse_item( $input['items'][0], $input, $args );
-			if ( self::has_rel( $input, 'alternate' ) ) {
+			if ( is_array( $return ) && self::has_rel( $input, 'alternate' ) ) {
 				$return['_alternate'] = self::get_rel( $input, 'alternate' );
-				return $return;
 			}
+			return $return;
 		}
 
 		$return = array();
@@ -405,7 +406,13 @@ class MF2 extends MF2_Utils {
 			'items' => array(),
 		);
 		$data['name'] = self::get_plaintext( $entry, 'name' );
-		$author       = self::find_author( $entry, $mf, $args['follow'] );
+		// JF2 Feed: url SHOULD be defined and MUST be a single string. Fall back to the page.
+		$data['url'] = self::get_plaintext( $entry, 'url' );
+		if ( ! is_string( $data['url'] ) && isset( $args['url'] ) ) {
+			$data['url'] = $args['url'];
+		}
+		$data['url'] = normalize_url( $data['url'] );
+		$author      = self::find_author( $entry, $mf, $args['follow'] );
 		if ( self::is_microformat( $author ) ) {
 			$data['author'] = self::parse_hcard( $author, $mf, $args );
 		} else {

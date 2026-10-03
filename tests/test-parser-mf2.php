@@ -101,8 +101,6 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 	 * Parser::parse() with return=feed returns the feed itself, with its url.
 	 */
 	public function test_feed_via_parser() {
-		$this->markTestSkipped( 'Known bug C-42 (issue 124): a lone h-feed comes back wrapped in _jf2 and without its url.' );
-
 		$jf2 = $this->parse_fixture( 'mf2-feed.html', 'https://example.com/notes/', array( 'return' => 'feed' ) );
 		$this->assertSame( 'feed', $jf2['type'] );
 		$this->assertSame( 'https://example.com/notes/', $jf2['url'] );
