@@ -149,10 +149,18 @@ class MF2 extends MF2_Utils {
 			$key = normalize_url( $authorpage );
 			if ( $follow && ! self::urls_match( $authorpage, self::get_plaintext( $mf2, 'url' ) ) && ( isset( self::$author_pages[ $key ] ) || Parser::use_request_budget() ) ) {
 				if ( ! isset( self::$author_pages[ $key ] ) ) {
-					$parse = new Parser( $authorpage );
-					$parse->fetch();
-					$parse->parse();
-					self::$author_pages[ $key ] = $parse->get();
+					$parse   = new Parser( $authorpage );
+					$fetched = $parse->fetch();
+					if ( is_wp_error( $fetched ) ) {
+						// The author page is missing or an error: keep its URL.
+						self::$author_pages[ $key ] = array(
+							'type'       => array( 'h-card' ),
+							'properties' => array( 'url' => array( $authorpage ) ),
+						);
+					} else {
+						$parse->parse();
+						self::$author_pages[ $key ] = $parse->get();
+					}
 				}
 				return self::$author_pages[ $key ];
 			} else {

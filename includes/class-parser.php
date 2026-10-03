@@ -99,6 +99,14 @@ class Parser {
 	private $content_type = '';
 
 	/**
+	 * HTTP status code of the fetched response, or 0 if nothing was fetched.
+	 *
+	 * @since 2.0.0
+	 * @var int
+	 */
+	private $code = 0;
+
+	/**
 	 * Sets up a parser for a URL.
 	 *
 	 * URLs on a list of hosts known to support HTTPS are upgraded to https://
@@ -433,6 +441,29 @@ class Parser {
 	}
 
 	/**
+	 * Builds the error returned for an HTTP error response.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param int $code HTTP status code.
+	 * @return WP_Error not_found, unauthorized, forbidden or http_error, with the
+	 *                  status in the error data as response_code.
+	 */
+	private static function http_error( $code ) {
+		$errors = array(
+			401 => array( 'unauthorized', __( 'The URL requires authorization (HTTP 401).', 'parse-this' ) ),
+			403 => array( 'forbidden', __( 'Access to the URL is forbidden (HTTP 403).', 'parse-this' ) ),
+			404 => array( 'not_found', __( 'The URL was not found (HTTP 404).', 'parse-this' ) ),
+		);
+		$error  = $errors[ $code ] ?? array(
+			'http_error',
+			/* translators: %d: HTTP status code. */
+			sprintf( __( 'The URL returned an error (HTTP %d).', 'parse-this' ), $code ),
+		);
+		return new \WP_Error( $error[0], $error[1], array( 'response_code' => $code ) );
+	}
+
+	/**
 	 * Downloads a URL and stores its content for parse().
 	 *
 	 * Feeds are loaded into SimplePie, JSON Feeds and WordPress REST
@@ -443,9 +474,15 @@ class Parser {
 	 *
 	 * @param string|null $url Optional. URL to fetch. Defaults to the URL passed to
 	 *                         the constructor.
+	 * @since 2.0.0 Returns WP_Error for HTTP error responses, except 410 Gone,
+	 *              which is parsed (a deleted post's stub) and reported in _code.
+	 *
 	 * @return true|false|WP_Error True on success, false if a feed could not be
 	 *                             parsed, or WP_Error if the URL is invalid, the
-	 *                             request fails, or the content type is not
+	 *                             request fails, the server returns an error
+	 *                             (not_found, unauthorized, forbidden or
+	 *                             http_error, with the status in the error data
+	 *                             as response_code), or the content type is not
 	 *                             supported.
 	 */
 	public function fetch( $url = null ) {
@@ -460,7 +497,20 @@ class Parser {
 		$args     = in_array( $host, array( 'youtube.com', 'www.youtube.com', 'm.youtube.com' ), true ) ? array( 'limit_response_size' => 3 * MB_IN_BYTES ) : array();
 		$response = pt_remote_get( $url, $args );
 		if ( is_wp_error( $response ) ) {
+			// pt_remote_get() reports a 403 or 415 that survives its retry as source_error.
+			$data = $response->get_error_data();
+			if ( 'source_error' === $response->get_error_code() && isset( $data['response_code'] ) ) {
+				$this->code = (int) $data['response_code'];
+				return self::http_error( $this->code );
+			}
 			return $response;
+		}
+
+		// An error page is not the requested content. 410 Gone is parsed, since
+		// a deleted post often leaves a stub that says so.
+		$this->code = (int) wp_remote_retrieve_response_code( $response );
+		if ( $this->code >= 400 && 410 !== $this->code ) {
+			return self::http_error( $this->code );
 		}
 
 		$raw = wp_remote_retrieve_header( $response, 'link' );
@@ -614,6 +664,9 @@ class Parser {
 		}
 		if ( is_array( $this->jf2 ) ) {
 			$this->jf2 = self::format_output( $this->jf2, $args );
+			if ( 410 === $this->code ) {
+				$this->jf2['_code'] = 410;
+			}
 		}
 	}
 

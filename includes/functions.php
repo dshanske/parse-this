@@ -637,8 +637,9 @@ if ( ! function_exists( __NAMESPACE__ . '\\pt_remote_get' ) ) {
 		if ( is_wp_error( $response ) ) {
 			return $response;
 		}
-		if ( in_array( (int) wp_remote_retrieve_response_code( $response ), $retry_codes, true ) ) {
-			return new \WP_Error( 'source_error', 'Unable to Retrieve' );
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		if ( in_array( $code, $retry_codes, true ) ) {
+			return new \WP_Error( 'source_error', __( 'Unable to retrieve the URL.', 'parse-this' ), array( 'response_code' => $code ) );
 		}
 		return $response;
 	}

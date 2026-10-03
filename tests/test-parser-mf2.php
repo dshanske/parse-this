@@ -328,4 +328,22 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 			$result['author']
 		);
 	}
+
+	/**
+	 * A followed author page that returns an error leaves the author as its URL (C-51).
+	 */
+	public function test_follow_author_page_error() {
+		$this->respond( 'https://example.org/missing-author/', 'Not found', 'text/html', array(), 404 );
+		$parser = new ParseThis\Parser();
+		$parser->set( '<div class="h-entry"><a class="u-author" href="https://example.org/missing-author/">a</a><p class="e-content">Hi</p></div>', 'https://example.com/post/' );
+		$parser->parse( array( 'follow' => true ) );
+		$jf2 = $parser->get();
+		$this->assertSame(
+			array(
+				'url'  => 'https://example.org/missing-author/',
+				'type' => 'card',
+			),
+			$jf2['author']
+		);
+	}
 }
