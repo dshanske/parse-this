@@ -54,8 +54,6 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 	 * A reply whose in-reply-to is a nested h-cite is stored as a reference.
 	 */
 	public function test_reply_with_nested_cite() {
-		$this->markTestSkipped( 'Known bug C-41 (issue 123): nested microformats are parsed without $args and raise warnings.' );
-
 		$jf2 = $this->parse_fixture( 'mf2-entry.html', 'https://example.com/2026/09/testing-parse-this/' );
 		$this->assertSame( 'reply', $jf2['post-type'] );
 		$this->assertSame( array( 'https://example.org/original-post/' ), $jf2['in-reply-to'] );

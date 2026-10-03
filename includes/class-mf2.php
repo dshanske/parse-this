@@ -160,6 +160,22 @@ class MF2 extends MF2_Utils {
 	}
 
 	/**
+	 * Returns the default parse arguments.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @return array Default arguments; see parse().
+	 */
+	public static function default_args() {
+		return array(
+			'alternate'  => true, // Use rel-alternate if set for jf2 or mf2.
+			'return'     => 'single',
+			'follow'     => false, // Follow author links and return parsed data.
+			'references' => true, // Move nested citations into refs.
+		);
+	}
+
+	/**
 	 * Returns the values of several properties.
 	 *
 	 * Nested microformats are converted to jf2 with parse_item(). Only the last
@@ -170,12 +186,14 @@ class MF2 extends MF2_Utils {
 	 * @param array      $mf         Microformat.
 	 * @param string[]   $properties Property names to read.
 	 * @param array|null $args       Optional. Parse arguments for nested items.
+	 *                               Defaults to default_args().
 	 * @return array Values keyed by property name. Empty if $mf is not a microformat.
 	 */
 	public static function get_prop_array( array $mf, $properties, $args = null ) {
 		if ( ! self::is_microformat( $mf ) ) {
 			return array();
 		}
+		$args = wp_parse_args( (array) $args, self::default_args() );
 
 		$data = array();
 		foreach ( $properties as $p ) {
@@ -215,12 +233,7 @@ class MF2 extends MF2_Utils {
 	 * @return array jf2 for one item, a list of jf2 items, or an empty array.
 	 */
 	public static function parse( $input, $url, $args = array() ) {
-		$defaults    = array(
-			'alternate' => true, // Use rel-alternate if set for jf2 or mf2.
-			'return'    => 'single',
-			'follow'    => false, // Follow author links and return parsed data.
-		);
-		$args        = wp_parse_args( $args, $defaults );
+		$args        = wp_parse_args( $args, self::default_args() );
 		$args['url'] = $url;
 		if ( ! in_array( $args['return'], array( 'single', 'feed' ), true ) ) {
 			$args['return'] = 'single';
@@ -701,7 +714,7 @@ class MF2 extends MF2_Utils {
 			'pk-drank',
 			'item',
 		);
-		$data         = self::get_prop_array( $entry, $properties );
+		$data         = self::get_prop_array( $entry, $properties, $args );
 		$data['type'] = self::is_type( $entry, 'h-entry' ) ? 'entry' : 'cite';
 		$properties   = array( 'url', 'weather', 'temperature', 'rsvp', 'featured', 'swarm-coins', 'latitude', 'longitude' );
 		foreach ( $properties as $property ) {
@@ -768,7 +781,7 @@ class MF2 extends MF2_Utils {
 			$data[ $property ] = self::get_plaintext( $hcard, $property );
 		}
 		$data = array_filter( $data );
-		$data = array_merge( self::get_prop_array( $hcard, array_keys( $hcard['properties'] ) ), $data );
+		$data = array_merge( self::get_prop_array( $hcard, array_keys( $hcard['properties'] ), $args ), $data );
 
 		$data['type'] = 'card';
 		if ( isset( $hcard['children'] ) ) {
@@ -806,7 +819,7 @@ class MF2 extends MF2_Utils {
 		);
 		$data       = array_merge( $data, self::parse_h( $event, $mf, $args ) );
 		$properties = array( 'category', 'attendee', 'organizer', 'location', 'start', 'end', 'photo', 'uid', 'url' );
-		$data       = array_merge( $data, self::get_prop_array( $event, $properties ) );
+		$data       = array_merge( $data, self::get_prop_array( $event, $properties, $args ) );
 		return array_filter( $data );
 	}
 
@@ -832,7 +845,7 @@ class MF2 extends MF2_Utils {
 			'url'  => null,
 		);
 		$properties = array( 'category', 'item' );
-		$data       = self::get_prop_array( $entry, $properties );
+		$data       = self::get_prop_array( $entry, $properties, $args );
 		$properties = array( 'summary', 'published', 'rating', 'best', 'worst' );
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $entry, $p );
@@ -867,7 +880,7 @@ class MF2 extends MF2_Utils {
 			'url'  => null,
 		);
 		$properties = array( 'category', 'brand', 'photo', 'audio', 'video' );
-		$data       = self::get_prop_array( $entry, $properties );
+		$data       = self::get_prop_array( $entry, $properties, $args );
 		$properties = array( 'identifier', 'price', 'description' );
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $entry, $p );
@@ -902,7 +915,7 @@ class MF2 extends MF2_Utils {
 			'url'  => null,
 		);
 		$properties = array( 'category', 'item' );
-		$data       = self::get_prop_array( $entry, $properties );
+		$data       = self::get_prop_array( $entry, $properties, $args );
 		$properties = array();
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $entry, $p );
@@ -936,7 +949,7 @@ class MF2 extends MF2_Utils {
 			'url'  => null,
 		);
 		$properties = array( 'category', 'item' );
-		$data       = self::get_prop_array( $entry, $properties );
+		$data       = self::get_prop_array( $entry, $properties, $args );
 		$properties = array();
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $entry, $p );
@@ -970,7 +983,7 @@ class MF2 extends MF2_Utils {
 			'url'  => null,
 		);
 		$properties = array( 'category', 'item' );
-		$data       = self::get_prop_array( $recipe, $properties );
+		$data       = self::get_prop_array( $recipe, $properties, $args );
 		$properties = array();
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $recipe, $p );
@@ -1004,7 +1017,7 @@ class MF2 extends MF2_Utils {
 			'url'  => null,
 		);
 		$properties = array( 'category', 'item' );
-		$data       = self::get_prop_array( $item, $properties );
+		$data       = self::get_prop_array( $item, $properties, $args );
 		$properties = array();
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $item, $p );
@@ -1039,7 +1052,7 @@ class MF2 extends MF2_Utils {
 			$data[ $property ] = self::get_plaintext( $hadr, $property );
 		}
 		$properties = array( 'temperature', 'geo' );
-		$props      = self::get_prop_array( $hadr, $properties );
+		$props      = self::get_prop_array( $hadr, $properties, $args );
 		$data       = array_merge( $data, $props );
 		return array_filter( $data );
 	}
