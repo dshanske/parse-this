@@ -416,4 +416,63 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 		$this->assertSame( '<p>Mix <b>well</b>.</p>', $recipe['instructions']['html'] );
 		$this->assertSame( 'Lots', $recipe['nutrition'] );
 	}
+
+	/**
+	 * Reviews as an h-entry with review-of, or as h-entry h-review (microformats/h-entry#32).
+	 */
+	public function test_review_of() {
+		$parse = function ( $html, $args = array() ) {
+			$parser = new ParseThis\Parser();
+			$parser->set( $html, 'https://example.com/r/' );
+			$parser->parse( $args );
+			return $parser->get();
+		};
+
+		// As Post Kinds publishes it: a nested h-cite and a rating on the entry.
+		$jf2 = $parse( '<article class="h-entry"><a class="u-url" href="https://example.com/r/">r</a><section class="h-cite response u-review-of"><a class="p-name u-url" href="https://book.example/b">The Book</a></section><data class="p-rating" value="4">4 stars</data><div class="e-content">Good read.</div></article>' );
+		$this->assertSame( 'review', $jf2['post-type'] );
+		$this->assertSame( array( 'https://book.example/b' ), $jf2['review-of'] );
+		$this->assertSame( 'The Book', $jf2['refs']['https://book.example/b']['name'] );
+		$this->assertSame( '4', $jf2['rating'] );
+
+		$jf2 = $parse( '<article class="h-entry"><a class="u-url" href="https://example.com/r/">r</a><section class="h-cite response u-review-of"><a class="p-name u-url" href="https://book.example/b">The Book</a></section><div class="e-content">Good read.</div></article>', array( 'references' => false ) );
+		$this->assertSame( 'The Book', $jf2['review-of']['name'] );
+
+		// A URL, with a rating of 0.
+		$jf2 = $parse( '<article class="h-entry"><a class="u-review-of" href="https://geico.com/">Geico</a><data class="p-rating" value="0">0</data><p class="p-name">Geico: Zero Stars</p><div class="e-content">Bad.</div></article>' );
+		$this->assertSame( 'review', $jf2['post-type'] );
+		$this->assertSame( 'https://geico.com/', $jf2['review-of'] );
+		$this->assertSame( '0', $jf2['rating'] );
+
+		// A place without a URL, with best.
+		$jf2 = $parse( '<article class="h-entry"><div class="p-review-of h-card"><span class="p-name">Cafe</span><span class="p-locality">London</span></div><data class="p-rating" value="5"></data><data class="p-best" value="5"></data><div class="e-content">Great coffee.</div></article>' );
+		$this->assertSame( 'review', $jf2['post-type'] );
+		$this->assertSame( 'card', $jf2['review-of']['type'] );
+		$this->assertSame( 'London', $jf2['review-of']['locality'] );
+		$this->assertSame( '5', $jf2['best'] );
+
+		// Both h-entry and h-review.
+		$jf2 = $parse( '<article class="h-entry h-review"><span class="p-name">Review</span><div class="p-item h-product"><a class="u-url p-name" href="https://product.example/">Widget</a></div><data class="p-rating" value="3"></data><div class="e-content">Fine.</div></article>' );
+		$this->assertSame( 'entry', $jf2['type'] );
+		$this->assertSame( 'review', $jf2['post-type'] );
+		$this->assertSame( 'Widget', $jf2['item']['name'] );
+		$this->assertSame( '3', $jf2['rating'] );
+
+		// A rating alone doesn't make a review.
+		$jf2 = $parse( '<article class="h-entry"><a class="u-watch-of" href="https://film.example/">Film</a><data class="p-rating" value="4"></data><div class="e-content">Watched.</div></article>' );
+		$this->assertSame( 'watch', $jf2['post-type'] );
+		$this->assertSame( '4', $jf2['rating'] );
+
+		// A review of a post is a review, not a reply.
+		$this->assertSame(
+			'review',
+			ParseThis\post_type_discovery(
+				array(
+					'type'        => 'entry',
+					'review-of'   => 'https://example.org/post',
+					'in-reply-to' => 'https://example.org/post',
+				)
+			)
+		);
+	}
 }
