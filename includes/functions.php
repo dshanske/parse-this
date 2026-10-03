@@ -326,26 +326,6 @@ if ( ! function_exists( __NAMESPACE__ . '\\url_to_user' ) ) {
 	}
 }
 
-if ( ! function_exists( __NAMESPACE__ . '\\ifset' ) ) {
-	/**
-	 * Returns a variable if it is set, otherwise a default.
-	 *
-	 * Takes $var by reference, so passing a missing array key creates that key
-	 * with a null value (review finding C-31).
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param mixed $var    Variable to check.
-	 * @param mixed $return Optional. Value to return if $var is not set. Default false.
-	 * @return mixed $var if set, otherwise $return.
-	 */
-	function ifset( &$var, $return = false ) {
-
-			return isset( $var ) ? $var : $return;
-	}
-}
-
-
 if ( ! function_exists( __NAMESPACE__ . '\\build_url' ) ) {
 	/**
 	 * Builds a URL from its parts; the inverse of wp_parse_url().
@@ -487,9 +467,9 @@ if ( ! function_exists( __NAMESPACE__ . '\\post_type_discovery' ) ) {
 			}
 			if ( isset( $jf2['name'] ) && ! empty( $jf2['name'] ) ) {
 				$jf2['name'] = $jf2['name'];
-				$content     = ifset( $jf2['content'] );
+				$content     = $jf2['content'] ?? null;
 				if ( ! $content ) {
-					$content = ifset( $jf2['summary'] );
+					$content = $jf2['summary'] ?? null;
 				}
 				if ( is_array( $content ) && array_key_exists( 'text', $content ) ) {
 					$content = $content['text'];
@@ -747,7 +727,7 @@ if ( ! function_exists( __NAMESPACE__ . '\\pt_find_rest_alternate' ) ) {
 	 */
 	function pt_find_rest_alternate( $links ) {
 		foreach ( $links as $link ) {
-			if ( 'alternate' === ifset( $link['rel'] ) && 'application/json' === ifset( $link['type'] ) ) {
+			if ( 'alternate' === ( $link['rel'] ?? null ) && 'application/json' === ( $link['type'] ?? null ) ) {
 				return $link['uri'];
 			}
 		}
@@ -767,7 +747,7 @@ if ( ! function_exists( __NAMESPACE__ . '\\pt_find_rest_endpoint' ) ) {
 	 */
 	function pt_find_rest_endpoint( $links ) {
 		foreach ( $links as $link ) {
-			if ( 'https://api.w.org/' === ifset( $link['rel'] ) ) {
+			if ( 'https://api.w.org/' === ( $link['rel'] ?? null ) ) {
 				return $link['uri'];
 			}
 		}

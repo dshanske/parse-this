@@ -51,17 +51,17 @@ class YouTube extends Base {
 		$details       = $decode['videoDetails'];
 		$microformat   = isset( $decode['microformat']['playerMicroformatRenderer'] ) ? $decode['microformat']['playerMicroformatRenderer'] : array();
 		$jf2           = array(
-			'uid'       => ifset( $details['videoId'] ),
-			'name'      => ifset( $details['title'] ),
-			'duration'  => seconds_to_iso8601( ifset( $details['lengthSeconds'] ) ),
-			'category'  => ifset( $details['keywords'] ),
-			'summary'   => ifset( $details['shortDescription'] ),
-			'published' => normalize_iso8601( ifset( $microformat['publishDate'] ) ),
+			'uid'       => $details['videoId'] ?? null,
+			'name'      => $details['title'] ?? null,
+			'duration'  => seconds_to_iso8601( $details['lengthSeconds'] ?? null ),
+			'category'  => $details['keywords'] ?? null,
+			'summary'   => $details['shortDescription'] ?? null,
+			'published' => normalize_iso8601( $microformat['publishDate'] ?? null ),
 		);
 		$author        = array(
 			'type' => 'card',
-			'url'  => ifset( $microformat['ownerProfileUrl'] ),
-			'name' => ifset( $details['author'] ),
+			'url'  => $microformat['ownerProfileUrl'] ?? null,
+			'name' => $details['author'] ?? null,
 		);
 		$jf2['author'] = array_filter( $author );
 
@@ -70,7 +70,7 @@ class YouTube extends Base {
 			$jf2['featured'] = $thumbnail['url'];
 		}
 		if ( isset( $microformat['embed'] ) ) {
-			$jf2['video'] = ifset( $microformat['embed']['iframeUrl'] );
+			$jf2['video'] = $microformat['embed']['iframeUrl'] ?? null;
 		}
 		if ( WP_DEBUG ) {
 			$jf2['_yt'] = $decode;

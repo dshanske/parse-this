@@ -16,19 +16,6 @@ namespace ParseThis;
  */
 class JSONFeed extends Base {
 	/**
-	 * Returns an array value if the key is set.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param string|int $key   Key to look up.
-	 * @param array      $array Array to look in.
-	 * @return mixed The value, or null if the key is not set.
-	 */
-	private static function ifset( $key, $array ) {
-		return isset( $array[ $key ] ) ? $array[ $key ] : null;
-	}
-
-	/**
 	 * Converts JSON Feed author data into jf2 cards.
 	 *
 	 * Accepts both the version 1 'author' object and the version 1.1 'authors'
@@ -61,9 +48,9 @@ class JSONFeed extends Base {
 			}
 			$card = array_filter(
 				array(
-					'name'  => self::ifset( 'name', $element ),
-					'url'   => self::ifset( 'url', $element ),
-					'photo' => self::ifset( 'avatar', $element ),
+					'name'  => $element['name'] ?? null,
+					'url'   => $element['url'] ?? null,
+					'photo' => $element['avatar'] ?? null,
 				)
 			);
 			if ( $card ) {
@@ -96,12 +83,12 @@ class JSONFeed extends Base {
 			array(
 				'type'       => 'feed',
 				'_feed_type' => 'jsonfeed',
-				'name'       => self::ifset( 'title', $content ),
+				'name'       => $content['title'] ?? null,
 				'url'        => $url,
-				'summary'    => self::ifset( 'description', $content ),
-				'photo'      => self::ifset( 'icon', $content ),
+				'summary'    => $content['description'] ?? null,
+				'photo'      => $content['icon'] ?? null,
 				'author'     => self::get_author( $content ),
-				'language'   => self::ifset( 'language', $content ),
+				'language'   => $content['language'] ?? null,
 			)
 		);
 		$return['items'] = array();
@@ -110,23 +97,23 @@ class JSONFeed extends Base {
 			$newitem = array_filter(
 				array(
 					'type'        => 'entry',
-					'uid'         => self::ifset( 'id', $item ),
-					'url'         => self::ifset( 'url', $item ),
-					'in-reply-to' => self::ifset( 'external_url', $item ),
-					'name'        => self::ifset( 'title', $item ),
+					'uid'         => $item['id'] ?? null,
+					'url'         => $item['url'] ?? null,
+					'in-reply-to' => $item['external_url'] ?? null,
+					'name'        => $item['title'] ?? null,
 					'content'     => array_filter(
 						array(
-							'html' => Parser::clean_content( self::ifset( 'content_html', $item ) ),
-							'text' => self::ifset( 'content_text', $item ),
+							'html' => Parser::clean_content( $item['content_html'] ?? null ),
+							'text' => $item['content_text'] ?? null,
 						)
 					),
-					'summary'     => self::ifset( 'summary', $item ),
-					'featured'    => self::ifset( 'image', $item ),
-					'published'   => normalize_iso8601( self::ifset( 'date_published', $item ) ),
-					'updated'     => normalize_iso8601( self::ifset( 'date_modified', $item ) ),
+					'summary'     => $item['summary'] ?? null,
+					'featured'    => $item['image'] ?? null,
+					'published'   => normalize_iso8601( $item['date_published'] ?? null ),
+					'updated'     => normalize_iso8601( $item['date_modified'] ?? null ),
 					'author'      => self::get_author( $item ),
-					'category'    => self::ifset( 'tags', $item ),
-					'language'    => self::ifset( 'language', $item ),
+					'category'    => $item['tags'] ?? null,
+					'language'    => $item['language'] ?? null,
 				)
 			);
 			if ( array_key_exists( 'attachments', $item ) ) {

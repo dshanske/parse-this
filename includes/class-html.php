@@ -222,7 +222,7 @@ class HTML extends Base {
 				if ( is_string( $image ) ) {
 					$jf2['featured'] = $image;
 				} elseif ( is_array( $image ) ) {
-					$jf2['featured'] = ifset( $image[0], ifset( $image['secure_url'] ) );
+					$jf2['featured'] = $image[0] ?? $image['secure_url'] ?? null;
 				}
 			}
 			if ( isset( $meta['og']['site_name'] ) ) {
@@ -233,8 +233,8 @@ class HTML extends Base {
 				if ( is_string( $video ) ) {
 					$jf2['video'] = $video;
 				} elseif ( is_array( $video ) ) {
-					$jf2['video']    = ifset( $video['url'], ifset( $video[0] ) );
-					$jf2['category'] = ifset( $video['tag'] );
+					$jf2['video']    = $video['url'] ?? $video[0] ?? null;
+					$jf2['category'] = $video['tag'] ?? null;
 				}
 			}
 			if ( isset( $meta['og']['audio'] ) ) {
@@ -246,7 +246,7 @@ class HTML extends Base {
 			if ( isset( $meta['og']['longitude'] ) ) {
 				$jf2['location'] = array(
 					'longitude' => $meta['og']['longitude'],
-					'latitude'  => ifset( $meta['og']['latitude'] ),
+					'latitude'  => $meta['og']['latitude'] ?? null,
 				);
 			}
 			if ( isset( $meta['og']['type'] ) ) {
@@ -259,15 +259,15 @@ class HTML extends Base {
 				}
 				if ( 'article' === $type ) {
 					$jf2['type'] = 'entry';
-					$published   = ifset( $meta['article']['published_time'], ifset( $meta['article']['published'] ) );
+					$published   = $meta['article']['published_time'] ?? $meta['article']['published'] ?? null;
 					if ( $published ) {
 						$jf2['published'] = normalize_iso8601( $published );
 					}
-					$modified = ifset( $meta['article']['modified_time'], ifset( $meta['article']['modified'] ) );
+					$modified = $meta['article']['modified_time'] ?? $meta['article']['modified'] ?? null;
 					if ( $modified ) {
 						$jf2['modified'] = normalize_iso8601( $modified );
 					}
-					$jf2['category'] = ifset( $meta['article']['tag'] );
+					$jf2['category'] = $meta['article']['tag'] ?? null;
 				}
 				if ( 'book' === $type ) {
 					$jf2['type'] = 'cite';
@@ -369,8 +369,8 @@ class HTML extends Base {
 		}
 
 		if ( ! isset( $jf2['latitude'] ) && isset( $meta['playfoursquare'] ) ) {
-			$jf2['latitude']  = ifset( $meta['playfoursquare']['location:latitude'] );
-			$jf2['longitude'] = ifset( $meta['playfoursquare']['location:longitude'] );
+			$jf2['latitude']  = $meta['playfoursquare']['location:latitude'] ?? null;
+			$jf2['longitude'] = $meta['playfoursquare']['location:longitude'] ?? null;
 		}
 
 		if ( ! isset( $jf2['duration'] ) && isset( $meta['duration'] ) ) {
