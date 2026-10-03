@@ -38,10 +38,11 @@ class YouTube extends Base {
 			return array();
 		}
 
-		if ( ! preg_match( '#ytInitialPlayerResponse = (\{.+\});#U', $content, $match ) ) {
+		$json = self::extract_json( $content, 'ytInitialPlayerResponse = ' );
+		if ( null === $json ) {
 			return array();
 		}
-		$decode = json_decode( $match[1], true );
+		$decode = json_decode( $json, true );
 		if ( empty( $decode ) ) {
 			return array();
 		}
@@ -76,5 +77,51 @@ class YouTube extends Base {
 			$jf2['_yt'] = $decode;
 		}
 		return array_filter( $jf2 );
+	}
+
+	/**
+	 * Extracts the JSON object that follows a marker in a page.
+	 *
+	 * Matches braces while skipping over JSON strings, so a "};" inside a
+	 * string doesn't end the object early, as a regular expression would.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $content Page content.
+	 * @param string $marker  Text immediately before the object.
+	 * @return string|null The JSON text, or null if it isn't found or is incomplete.
+	 */
+	private static function extract_json( $content, $marker ) {
+		$position = strpos( $content, $marker );
+		if ( false === $position ) {
+			return null;
+		}
+		$start = strpos( $content, '{', $position + strlen( $marker ) );
+		if ( false === $start ) {
+			return null;
+		}
+		$depth     = 0;
+		$in_string = false;
+		$length    = strlen( $content );
+		for ( $i = $start; $i < $length; $i++ ) {
+			$char = $content[ $i ];
+			if ( $in_string ) {
+				if ( '\\' === $char ) {
+					++$i; // Skip the escaped character.
+				} elseif ( '"' === $char ) {
+					$in_string = false;
+				}
+			} elseif ( '"' === $char ) {
+				$in_string = true;
+			} elseif ( '{' === $char ) {
+				++$depth;
+			} elseif ( '}' === $char ) {
+				--$depth;
+				if ( 0 === $depth ) {
+					return substr( $content, $start, $i - $start + 1 );
+				}
+			}
+		}
+		return null;
 	}
 }

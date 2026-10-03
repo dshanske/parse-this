@@ -389,7 +389,10 @@ class Parser {
 		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
 			return new \WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'parse-this' ) );
 		}
-		$response = pt_remote_get( $url );
+		// YouTube watch pages exceed 1 MB, and the player data is part-way through them.
+		$host     = wp_parse_url( $url, PHP_URL_HOST );
+		$args     = in_array( $host, array( 'youtube.com', 'www.youtube.com', 'm.youtube.com' ), true ) ? array( 'limit_response_size' => 3 * MB_IN_BYTES ) : array();
+		$response = pt_remote_get( $url, $args );
 		if ( is_wp_error( $response ) ) {
 			return $response;
 		}

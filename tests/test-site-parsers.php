@@ -222,4 +222,23 @@ class Site_Parsers_Test extends Parse_This_TestCase {
 		$jf2 = ParseThis\RESTAPI::get_post( $post, 'https://example.org/wp-json/' );
 		$this->assertSame( '2026-09-29T10:00:00-04:00', $jf2['published'] );
 	}
+
+	/**
+	 * YouTube player data is extracted by matching braces, so "};" in a string doesn't cut it short (P-9).
+	 */
+	public function test_youtube_player_data_with_brace_in_string() {
+		$player = array(
+			'videoDetails' => array(
+				'videoId'          => 'abc123',
+				'title'            => 'Braces };',
+				'shortDescription' => 'A "quoted" }; description',
+				'author'           => 'Example Channel',
+			),
+		);
+		$html   = '<html><body><script>var ytInitialPlayerResponse = ' . wp_json_encode( $player ) . ';var other = {"a":1};</script></body></html>';
+
+		$jf2 = ParseThis\YouTube::parse( $html, 'https://www.youtube.com/watch?v=abc123', array() );
+
+		$this->assertSame( 'Braces };', $jf2['name'] );
+	}
 }
