@@ -453,7 +453,7 @@ class MF2 extends MF2_Utils {
 		if ( isset( $entry['children'] ) && 'feed' === $args['return'] ) {
 			$data['items'] = self::parse_children( $entry['children'], $mf, $args );
 		}
-		$data    = array_filter( $data );
+		$data    = self::filter_empty( $data );
 		$authors = array();
 		if ( isset( $data['author'] ) ) {
 			$authors[] = $data['author'];
@@ -647,7 +647,7 @@ class MF2 extends MF2_Utils {
 				$data['syndication'] = $mf['rels']['syndication'];
 			}
 		}
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 	/**
@@ -671,7 +671,7 @@ class MF2 extends MF2_Utils {
 		foreach ( $properties as $property ) {
 			$data[ $property ] = self::get_plaintext( $measure, $property );
 		}
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 	/**
@@ -709,7 +709,7 @@ class MF2 extends MF2_Utils {
 				$data[ $property ] = $datetime->format( DATE_W3C );
 			}
 		}
-		$data              = array_filter( $data );
+		$data              = self::filter_empty( $data );
 		return $data;
 	}
 
@@ -763,7 +763,7 @@ class MF2 extends MF2_Utils {
 		foreach ( $properties as $property ) {
 			$data[ $property ] = self::get_plaintext( $entry, $property );
 		}
-		$data = array_filter( $data );
+		$data = self::filter_empty( $data );
 		// rsvp values are an enumeration (yes, no, maybe, interested); compare without case.
 		if ( isset( $data['rsvp'] ) && is_string( $data['rsvp'] ) ) {
 			$data['rsvp'] = strtolower( trim( $data['rsvp'] ) );
@@ -773,7 +773,7 @@ class MF2 extends MF2_Utils {
 			$data = jf2_references( $data );
 		}
 		$data['post-type'] = post_type_discovery( $data );
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 	/**
@@ -827,7 +827,7 @@ class MF2 extends MF2_Utils {
 		foreach ( $properties as $property ) {
 			$data[ $property ] = self::get_plaintext( $hcard, $property );
 		}
-		$data = array_filter( $data );
+		$data = self::filter_empty( $data );
 		$data = array_merge( self::get_prop_array( $hcard, array_keys( $hcard['properties'] ), $args ), $data );
 
 		$data['type'] = 'card';
@@ -837,12 +837,12 @@ class MF2 extends MF2_Utils {
 				$feed = self::parse_hfeed( $hcard['children'][0], $mf, $args );
 				unset( $data['children'] );
 				$feed['author'] = $data;
-				return array_filter( $feed );
+				return self::filter_empty( $feed );
 			} else {
 				$data['items'] = self::parse_children( $hcard['children'], $mf, $args );
 			}
 		}
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 	/**
@@ -867,7 +867,7 @@ class MF2 extends MF2_Utils {
 		$data       = array_merge( $data, self::parse_h( $event, $mf, $args ) );
 		$properties = array( 'category', 'attendee', 'organizer', 'location', 'start', 'end', 'photo', 'uid', 'url' );
 		$data       = array_merge( $data, self::get_prop_array( $event, $properties, $args ) );
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 	/**
@@ -901,7 +901,7 @@ class MF2 extends MF2_Utils {
 			}
 		}
 		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 
@@ -936,7 +936,7 @@ class MF2 extends MF2_Utils {
 			}
 		}
 		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 
@@ -971,7 +971,7 @@ class MF2 extends MF2_Utils {
 			}
 		}
 		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 	/**
@@ -1005,7 +1005,7 @@ class MF2 extends MF2_Utils {
 			}
 		}
 		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 	/**
@@ -1039,7 +1039,7 @@ class MF2 extends MF2_Utils {
 			}
 		}
 		$data = array_merge( $data, self::parse_h( $recipe, $mf, $args ) );
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 	/**
@@ -1073,7 +1073,7 @@ class MF2 extends MF2_Utils {
 			}
 		}
 		$data = array_merge( $data, self::parse_h( $item, $mf, $args ) );
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 	/**
@@ -1101,7 +1101,7 @@ class MF2 extends MF2_Utils {
 		$properties = array( 'temperature', 'geo' );
 		$props      = self::get_prop_array( $hadr, $properties, $args );
 		$data       = array_merge( $data, $props );
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 	/**
@@ -1129,6 +1129,6 @@ class MF2 extends MF2_Utils {
 				$data[ $p ] = $v;
 			}
 		}
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 }

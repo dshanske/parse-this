@@ -346,4 +346,18 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 			$jf2['author']
 		);
 	}
+
+	/**
+	 * A name or rating of "0" is a real value (C-52).
+	 */
+	public function test_zero_values_are_kept() {
+		$result = ParseThis\MF2::parse( '<div class="h-card"><span class="p-name">0</span><img class="u-photo" src="https://example.com/photo.jpg"></div>', 'https://example.com/', array() );
+		$this->assertSame( '0', $result['name'] );
+
+		$result = ParseThis\MF2::parse( '<div class="h-entry"><p class="e-content">Hi</p><div class="p-author h-card"><span class="p-name">0</span></div></div>', 'https://example.com/', array() );
+		$this->assertSame( '0', $result['author']['name'] );
+
+		$result = ParseThis\MF2::parse( '<div class="h-review"><span class="p-name">Meh</span><data class="p-rating" value="0">0</data></div>', 'https://example.com/', array() );
+		$this->assertSame( '0', $result['rating'] );
+	}
 }

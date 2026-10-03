@@ -215,6 +215,26 @@ class MF2_Utils extends Base {
 	}
 
 	/**
+	 * Removes empty values from parsed data.
+	 *
+	 * Unlike array_filter() without a callback, keeps "0" and 0, which are real
+	 * values (a name of "0", a rating of 0).
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $data Parsed properties.
+	 * @return array The properties without null, false, '' and empty arrays.
+	 */
+	public static function filter_empty( $data ) {
+		return array_filter(
+			$data,
+			function ( $value ) {
+				return null !== $value && false !== $value && '' !== $value && array() !== $value;
+			}
+		);
+	}
+
+	/**
 	 * Returns rel-urls data for a URL as h-card style properties.
 	 *
 	 * The link text, or failing that its title, becomes the name.
