@@ -70,6 +70,7 @@ The endpoint is available to any logged-in user. Administrators can try it from 
 
 * `pt_rewrite_secure`: the list of domains whose `http://` URLs are upgraded to `https://` before fetching.
 * `parse_this_img_filters`: an image URL found in a page, after the built-in exclusions (ads, spinners, tracking pixels and so on). Return an empty string to drop it.
+* `parse_this_url_shorteners`: the hosts treated as link shorteners. Links to them in a summary are expanded to where they redirect; other links are left as they are, without a request.
 * `parse_this_cache_lifetime`: how long REST endpoint results are cached, in seconds. Default 15 minutes. Return 0 to turn caching off. Receives the URL.
 * `parse_this_rest_api_jf2_type`: the jf2 type for a post read through a site's WordPress REST API. Default `entry`. Receives the REST API post object, which includes its WordPress post type, and the site's REST API root URL.
 
@@ -144,6 +145,11 @@ Yes. It is tested with ClassicPress 2.7 on PHP 7.4 to 8.3.
 * Give JSON Feed items and authors, and posts read through the WordPress REST API, their jf2 types. Add the `parse_this_rest_api_jf2_type` filter.
 * Keep JSON Feeds and REST API collections served as `application/json`, handle RSS items without enclosures on newer SimplePie, and no longer merge raw JSON into results.
 * Use core's `fetch_feed()` for RSS and Atom, now that core's SimplePie is current.
+* Performance: download feeds once rather than twice; only expand links in summaries from known link shorteners (filterable with `parse_this_url_shorteners`), which removes a request per link; read REST API tags from the embedded data instead of one request per post; request only the site details needed from a site's REST API index (177 bytes instead of about 580 KB); fetch each followed author page once per request; stop parsing feed items once the limit is reached; and fix REST API caching, which never worked for long URLs.
+* Cache REST endpoint results for 15 minutes. Add the `nocache` parameter and the `parse_this_cache_lifetime` filter.
+* Include raw source data (`_meta`, `_jsonld`, `_yt` and so on) only with the new `debug` argument, rather than whenever `WP_DEBUG` is on.
+* Date posts read through the WordPress REST API from their GMT dates, so they are correct even without the site's timezone.
+* Read YouTube pages in full (they exceed the 1 MB limit) and extract the player data reliably.
 * Recognize x.com post URLs, and use the publish.x.com oEmbed endpoint.
 * Fix YouTube feed discovery for `@handle` URLs and the video ID in parsed videos.
 * Update the bundled php-mf2 (0.5.0) and masterminds/html5 (2.11.0) libraries.
