@@ -17,6 +17,14 @@ namespace ParseThis;
  * @since 1.0.0
  */
 class RESTAPI {
+
+	/**
+	 * Site index fields read by site_data().
+	 *
+	 * @since 2.0.0
+	 * @var string[]
+	 */
+	const SITE_FIELDS = array( 'name', 'url', 'timezone_string', 'gmt_offset', 'description' );
 	/**
 	 * Returns the rendered form of a REST API field such as title or content.
 	 *
@@ -56,33 +64,30 @@ class RESTAPI {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $rest_url REST API root URL.
-	 * @param string $path     Route, for example /wp/v2/posts.
+	 * @param string     $rest_url REST API root URL.
+	 * @param string     $path     Route, for example /wp/v2/posts.
+	 * @param array|null $query    Optional. Query arguments to add. Default null,
+	 *                             which adds _embed=1.
 	 * @return string|false The route URL, or false if $rest_url is invalid or has a
 	 *                      query string without rest_route.
 	 */
-	public static function get_rest_url( $rest_url, $path ) {
+	public static function get_rest_url( $rest_url, $path, $query = null ) {
 		if ( ! wp_http_validate_url( $rest_url ) ) {
 			return false;
 		}
+		$args  = is_array( $query ) ? $query : array( '_embed' => 1 );
 		$path  = '/' . ltrim( $path, '/' );
 		$query = wp_parse_url( $rest_url, PHP_URL_QUERY );
 		if ( ! empty( $query ) ) {
 			wp_parse_str( $query, $params );
 			if ( isset( $params['rest_route'] ) ) {
-				return add_query_arg(
-					array(
-						'rest_route' => $path,
-						'_embed'     => 1,
-					),
-					$rest_url
-				);
+				return add_query_arg( array_merge( array( 'rest_route' => $path ), $args ), $rest_url );
 			}
 			return false;
 		}
 
 		$rest_url = untrailingslashit( $rest_url );
-		return add_query_arg( '_embed', 1, $rest_url . $path );
+		return add_query_arg( $args, $rest_url . $path );
 	}
 
 	/**
@@ -157,21 +162,23 @@ class RESTAPI {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param string $rest_url REST API root URL.
-	 * @param string $path     Route to fetch.
-	 * @param bool   $cache    Optional. Whether to cache the raw response in a
-	 *                         transient for a week. Default false.
+	 * @param string     $rest_url REST API root URL.
+	 * @param string     $path     Route to fetch.
+	 * @param bool       $cache    Optional. Whether to cache the raw response in a
+	 *                             transient for a week. Default false.
+	 * @param array|null $query Optional. Query arguments for the request. Default
+	 *                         null, which adds _embed=1.
 	 * @return array|WP_Error The decoded response. Collection responses are wrapped
 	 *                        as array( 'items' => ..., '_total' => ..., '_pages' => ... )
 	 *                        from the X-WP-Total headers. WP_Error if the request
 	 *                        fails or the response is not application/json.
 	 */
-	public static function fetch( $rest_url, $path, $cache = false ) {
+	public static function fetch( $rest_url, $path, $cache = false, $query = null ) {
 		if ( empty( $rest_url ) || ! $rest_url ) {
 			return new \WP_Error( 'no_url', __( 'No URL provided', 'parse-this' ) );
 		}
 
-		$url = self::get_rest_url( $rest_url, $path );
+		$url = self::get_rest_url( $rest_url, $path, $query );
 		// Transient names are limited to 172 characters, so hash the URL.
 		$key = 'pt_rest_' . md5( $url );
 		if ( $cache ) {
@@ -294,7 +301,7 @@ class RESTAPI {
 		if ( ! isset( $item['_embedded']['author'][0] ) || ! is_array( $item['_embedded']['author'][0] ) ) {
 			return null;
 		}
-		$author      = $item['_embedded']['author'][0];
+		$author = $item['_embedded']['author'][0];
 		if ( array_key_exists( 'code', $author ) ) {
 			return null;
 		}
@@ -361,7 +368,8 @@ class RESTAPI {
 	/**
 	 * Returns a site's name, URL, timezone and description from its REST API root.
 	 *
-	 * The response is cached for a week.
+	 * Only those fields are requested (_fields), rather than the whole embedded
+	 * index, and the response is cached for a week.
 	 *
 	 * @since 2.0.0
 	 *
@@ -370,11 +378,11 @@ class RESTAPI {
 	 *               that are present, or an empty array if the request fails.
 	 */
 	public static function site_data( $rest_url ) {
-		$fetch = self::fetch( $rest_url, '', true );
+		$fetch = self::fetch( $rest_url, '', true, array( '_fields' => implode( ',', self::SITE_FIELDS ) ) );
 		if ( is_wp_error( $fetch ) || ! is_array( $fetch ) ) {
 			return array();
 		}
-		return wp_array_slice_assoc( $fetch, array( 'name', 'url', 'timezone_string', 'gmt_offset', 'description' ) );
+		return wp_array_slice_assoc( $fetch, self::SITE_FIELDS );
 	}
 
 	/**
@@ -501,7 +509,7 @@ class RESTAPI {
 	 * @param array  $input Array with 'items' (REST API posts) and optionally
 	 *                      '_total' and '_pages'.
 	 * @param string $url   REST API root URL, used to look up site data.
-	 * @return array jf2 feed with '_feed_type' => 'wordpress', the site's name,
+	 * @return array jf2 feed with '_feed_type' => 'WordPress', the site's name,
 	 *               summary and url, and 'items'.
 	 */
 	public static function posts_to_feed( $input, $url ) {

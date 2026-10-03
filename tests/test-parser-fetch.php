@@ -134,16 +134,13 @@ class Parser_Fetch_Test extends Parse_This_TestCase {
 		);
 
 		// Site details come from the REST API root (C-46).
-		$this->respond(
-			'https://example.com/wp-json/?_embed=1',
-			wp_json_encode(
-				array(
-					'name'        => 'Example Site',
-					'description' => 'Just another site',
-					'url'         => 'https://example.com',
-				)
-			),
-			'application/json'
+		$this->respond_site_data(
+			'https://example.com/wp-json/',
+			array(
+				'name'        => 'Example Site',
+				'description' => 'Just another site',
+				'url'         => 'https://example.com',
+			)
 		);
 
 		$jf2 = $this->fetch_and_parse( 'https://example.com/wp-json/wp/v2/posts' );
@@ -154,6 +151,9 @@ class Parser_Fetch_Test extends Parse_This_TestCase {
 		$this->assertSame( 'Just another site', $jf2['summary'] );
 		$this->assertSame( 'https://example.com', $jf2['url'] );
 		$this->assertNotContains( 'https://example.com/wp-json/wp/v2/posts/?_embed=1', wp_list_pluck( $this->requests, 'url' ) );
+		// Only the needed site fields are requested, not the whole embedded index.
+		$this->assertNotContains( 'https://example.com/wp-json/?_embed=1', wp_list_pluck( $this->requests, 'url' ) );
+		$this->assertContains( 'https://example.com/wp-json/?_fields=name,url,timezone_string,gmt_offset,description', wp_list_pluck( $this->requests, 'url' ) );
 	}
 
 	/**
@@ -175,7 +175,7 @@ class Parser_Fetch_Test extends Parse_This_TestCase {
 			'application/json',
 			array( 'x-wp-total' => '1' )
 		);
-		$this->respond( 'https://example.com/?rest_route=/&_embed=1', wp_json_encode( array( 'name' => 'Plain Site' ) ), 'application/json' );
+		$this->respond_site_data( 'https://example.com/?rest_route=/', array( 'name' => 'Plain Site' ) );
 
 		$jf2 = $this->fetch_and_parse( $url );
 		$this->assertSame( 'Plain Site', $jf2['name'] );

@@ -100,7 +100,7 @@ class Parser_Fallbacks_Test extends Parse_This_TestCase {
 			),
 			'application/json'
 		);
-		$this->respond( 'https://example.com/wp-json/?_embed=1', wp_json_encode( array( 'name' => 'Example' ) ), 'application/json' );
+		$this->respond_site_data( 'https://example.com/wp-json/', wp_json_encode( array( 'name' => 'Example' ) ) );
 	}
 
 	/**

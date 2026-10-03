@@ -35,16 +35,13 @@ class Site_Parsers_Test extends Parse_This_TestCase {
 	 * A REST API post becomes an entry.
 	 */
 	public function test_rest_post() {
-		$this->respond(
-			'https://example.com/wp-json/?_embed=1',
-			wp_json_encode(
-				array(
-					'name'            => 'Example Site',
-					'url'             => 'https://example.com',
-					'timezone_string' => 'UTC',
-				)
-			),
-			'application/json'
+		$this->respond_site_data(
+			'https://example.com/wp-json/',
+			array(
+				'name'            => 'Example Site',
+				'url'             => 'https://example.com',
+				'timezone_string' => 'UTC',
+			)
 		);
 		$post = array(
 			'id'        => 5,
@@ -76,7 +73,7 @@ class Site_Parsers_Test extends Parse_This_TestCase {
 	 * REST API posts carry a jf2 type.
 	 */
 	public function test_rest_post_type() {
-		$this->respond( 'https://example.com/wp-json/?_embed=1', wp_json_encode( array( 'name' => 'Example Site' ) ), 'application/json' );
+		$this->respond_site_data( 'https://example.com/wp-json/', wp_json_encode( array( 'name' => 'Example Site' ) ) );
 		$jf2 = ParseThis\RESTAPI::parse(
 			array(
 				'id'    => 5,
@@ -93,7 +90,7 @@ class Site_Parsers_Test extends Parse_This_TestCase {
 	 * The parse_this_rest_api_jf2_type filter can choose another type.
 	 */
 	public function test_rest_post_type_filter() {
-		$this->respond( 'https://example.com/wp-json/?_embed=1', wp_json_encode( array( 'name' => 'Example Site' ) ), 'application/json' );
+		$this->respond_site_data( 'https://example.com/wp-json/', wp_json_encode( array( 'name' => 'Example Site' ) ) );
 		$callback = function ( $type, $item ) {
 			return ( isset( $item['type'] ) && 'tribe_events' === $item['type'] ) ? 'event' : $type;
 		};
@@ -170,7 +167,7 @@ class Site_Parsers_Test extends Parse_This_TestCase {
 	 * Categories and tags come from the embedded terms, without extra requests (P-3).
 	 */
 	public function test_rest_post_terms_from_embedded_data() {
-		$this->respond( 'https://example.com/wp-json/?_embed=1', wp_json_encode( array( 'name' => 'Example Site' ) ), 'application/json' );
+		$this->respond_site_data( 'https://example.com/wp-json/', wp_json_encode( array( 'name' => 'Example Site' ) ) );
 		$post = array(
 			'id'        => 5,
 			'link'      => 'https://example.com/hello/',
