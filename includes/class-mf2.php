@@ -308,11 +308,15 @@ class MF2 extends MF2_Utils {
 					$author = array_pop( $author );
 				}
 				$author_url = $author;
-				$author     = self::get_rel_urls( $input, $author_url );
-				if ( ! is_array( $author ) ) {
-					$author = array( 'url' => array( $author_url ) );
+				// A jf2 card: get_rel_urls() returns mf2-style property arrays.
+				$rel    = self::get_rel_urls( $input, $author_url );
+				$author = array(
+					'type' => 'card',
+					'url'  => $author_url,
+				);
+				if ( is_array( $rel ) && isset( $rel['name'][0] ) && is_string( $rel['name'][0] ) && '' !== trim( $rel['name'][0] ) ) {
+					$author['name'] = trim( $rel['name'][0] );
 				}
-				$author['type'] = 'card';
 				if ( ! self::urls_match( $url, $author_url ) ) {
 					return array(
 						'author' => $author,

@@ -299,4 +299,33 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 		// Over budget: left as the author's URL.
 		$this->assertSame( 'https://example.org/author3/', $jf2['items'][2]['author']['url'] );
 	}
+
+	/**
+	 * A rel=author link on a page without microformats gives a jf2 card (C-49).
+	 */
+	public function test_rel_author_without_microformats_is_a_jf2_card() {
+		$result = ParseThis\MF2::parse(
+			'<html><head><title>T</title></head><body><a rel="author" href="https://example.org/jane">Jane Doe</a></body></html>',
+			'https://example.com/post/',
+			array()
+		);
+		$this->assertSame(
+			array(
+				'type' => 'card',
+				'url'  => 'https://example.org/jane',
+				'name' => 'Jane Doe',
+			),
+			$result['author']
+		);
+
+		// Without link text, only the URL.
+		$result = ParseThis\MF2::parse( '<html><head><link rel="author" href="https://example.org/jane"></head><body></body></html>', 'https://example.com/post/', array() );
+		$this->assertSame(
+			array(
+				'type' => 'card',
+				'url'  => 'https://example.org/jane',
+			),
+			$result['author']
+		);
+	}
 }
