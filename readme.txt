@@ -69,6 +69,9 @@ Results follow [jf2](https://jf2.spec.indieweb.org/), with a few deliberate diff
 * `return`, `follow`, `references`, `location`, `require_content`, `always_arrays`, `debug`: as for `parse()` above.
 * `mf2`: return mf2 instead of jf2.
 * `discovery`: list the URL's feeds instead of parsing it.
+* `nocache`: fetch the URL again instead of using a cached result.
+
+Results are cached for 15 minutes per URL and set of parameters, so pasting the same link again doesn't fetch it again. Requests with `debug` are never cached.
 
 The endpoint is available to any logged-in user. Administrators can try it from **Tools > Parse This**.
 
@@ -76,6 +79,7 @@ The endpoint is available to any logged-in user. Administrators can try it from 
 
 * `pt_rewrite_secure`: the list of domains whose `http://` URLs are upgraded to `https://` before fetching.
 * `parse_this_img_filters`: an image URL found in a page, after the built-in exclusions (ads, spinners, tracking pixels and so on). Return an empty string to drop it.
+* `parse_this_cache_lifetime`: how long REST endpoint results are cached, in seconds. Default 15 minutes. Return 0 to turn caching off. Receives the URL.
 * `parse_this_rest_api_jf2_type`: the jf2 type for a post read through a site's WordPress REST API. Default `entry`. Receives the REST API post object, which includes its WordPress post type, and the site's REST API root URL.
 
 = Helper functions =

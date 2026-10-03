@@ -176,7 +176,11 @@ class REST_Endpoint {
 	 * Accepted parameters: url (required); mf2, to return mf2 instead of jf2;
 	 * discovery, to list the URL's feeds instead of parsing it; and return,
 	 * references, location, follow, require_content, always_arrays and debug,
-	 * which are passed to Parser::parse().
+	 * which are passed to Parser::parse(); and nocache, to fetch the URL again
+	 * rather than use a cached result.
+	 *
+	 * Results are cached for 15 minutes (see the parse_this_cache_lifetime
+	 * filter), except with debug.
 	 *
 	 * @since 1.0.0
 	 *
@@ -192,16 +196,7 @@ class REST_Endpoint {
 		$discovery = $request->get_param( 'discovery' );
 		$location  = $request->get_param( 'location' );
 		$follow    = $request->get_param( 'follow' );
-		if ( $discovery ) {
-			$parse = new Discovery();
-			return $parse->fetch( $url );
-		}
-		$parse = new Parser( $url );
-		$r     = $parse->fetch();
 
-		if ( is_wp_error( $r ) ) {
-			return $r;
-		}
 		$args = array(
 			'return'     => $return,
 			'follow'     => $follow,
@@ -215,11 +210,47 @@ class REST_Endpoint {
 		}
 		$args['always_arrays'] = rest_sanitize_boolean( $request->get_param( 'always_arrays' ) );
 		$args['debug']         = rest_sanitize_boolean( $request->get_param( 'debug' ) );
-		$parse->parse( $args );
-		if ( $mf2 ) {
-			return $parse->get( 'mf2' );
+
+		/**
+		 * Filters how long parse results are cached, in seconds.
+		 *
+		 * Repeated requests for the same URL and arguments within this time are
+		 * answered from a transient instead of fetching the URL again. Return 0
+		 * to turn caching off. Requests with debug or nocache are never served
+		 * from the cache.
+		 *
+		 * @since 2.0.0
+		 *
+		 * @param int    $lifetime Lifetime in seconds. Default 15 minutes.
+		 * @param string $url      URL being parsed.
+		 */
+		$lifetime = (int) apply_filters( 'parse_this_cache_lifetime', 15 * MINUTE_IN_SECONDS, $url );
+		$key      = 'pt_parse_' . md5( wp_json_encode( array( $url, (bool) $mf2, (bool) $discovery, $args ) ) );
+		$use      = $lifetime > 0 && ! $args['debug'];
+		if ( $use && ! rest_sanitize_boolean( $request->get_param( 'nocache' ) ) ) {
+			$cached = get_transient( $key );
+			if ( false !== $cached ) {
+				return $cached;
+			}
 		}
-		return $parse->get();
+
+		if ( $discovery ) {
+			$parse  = new Discovery();
+			$result = $parse->fetch( $url );
+		} else {
+			$parse = new Parser( $url );
+			$r     = $parse->fetch();
+			if ( is_wp_error( $r ) ) {
+				return $r;
+			}
+			$parse->parse( $args );
+			$result = $mf2 ? $parse->get( 'mf2' ) : $parse->get();
+		}
+
+		if ( $use && ! is_wp_error( $result ) ) {
+			set_transient( $key, $result, $lifetime );
+		}
+		return $result;
 	}
 
 	/**
