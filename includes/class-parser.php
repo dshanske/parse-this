@@ -475,12 +475,20 @@ class Parser {
 			return new \WP_Error( 'Missing Content' );
 		}
 
-		if ( 'application/json' === $this->content_type ) {
-			$this->jf2 = RESTAPI::parse( $content, $this->url, $args );
-			if ( ! empty( $this->jf2 ) ) {
+		// JSON that fetch() didn't already convert (a JSON Feed or REST collection) may be a REST API object.
+		if ( 'application/json' === $this->content_type && empty( $this->jf2 ) ) {
+			$rest = RESTAPI::parse( $content, $this->url, $args );
+			if ( is_array( $rest ) && ! empty( $rest ) ) {
+				$this->jf2          = $rest;
 				$this->jf2['_rest'] = $content;
 				return;
 			}
+			// Unrecognized JSON: return it as is.
+			$this->jf2 = array(
+				'raw' => $content,
+				'url' => $this->url,
+			);
+			return;
 		}
 
 		if ( ! is_array( $this->jf2 ) ) {
