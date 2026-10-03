@@ -167,8 +167,6 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 	 * @param string $expected Expected jf2 type.
 	 */
 	public function test_type_is_kept( $class, $expected ) {
-		$this->markTestSkipped( 'Known bug C-44 (issue 128): these types lose their jf2 type.' );
-
 		$result = ParseThis\MF2::parse( '<div class="' . $class . '"><span class="p-name">N</span></div>', 'https://example.com/', array() );
 		$item   = isset( $result['type'] ) ? $result : $result[0];
 		$this->assertSame( $expected, $item['type'] );

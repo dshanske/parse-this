@@ -650,7 +650,9 @@ class MF2 extends MF2_Utils {
 	 */
 	public static function parse_hleg( $leg, $mf, $args ) {
 		// The aaronpk special.
-		$data       = array();
+		$data       = array(
+			'type' => 'leg',
+		);
 		$properties = array(
 			'url',
 			'name',
@@ -849,7 +851,7 @@ class MF2 extends MF2_Utils {
 			'url'  => null,
 		);
 		$properties = array( 'category', 'item' );
-		$data       = self::get_prop_array( $entry, $properties, $args );
+		$data       = array_merge( $data, self::get_prop_array( $entry, $properties, $args ) );
 		$properties = array( 'summary', 'published', 'rating', 'best', 'worst' );
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $entry, $p );
@@ -884,7 +886,7 @@ class MF2 extends MF2_Utils {
 			'url'  => null,
 		);
 		$properties = array( 'category', 'brand', 'photo', 'audio', 'video' );
-		$data       = self::get_prop_array( $entry, $properties, $args );
+		$data       = array_merge( $data, self::get_prop_array( $entry, $properties, $args ) );
 		$properties = array( 'identifier', 'price', 'description' );
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $entry, $p );
@@ -919,7 +921,7 @@ class MF2 extends MF2_Utils {
 			'url'  => null,
 		);
 		$properties = array( 'category', 'item' );
-		$data       = self::get_prop_array( $entry, $properties, $args );
+		$data       = array_merge( $data, self::get_prop_array( $entry, $properties, $args ) );
 		$properties = array();
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $entry, $p );
@@ -953,7 +955,7 @@ class MF2 extends MF2_Utils {
 			'url'  => null,
 		);
 		$properties = array( 'category', 'item' );
-		$data       = self::get_prop_array( $entry, $properties, $args );
+		$data       = array_merge( $data, self::get_prop_array( $entry, $properties, $args ) );
 		$properties = array();
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $entry, $p );
@@ -987,7 +989,7 @@ class MF2 extends MF2_Utils {
 			'url'  => null,
 		);
 		$properties = array( 'category', 'item' );
-		$data       = self::get_prop_array( $recipe, $properties, $args );
+		$data       = array_merge( $data, self::get_prop_array( $recipe, $properties, $args ) );
 		$properties = array();
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $recipe, $p );
@@ -1021,7 +1023,7 @@ class MF2 extends MF2_Utils {
 			'url'  => null,
 		);
 		$properties = array( 'category', 'item' );
-		$data       = self::get_prop_array( $item, $properties, $args );
+		$data       = array_merge( $data, self::get_prop_array( $item, $properties, $args ) );
 		$properties = array();
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $item, $p );
