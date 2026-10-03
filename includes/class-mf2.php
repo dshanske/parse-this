@@ -149,10 +149,18 @@ class MF2 extends MF2_Utils {
 			$key = normalize_url( $authorpage );
 			if ( $follow && ! self::urls_match( $authorpage, self::get_plaintext( $mf2, 'url' ) ) && ( isset( self::$author_pages[ $key ] ) || Parser::use_request_budget() ) ) {
 				if ( ! isset( self::$author_pages[ $key ] ) ) {
-					$parse = new Parser( $authorpage );
-					$parse->fetch();
-					$parse->parse();
-					self::$author_pages[ $key ] = $parse->get();
+					$parse   = new Parser( $authorpage );
+					$fetched = $parse->fetch();
+					if ( is_wp_error( $fetched ) ) {
+						// The author page is missing or an error: keep its URL.
+						self::$author_pages[ $key ] = array(
+							'type'       => array( 'h-card' ),
+							'properties' => array( 'url' => array( $authorpage ) ),
+						);
+					} else {
+						$parse->parse();
+						self::$author_pages[ $key ] = $parse->get();
+					}
 				}
 				return self::$author_pages[ $key ];
 			} else {
@@ -308,11 +316,15 @@ class MF2 extends MF2_Utils {
 					$author = array_pop( $author );
 				}
 				$author_url = $author;
-				$author     = self::get_rel_urls( $input, $author_url );
-				if ( ! is_array( $author ) ) {
-					$author = array( 'url' => array( $author_url ) );
+				// A jf2 card: get_rel_urls() returns mf2-style property arrays.
+				$rel    = self::get_rel_urls( $input, $author_url );
+				$author = array(
+					'type' => 'card',
+					'url'  => $author_url,
+				);
+				if ( is_array( $rel ) && isset( $rel['name'][0] ) && is_string( $rel['name'][0] ) && '' !== trim( $rel['name'][0] ) ) {
+					$author['name'] = trim( $rel['name'][0] );
 				}
-				$author['type'] = 'card';
 				if ( ! self::urls_match( $url, $author_url ) ) {
 					return array(
 						'author' => $author,
@@ -441,7 +453,7 @@ class MF2 extends MF2_Utils {
 		if ( isset( $entry['children'] ) && 'feed' === $args['return'] ) {
 			$data['items'] = self::parse_children( $entry['children'], $mf, $args );
 		}
-		$data    = array_filter( $data );
+		$data    = self::filter_empty( $data );
 		$authors = array();
 		if ( isset( $data['author'] ) ) {
 			$authors[] = $data['author'];
@@ -635,7 +647,7 @@ class MF2 extends MF2_Utils {
 				$data['syndication'] = $mf['rels']['syndication'];
 			}
 		}
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 	/**
@@ -659,7 +671,7 @@ class MF2 extends MF2_Utils {
 		foreach ( $properties as $property ) {
 			$data[ $property ] = self::get_plaintext( $measure, $property );
 		}
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 	/**
@@ -697,7 +709,7 @@ class MF2 extends MF2_Utils {
 				$data[ $property ] = $datetime->format( DATE_W3C );
 			}
 		}
-		$data              = array_filter( $data );
+		$data              = self::filter_empty( $data );
 		return $data;
 	}
 
@@ -731,6 +743,7 @@ class MF2 extends MF2_Utils {
 			'repost-of',
 			'bookmark-of',
 			'favorite-of',
+			'follow-of',
 			'listen-of',
 			'quotation-of',
 			'watch-of',
@@ -751,7 +764,7 @@ class MF2 extends MF2_Utils {
 		foreach ( $properties as $property ) {
 			$data[ $property ] = self::get_plaintext( $entry, $property );
 		}
-		$data = array_filter( $data );
+		$data = self::filter_empty( $data );
 		// rsvp values are an enumeration (yes, no, maybe, interested); compare without case.
 		if ( isset( $data['rsvp'] ) && is_string( $data['rsvp'] ) ) {
 			$data['rsvp'] = strtolower( trim( $data['rsvp'] ) );
@@ -761,7 +774,7 @@ class MF2 extends MF2_Utils {
 			$data = jf2_references( $data );
 		}
 		$data['post-type'] = post_type_discovery( $data );
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 	/**
@@ -815,7 +828,7 @@ class MF2 extends MF2_Utils {
 		foreach ( $properties as $property ) {
 			$data[ $property ] = self::get_plaintext( $hcard, $property );
 		}
-		$data = array_filter( $data );
+		$data = self::filter_empty( $data );
 		$data = array_merge( self::get_prop_array( $hcard, array_keys( $hcard['properties'] ), $args ), $data );
 
 		$data['type'] = 'card';
@@ -825,20 +838,25 @@ class MF2 extends MF2_Utils {
 				$feed = self::parse_hfeed( $hcard['children'][0], $mf, $args );
 				unset( $data['children'] );
 				$feed['author'] = $data;
-				return array_filter( $feed );
+				return self::filter_empty( $feed );
 			} else {
 				$data['items'] = self::parse_children( $hcard['children'], $mf, $args );
 			}
 		}
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 	/**
 	 * Converts an h-event into jf2.
 	 *
-	 * Reads category, attendee, organizer, location, start, end, photo, uid and url, plus the common properties from parse_h().
+	 * Reads category, attendee, organizer, location, start, end, duration,
+	 * photo, video, audio, featured, syndication, uid and url, plus the common
+	 * properties from parse_h(). Without content, description is used, as in
+	 * older markup. Adds post-type.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Reads duration, video, audio, featured, syndication and
+	 *              description, and adds post-type.
 	 *
 	 * @param array $event h-event microformat.
 	 * @param array $mf    Parsed mf2 document.
@@ -853,17 +871,32 @@ class MF2 extends MF2_Utils {
 			'type' => 'event',
 		);
 		$data       = array_merge( $data, self::parse_h( $event, $mf, $args ) );
-		$properties = array( 'category', 'attendee', 'organizer', 'location', 'start', 'end', 'photo', 'uid', 'url' );
+		$properties = array( 'category', 'attendee', 'organizer', 'location', 'start', 'end', 'duration', 'photo', 'video', 'audio', 'featured', 'syndication', 'uid', 'url' );
 		$data       = array_merge( $data, self::get_prop_array( $event, $properties, $args ) );
-		return array_filter( $data );
+		// Older markup describes an event with description rather than content.
+		if ( empty( $data['content'] ) ) {
+			$data['content'] = self::parse_html_value( $event, 'description' );
+			if ( empty( $data['summary'] ) && is_array( $data['content'] ) && isset( $data['content']['text'] ) ) {
+				$data['summary'] = self::get_summary( $event, $data['content'] );
+			}
+		}
+		$data              = self::filter_empty( $data );
+		$data['post-type'] = post_type_discovery( $data );
+		return $data;
 	}
 
 	/**
 	 * Converts an h-review into jf2.
 	 *
-	 * Reads category, item, summary, published, rating, best and worst, plus the common properties from parse_h().
+	 * Reads category, item, the media and syndication properties, the
+	 * responses (in-reply-to, like-of, repost-of, bookmark-of), summary,
+	 * published, rating, best and worst, plus the common properties from
+	 * parse_h(). Without content, description is used, as in hReview markup.
+	 * Adds post-type.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Reads media, syndication, responses and description, and
+	 *              adds post-type.
 	 *
 	 * @param array $entry h-review microformat.
 	 * @param array $mf    Parsed mf2 document.
@@ -879,7 +912,8 @@ class MF2 extends MF2_Utils {
 			'name' => null,
 			'url'  => null,
 		);
-		$properties = array( 'category', 'item' );
+		// A review is often also a reply to, or a like of, what it reviews.
+		$properties = array( 'category', 'item', 'photo', 'video', 'audio', 'syndication', 'in-reply-to', 'like-of', 'repost-of', 'bookmark-of' );
 		$data       = array_merge( $data, self::get_prop_array( $entry, $properties, $args ) );
 		$properties = array( 'summary', 'published', 'rating', 'best', 'worst' );
 		foreach ( $properties as $p ) {
@@ -889,7 +923,13 @@ class MF2 extends MF2_Utils {
 			}
 		}
 		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
-		return array_filter( $data );
+		// Older (hReview) markup uses description for the review text.
+		if ( empty( $data['content'] ) ) {
+			$data['content'] = self::parse_html_value( $entry, 'description' );
+		}
+		$data              = self::filter_empty( $data );
+		$data['post-type'] = post_type_discovery( $data );
+		return $data;
 	}
 
 
@@ -924,7 +964,7 @@ class MF2 extends MF2_Utils {
 			}
 		}
 		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 
@@ -959,7 +999,7 @@ class MF2 extends MF2_Utils {
 			}
 		}
 		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 	/**
@@ -993,15 +1033,19 @@ class MF2 extends MF2_Utils {
 			}
 		}
 		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 	/**
 	 * Converts an h-recipe into jf2.
 	 *
-	 * Reads category and item, plus the common properties from parse_h().
+	 * Reads category, item, ingredient, photo, video, yield, duration,
+	 * nutrition and instructions (rich text), plus the common properties from
+	 * parse_h(). Adds post-type.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Reads ingredient, photo, video, yield, duration, nutrition
+	 *              and instructions, and adds post-type.
 	 *
 	 * @param array $recipe h-recipe microformat.
 	 * @param array $mf     Parsed mf2 document.
@@ -1017,17 +1061,20 @@ class MF2 extends MF2_Utils {
 			'name' => null,
 			'url'  => null,
 		);
-		$properties = array( 'category', 'item' );
+		$properties = array( 'category', 'item', 'ingredient', 'photo', 'video' );
 		$data       = array_merge( $data, self::get_prop_array( $recipe, $properties, $args ) );
-		$properties = array();
+		$properties = array( 'yield', 'duration', 'nutrition' );
 		foreach ( $properties as $p ) {
 			$v = self::get_plaintext( $recipe, $p );
 			if ( null !== $v ) {
 				$data[ $p ] = $v;
 			}
 		}
-		$data = array_merge( $data, self::parse_h( $recipe, $mf, $args ) );
-		return array_filter( $data );
+		$data                 = array_merge( $data, self::parse_h( $recipe, $mf, $args ) );
+		$data['instructions'] = self::parse_html_value( $recipe, 'instructions' );
+		$data                 = self::filter_empty( $data );
+		$data['post-type']    = post_type_discovery( $data );
+		return $data;
 	}
 
 	/**
@@ -1061,7 +1108,7 @@ class MF2 extends MF2_Utils {
 			}
 		}
 		$data = array_merge( $data, self::parse_h( $item, $mf, $args ) );
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 	/**
@@ -1089,7 +1136,7 @@ class MF2 extends MF2_Utils {
 		$properties = array( 'temperature', 'geo' );
 		$props      = self::get_prop_array( $hadr, $properties, $args );
 		$data       = array_merge( $data, $props );
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 
 	/**
@@ -1117,6 +1164,6 @@ class MF2 extends MF2_Utils {
 				$data[ $p ] = $v;
 			}
 		}
-		return array_filter( $data );
+		return self::filter_empty( $data );
 	}
 }

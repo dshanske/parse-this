@@ -299,4 +299,121 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 		// Over budget: left as the author's URL.
 		$this->assertSame( 'https://example.org/author3/', $jf2['items'][2]['author']['url'] );
 	}
+
+	/**
+	 * A rel=author link on a page without microformats gives a jf2 card (C-49).
+	 */
+	public function test_rel_author_without_microformats_is_a_jf2_card() {
+		$result = ParseThis\MF2::parse(
+			'<html><head><title>T</title></head><body><a rel="author" href="https://example.org/jane">Jane Doe</a></body></html>',
+			'https://example.com/post/',
+			array()
+		);
+		$this->assertSame(
+			array(
+				'type' => 'card',
+				'url'  => 'https://example.org/jane',
+				'name' => 'Jane Doe',
+			),
+			$result['author']
+		);
+
+		// Without link text, only the URL.
+		$result = ParseThis\MF2::parse( '<html><head><link rel="author" href="https://example.org/jane"></head><body></body></html>', 'https://example.com/post/', array() );
+		$this->assertSame(
+			array(
+				'type' => 'card',
+				'url'  => 'https://example.org/jane',
+			),
+			$result['author']
+		);
+	}
+
+	/**
+	 * A followed author page that returns an error leaves the author as its URL (C-51).
+	 */
+	public function test_follow_author_page_error() {
+		$this->respond( 'https://example.org/missing-author/', 'Not found', 'text/html', array(), 404 );
+		$parser = new ParseThis\Parser();
+		$parser->set( '<div class="h-entry"><a class="u-author" href="https://example.org/missing-author/">a</a><p class="e-content">Hi</p></div>', 'https://example.com/post/' );
+		$parser->parse( array( 'follow' => true ) );
+		$jf2 = $parser->get();
+		$this->assertSame(
+			array(
+				'url'  => 'https://example.org/missing-author/',
+				'type' => 'card',
+			),
+			$jf2['author']
+		);
+	}
+
+	/**
+	 * A name or rating of "0" is a real value (C-52).
+	 */
+	public function test_zero_values_are_kept() {
+		$result = ParseThis\MF2::parse( '<div class="h-card"><span class="p-name">0</span><img class="u-photo" src="https://example.com/photo.jpg"></div>', 'https://example.com/', array() );
+		$this->assertSame( '0', $result['name'] );
+
+		$result = ParseThis\MF2::parse( '<div class="h-entry"><p class="e-content">Hi</p><div class="p-author h-card"><span class="p-name">0</span></div></div>', 'https://example.com/', array() );
+		$this->assertSame( '0', $result['author']['name'] );
+
+		$result = ParseThis\MF2::parse( '<div class="h-review"><span class="p-name">Meh</span><data class="p-rating" value="0">0</data></div>', 'https://example.com/', array() );
+		$this->assertSame( '0', $result['rating'] );
+	}
+
+	/**
+	 * u-follow-of is read, as a URL or a nested h-card, and makes a follow (C-55).
+	 */
+	public function test_follow_of() {
+		$result = ParseThis\MF2::parse( '<div class="h-entry"><a class="u-follow-of" href="https://realize.be/">Swentel</a></div>', 'https://example.com/f/', array( 'references' => false ) );
+		$this->assertSame( 'https://realize.be/', $result['follow-of'] );
+		$this->assertSame( 'follow', $result['post-type'] );
+
+		$result = ParseThis\MF2::parse( '<div class="h-entry"><div class="u-follow-of h-card"><a class="u-url p-name" href="https://realize.be/">Swentel</a></div></div>', 'https://example.com/f/', array( 'references' => false ) );
+		$this->assertSame( 'https://realize.be/', $result['follow-of']['url'] );
+		$this->assertSame( 'follow', $result['post-type'] );
+	}
+
+	/**
+	 * h-event, h-review and h-recipe keep their properties and get a post-type (C-56).
+	 */
+	public function test_event_review_recipe() {
+		$args = array( 'references' => false );
+
+		$event = ParseThis\MF2::parse(
+			'<div class="h-event"><a class="u-url p-name" href="https://example.com/e">HWC</a><time class="dt-start">2016-03-09T18:30</time><time class="dt-end">2016-03-09T19:30</time><img class="u-featured" src="https://example.com/featured.jpg"><div class="e-description"><p>Come <b>by</b>.</p></div></div>',
+			'https://example.com/e',
+			$args
+		);
+		$this->assertSame( 'event', $event['post-type'] );
+		$this->assertSame( '2016-03-09T19:30', $event['end'] );
+		$this->assertSame( 'https://example.com/featured.jpg', $event['featured'] );
+		$this->assertSame( 'Come by.', $event['content']['text'] );
+
+		$review = ParseThis\MF2::parse(
+			'<div class="h-review"><span class="p-name">Review</span><a class="u-in-reply-to u-like-of" href="https://target.example/product">p</a><data class="p-rating" value="3"></data><div class="e-content">Full text</div></div>',
+			'https://example.com/r',
+			$args
+		);
+		$this->assertSame( 'review', $review['post-type'] );
+		$this->assertSame( 'https://target.example/product', $review['in-reply-to'] );
+		$this->assertSame( 'https://target.example/product', $review['like-of'] );
+		$this->assertSame( '3', $review['rating'] );
+
+		$hreview = ParseThis\MF2::parse( '<div class="h-review"><span class="p-name">Old</span><div class="e-description">Described</div></div>', 'https://example.com/r2', $args );
+		$this->assertSame( 'Described', $hreview['content']['text'] );
+
+		$recipe = ParseThis\MF2::parse(
+			'<div class="h-recipe"><span class="p-name">Cookies</span><span class="p-yield">12 Cookies</span><time class="dt-duration" datetime="PT30M">30 min</time><span class="p-ingredient">3 cups flour</span><span class="p-ingredient">chocolate chips</span><div class="e-instructions"><p>Mix <b>well</b>.</p></div><span class="p-nutrition">Lots</span></div>',
+			'https://example.com/c',
+			$args
+		);
+		$this->assertSame( 'recipe', $recipe['post-type'] );
+		$this->assertSame( '12 Cookies', $recipe['yield'] );
+		$this->assertSame( 'PT30M', $recipe['duration'] );
+		$this->assertSame( array( '3 cups flour', 'chocolate chips' ), $recipe['ingredient'] );
+		$this->assertSame( 'Mix well.', $recipe['instructions']['text'] );
+		$this->assertSame( '<p>Mix <b>well</b>.</p>', $recipe['instructions']['html'] );
+		$this->assertSame( 'Lots', $recipe['nutrition'] );
+	}
 }

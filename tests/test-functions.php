@@ -139,4 +139,17 @@ class Functions_Test extends Parse_This_TestCase {
 		$this->assertNull( ParseThis\jf2_author_to_card( '' ) );
 		$this->assertNull( ParseThis\jf2_author_to_card( array() ) );
 	}
+
+	/**
+	 * Post Type Discovery follows the spec for names without content (C-54).
+	 */
+	public function test_post_type_discovery_name_and_content() {
+		$this->assertSame( 'article', ParseThis\post_type_discovery( array( 'type' => 'entry', 'name' => 'One' ) ) );
+		$this->assertSame( 'article', ParseThis\post_type_discovery( array( 'type' => 'entry', 'name' => 'Title', 'summary' => 'Something else' ) ) );
+		$this->assertSame( 'note', ParseThis\post_type_discovery( array( 'type' => 'entry', 'name' => 'Hello there', 'summary' => 'Hello there, world' ) ) );
+		$this->assertSame( 'note', ParseThis\post_type_discovery( array( 'type' => 'entry', 'name' => "Hello\n  there", 'content' => array( 'text' => 'Hello there world' ) ) ) );
+		$this->assertSame( 'article', ParseThis\post_type_discovery( array( 'type' => 'entry', 'name' => 'Title', 'content' => array( 'text' => 'Body' ) ) ) );
+		$this->assertSame( 'note', ParseThis\post_type_discovery( array( 'type' => 'entry', 'content' => array( 'text' => 'Body' ) ) ) );
+		$this->assertSame( 'note', ParseThis\post_type_discovery( array( 'type' => 'entry', 'name' => '   ' ) ) );
+	}
 }

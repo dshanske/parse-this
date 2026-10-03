@@ -53,7 +53,8 @@ class Parser_Fetch_Test extends Parse_This_TestCase {
 
 		$result = $this->fetch_and_parse( $url );
 		$this->assertWPError( $result );
-		$this->assertSame( 'source_error', $result->get_error_code() );
+		$this->assertSame( 'forbidden', $result->get_error_code() );
+		$this->assertSame( array( 'response_code' => 403 ), $result->get_error_data() );
 		$this->assertCount( 2, $this->requests );
 		$this->assertStringContainsString( 'Parse This', $this->requests[1]['args']['user-agent'] );
 	}
@@ -233,5 +234,33 @@ class Parser_Fetch_Test extends Parse_This_TestCase {
 		// The microformats result is the result, even without content (C-47).
 		$this->assertSame( 'From mf2', $result['name'] );
 		$this->assertArrayNotHasKey( '_jf2', $result );
+	}
+
+	/**
+	 * HTTP error pages are not parsed as content; 410 Gone is (C-51).
+	 */
+	public function test_http_error_responses() {
+		$page = '<html><head><title>Oops</title></head><body><div class="h-entry"><p class="e-content">This post has been deleted.</p></div></body></html>';
+		foreach ( array(
+			401 => 'unauthorized',
+			403 => 'forbidden',
+			404 => 'not_found',
+			500 => 'http_error',
+		) as $code => $error ) {
+			$this->respond( 'https://example.com/e' . $code, $page, 'text/html', array(), $code );
+			$parser = new ParseThis\Parser( 'https://example.com/e' . $code );
+			$result = $parser->fetch();
+			$this->assertWPError( $result );
+			$this->assertSame( $error, $result->get_error_code() );
+			$this->assertSame( array( 'response_code' => $code ), $result->get_error_data() );
+		}
+
+		$this->respond( 'https://example.com/gone', $page, 'text/html', array(), 410 );
+		$parser = new ParseThis\Parser( 'https://example.com/gone' );
+		$this->assertTrue( $parser->fetch() );
+		$parser->parse();
+		$jf2 = $parser->get();
+		$this->assertSame( 'This post has been deleted.', $jf2['content']['text'] );
+		$this->assertSame( 410, $jf2['_code'] );
 	}
 }

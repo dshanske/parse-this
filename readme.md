@@ -152,6 +152,10 @@ Yes. It is tested with ClassicPress 2.7 on PHP 7.4 to 8.3.
 * Cache REST endpoint results for 15 minutes. Add the `nocache` parameter and the `parse_this_cache_lifetime` filter.
 * Include raw source data (`_meta`, `_jsonld`, `_yt` and so on) only with the new `debug` argument, rather than whenever `WP_DEBUG` is on.
 * Security: the REST endpoint and the Tools > Parse This page require `edit_posts` (filterable with `parse_this_rest_capability`); the endpoint's parameters are declared and validated; the debug page sends its nonce in a header instead of the URL; output from fetched pages is sanitized; one parse makes at most 10 further requests (`parse_this_max_requests`); plugin files exit when loaded outside WordPress; and the OPML class handles invalid input safely.
+* Fix content HTML losing the text before its first tag, which cut the opening words from most notes.
+* Return an error for HTTP error pages (`not_found`, `unauthorized`, `forbidden`, `http_error`) instead of parsing them as content; a 410 Gone page is still parsed, with `_code`.
+* Microformats: read `follow-of`; read the ingredients, yield, duration, nutrition and instructions of recipes, more event properties, and the replies and likes of reviews; give events, reviews and recipes a `post-type`; keep names and ratings of "0"; and follow Post Type Discovery for entries with a name and no content (articles).
+* Return `rel=author` authors as jf2 cards, and give results that only meta tags filled the type `entry`.
 * Date posts read through the WordPress REST API from their GMT dates, so they are correct even without the site's timezone.
 * Read YouTube pages in full (they exceed the 1 MB limit) and extract the player data reliably.
 * Recognize x.com post URLs, and use the publish.x.com oEmbed endpoint.
