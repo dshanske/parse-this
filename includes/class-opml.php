@@ -15,19 +15,6 @@ namespace ParseThis;
  * @since 1.0.0
  */
 class OPML {
-	/**
-	 * Returns an array value if the key is set.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param string|int $key   Key to look up.
-	 * @param array      $array Array to look in.
-	 * @return mixed The value, or null if the key is not set.
-	 */
-	private static function ifset( $key, $array ) {
-		return isset( $array[ $key ] ) ? $array[ $key ] : null;
-	}
-
 
 	/**
 	 * Downloads an OPML document.

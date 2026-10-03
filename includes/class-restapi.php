@@ -18,19 +18,6 @@ namespace ParseThis;
  */
 class RESTAPI {
 	/**
-	 * Returns an array value if the key is set.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param string|int $key   Key to look up.
-	 * @param array      $array Array to look in.
-	 * @return mixed The value, or null if the key is not set.
-	 */
-	private static function ifset( $key, $array ) {
-		return isset( $array[ $key ] ) ? $array[ $key ] : null;
-	}
-
-	/**
 	 * Returns the rendered form of a REST API field such as title or content.
 	 *
 	 * @since 1.0.0
@@ -266,7 +253,7 @@ class RESTAPI {
 					if ( array_key_exists( 'wp:featuredmedia', $content['_embedded'] ) ) {
 						$photo = array();
 						foreach ( $content['_embedded']['wp:featuredmedia'] as $media ) {
-							$photo[] = ifset( $media['source_url'] );
+							$photo[] = $media['source_url'] ?? null;
 						}
 						$photo = array_unique( $photo );
 						if ( 1 === count( $photo ) ) {
@@ -310,15 +297,15 @@ class RESTAPI {
 		if ( array_key_exists( 'code', $author ) ) {
 			return null;
 		}
-		$avatar_urls = self::ifset( 'avatar_urls', $author );
+		$avatar_urls = $author['avatar_urls'] ?? null;
 		$avatar_urls = is_array( $avatar_urls ) ? end( $avatar_urls ) : null;
 		$return      = array(
 			'type'  => 'card',
-			'name'  => self::ifset( 'name', $author ),
-			'url'   => self::ifset( 'url', $author ),
-			'note'  => self::ifset( 'description', $author ),
+			'name'  => $author['name'] ?? null,
+			'url'   => $author['url'] ?? null,
+			'note'  => $author['description'] ?? null,
 			'photo' => $avatar_urls,
-			'me'    => self::ifset( 'me', $author ),
+			'me'    => $author['me'] ?? null,
 		);
 		return array_filter( $return );
 	}
@@ -332,13 +319,13 @@ class RESTAPI {
 	 * @return array Card with name, url, note and photo (the largest avatar).
 	 */
 	public static function format_author( $json ) {
-		$avatar_urls = self::ifset( 'avatar_urls', $json );
+		$avatar_urls = $json['avatar_urls'] ?? null;
 		$avatar_urls = is_array( $avatar_urls ) ? end( $avatar_urls ) : null;
 		$return      = array(
 			'type'  => 'card',
-			'name'  => self::ifset( 'name', $json ),
-			'url'   => self::ifset( 'url', $json ),
-			'note'  => self::ifset( 'description', $json ),
+			'name'  => $json['name'] ?? null,
+			'url'   => $json['url'] ?? null,
+			'note'  => $json['description'] ?? null,
 			'photo' => $avatar_urls,
 		);
 		return $return;
@@ -398,12 +385,12 @@ class RESTAPI {
 	 * @return DateTimeZone The named timezone, or a fixed offset from gmt_offset.
 	 */
 	public static function timezone( $fetch ) {
-		$timezone_string = self::ifset( 'timezone_string', $fetch );
+		$timezone_string = $fetch['timezone_string'] ?? null;
 		if ( $timezone_string ) {
 				return new \DateTimeZone( $timezone_string );
 		}
 
-		$offset  = (float) self::ifset( 'gmt_offset', $fetch );
+		$offset  = (float) ( $fetch['gmt_offset'] ?? null );
 		$hours   = (int) $offset;
 		$minutes = ( $offset - $hours );
 
@@ -456,7 +443,7 @@ class RESTAPI {
 			array(
 				'type'      => self::jf2_type( $item, $rest_url ),
 				'uid'       => self::get_rendered( 'guid', $item ),
-				'url'       => self::ifset( 'link', $item ),
+				'url'       => $item['link'] ?? null,
 				'name'      => self::get_rendered( 'title', $item ),
 				'content'   => array_filter(
 					array(
@@ -465,9 +452,9 @@ class RESTAPI {
 					)
 				),
 				'summary'   => self::get_rendered( 'excerpt', $item ),
-				'published' => self::get_datetime( self::ifset( 'date', $item ), $timezone ),
-				'updated'   => self::get_datetime( self::ifset( 'modified', $item ), $timezone ),
-				'kind'      => self::ifset( 'kind', $item ),
+				'published' => self::get_datetime( $item['date'] ?? null, $timezone ),
+				'updated'   => self::get_datetime( $item['modified'] ?? null, $timezone ),
+				'kind'      => $item['kind'] ?? null,
 			)
 		);
 
@@ -511,15 +498,15 @@ class RESTAPI {
 		$data              = self::site_data( $url );
 		$timezone          = self::timezone( $data );
 		$return['items']   = array();
-		$return['name']    = self::ifset( 'name', $data );
-		$return['summary'] = self::ifset( 'description', $data );
-		$return['url']     = self::ifset( 'url', $data );
+		$return['name']    = $data['name'] ?? null;
+		$return['summary'] = $data['description'] ?? null;
+		$return['url']     = $data['url'] ?? null;
 		foreach ( $items as $item ) {
 			$newitem = array_filter(
 				array(
 					'type'      => self::jf2_type( $item, $url ),
 					'uid'       => self::get_rendered( 'guid', $item ),
-					'url'       => self::ifset( 'link', $item ),
+					'url'       => $item['link'] ?? null,
 					'name'      => self::get_rendered( 'title', $item ),
 					'content'   => array_filter(
 						array(
@@ -528,10 +515,10 @@ class RESTAPI {
 						)
 					),
 					'summary'   => self::get_rendered( 'excerpt', $item ),
-					'published' => self::get_datetime( self::ifset( 'date', $item ), $timezone ),
-					'updated'   => self::get_datetime( self::ifset( 'modified', $item ), $timezone ),
+					'published' => self::get_datetime( $item['date'] ?? null, $timezone ),
+					'updated'   => self::get_datetime( $item['modified'] ?? null, $timezone ),
 					'author'    => self::get_author( $item ),
-					'kind'      => self::ifset( 'kind', $item ),
+					'kind'      => $item['kind'] ?? null,
 				)
 			);
 			if ( array_key_exists( '_embedded', $item ) ) {
