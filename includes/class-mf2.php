@@ -743,6 +743,7 @@ class MF2 extends MF2_Utils {
 			'repost-of',
 			'bookmark-of',
 			'favorite-of',
+			'follow-of',
 			'listen-of',
 			'quotation-of',
 			'watch-of',

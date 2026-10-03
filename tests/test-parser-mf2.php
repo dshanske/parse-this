@@ -360,4 +360,17 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 		$result = ParseThis\MF2::parse( '<div class="h-review"><span class="p-name">Meh</span><data class="p-rating" value="0">0</data></div>', 'https://example.com/', array() );
 		$this->assertSame( '0', $result['rating'] );
 	}
+
+	/**
+	 * u-follow-of is read, as a URL or a nested h-card, and makes a follow (C-55).
+	 */
+	public function test_follow_of() {
+		$result = ParseThis\MF2::parse( '<div class="h-entry"><a class="u-follow-of" href="https://realize.be/">Swentel</a></div>', 'https://example.com/f/', array( 'references' => false ) );
+		$this->assertSame( 'https://realize.be/', $result['follow-of'] );
+		$this->assertSame( 'follow', $result['post-type'] );
+
+		$result = ParseThis\MF2::parse( '<div class="h-entry"><div class="u-follow-of h-card"><a class="u-url p-name" href="https://realize.be/">Swentel</a></div></div>', 'https://example.com/f/', array( 'references' => false ) );
+		$this->assertSame( 'https://realize.be/', $result['follow-of']['url'] );
+		$this->assertSame( 'follow', $result['post-type'] );
+	}
 }
