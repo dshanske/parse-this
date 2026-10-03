@@ -167,7 +167,8 @@ class REST_Endpoint {
 	 *
 	 * Accepted parameters: url (required); mf2, to return mf2 instead of jf2;
 	 * discovery, to list the URL's feeds instead of parsing it; and return,
-	 * references, location and follow, which are passed to Parser::parse().
+	 * references, location, follow and require_content, which are passed to
+	 * Parser::parse().
 	 *
 	 * @since 1.0.0
 	 *
@@ -193,14 +194,18 @@ class REST_Endpoint {
 		if ( is_wp_error( $r ) ) {
 			return $r;
 		}
-		$parse->parse(
-			array(
-				'return'     => $return,
-				'follow'     => $follow,
-				'references' => $refs,
-				'location'   => $location,
-			)
+		$args = array(
+			'return'     => $return,
+			'follow'     => $follow,
+			'references' => $refs,
+			'location'   => $location,
 		);
+		// Only pass require_content when given, so the automatic default applies otherwise.
+		$require_content = $request->get_param( 'require_content' );
+		if ( null !== $require_content ) {
+			$args['require_content'] = rest_sanitize_boolean( $require_content );
+		}
+		$parse->parse( $args );
 		if ( $mf2 ) {
 			return $parse->get( 'mf2' );
 		}

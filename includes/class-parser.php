@@ -53,7 +53,7 @@ class Parser {
 	 * @since 1.0.0
 	 * @var array
 	 */
-	private $jf2   = array();
+	private $jf2 = array();
 
 	/**
 	 * Host name of the URL.
@@ -443,19 +443,25 @@ class Parser {
 	 *     @type bool   $location   Whether to flatten location into latitude,
 	 *                              longitude and altitude properties with a string
 	 *                              location. Default false.
+	 *     @type bool|null $require_content Whether a summary is not enough, so the
+	 *                              page's REST API alternate is fetched for full
+	 *                              content when the page has none of its own. Null
+	 *                              (the default) means true when return is 'feed',
+	 *                              false otherwise.
 	 * }
 	 * @return WP_Error|void WP_Error if there is no content to parse.
 	 */
 	public function parse( $args = array() ) {
 		$defaults = array(
-			'alternate'  => false,
-			'return'     => 'single',
-			'follow'     => false,
-			'limit'      => 150,
-			'jsonld'     => true,
-			'html'       => true,
-			'references' => true,
-			'location'   => false,
+			'alternate'       => false,
+			'return'          => 'single',
+			'follow'          => false,
+			'limit'           => 150,
+			'jsonld'          => true,
+			'html'            => true,
+			'references'      => true,
+			'location'        => false,
+			'require_content' => null,
 		);
 		$args     = wp_parse_args( $args, $defaults );
 		// If not an option then revert to single.
@@ -504,83 +510,63 @@ class Parser {
 			$this->jf2 = MF2::parse( $content, $this->url, $args );
 		}
 
-		$more = array();
-
-		// If No MF2 or if the parsed jf2 is missing any sort of content then try to find it in the HTML.
-		if ( isset( $this->jf2['type'] ) && 'card' === $this->jf2['type'] ) {
-			$more = array_intersect( array_keys( $this->jf2 ), array( 'name', 'url', 'photo' ) );
-		} else {
-			$more = array_intersect( array_keys( $this->jf2 ), array( 'summary', 'content', 'refs', 'items' ) );
-			if ( empty( $more ) ) {
-				$this->set( array( '_jf2' => $this->jf2 ), $this->url, true );
-			}
-		}
-		if ( ! isset( $this->jf2['url'] ) ) {
-			$this->jf2['url'] = $this->url;
+		// Microformats come first. A list means several top-level items, none of them this page.
+		if ( empty( $this->jf2 ) ) {
+			$this->jf2 = array();
+		} elseif ( wp_is_numeric_array( $this->jf2 ) ) {
+			$this->jf2 = array( '_jf2' => $this->jf2 );
 		}
 
-		if ( empty( $more ) ) {
-			$alt = null;
-			$jf2 = isset( $this->jf2['_jf2'] ) ? $this->jf2['_jf2'] : array();
+		/*
+		 * Fallbacks only fill gaps, in this order: the site-specific parser for this host
+		 * (generic data is poor on those sites, so it always runs, even when it costs a
+		 * request), then the parsers that read the document already fetched.
+		 */
+		$host      = wp_parse_url( $this->url, PHP_URL_HOST );
+		$fallbacks = array();
+		if ( $args['html'] && in_array( $host, array( 'youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be' ), true ) ) {
+			$fallbacks[] = YouTube::parse( $this->content, $this->url, $args );
+		}
+		if ( $args['html'] && in_array( $host, array( 'x.com', 'www.x.com', 'mobile.x.com', 'twitter.com', 'www.twitter.com', 'mobile.twitter.com' ), true ) ) {
+			$fallbacks[] = Twitter::parse( $this->url, $args );
+		}
+		if ( $args['jsonld'] ) {
+			$fallbacks[] = JSONLD::parse( $this->doc, $this->url, $args );
+		}
+		$fallbacks[] = JSON::parse( $this->doc, $this->url, $args );
+		if ( $args['html'] ) {
+			$fallbacks[] = HTML::parse( $content, $this->url, $args );
+		}
+		foreach ( $fallbacks as $alt ) {
+			$this->jf2 = self::fill_gaps( $this->jf2, $alt );
+		}
 
-			$empty = true;
-
+		// The REST alternate costs an HTTP request, so it only runs if there still isn't enough.
+		$require_content = isset( $args['require_content'] ) ? (bool) $args['require_content'] : ( 'feed' === $args['return'] );
+		if ( ! self::has_content( $this->jf2, $require_content ) ) {
+			$remote = array();
 			if ( ! empty( $this->links ) ) {
 				$endpoint = pt_find_rest_endpoint( $this->links );
 				$rest     = pt_find_rest_alternate( $this->links );
 				if ( $endpoint && $rest ) {
-					$empty        = false;
-					$path         = RESTAPI::get_rest_path( $endpoint, $rest );
-					$fetch        = RESTAPI::fetch( $endpoint, $path );
-					$alt          = RESTAPI::parse( $fetch, $endpoint, $args );
+					$fetch = RESTAPI::fetch( $endpoint, RESTAPI::get_rest_path( $endpoint, $rest ) );
+					$alt   = RESTAPI::parse( $fetch, $endpoint, $args );
 					if ( is_array( $alt ) ) {
 						$alt['_rest'] = $fetch;
+						$remote[]     = $alt;
 					}
 				}
 			}
-
-			if ( $empty && $args['jsonld'] ) {
-				$alt = JSONLD::parse( $this->doc, $this->url, $args );
-			}
-
-			if ( empty( $alt ) || ! is_array( $alt ) ) {
-				$alt   = array();
-				$empty = true;
-			} elseif ( is_countable( $alt ) && 1 === count( $alt ) && array_key_exists( '_jsonld', $alt ) ) {
-				$empty = true;
-			} else {
-				$empty = false;
-			}
-			if ( $empty && $args['html'] ) {
-				$args['alternate'] = true;
-				if ( in_array( wp_parse_url( $this->url, PHP_URL_HOST ), array( 'youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be' ), true ) ) {
-					$alt = YouTube::parse( $this->content, $this->url, $args );
-				} elseif ( in_array( wp_parse_url( $this->url, PHP_URL_HOST ), array( 'x.com', 'www.x.com', 'mobile.x.com', 'twitter.com', 'www.twitter.com', 'mobile.twitter.com' ), true ) ) {
-					$alt = Twitter::parse( $this->url, $args );
-				}
-				if ( ! $alt ) {
-					$alt = HTML::parse( $content, $this->url, $args );
-				}
-			}
-			$json = JSON::parse( $this->doc, $this->url, $args );
-			if ( is_array( $json ) ) {
-				$this->jf2 = array_merge( $this->jf2, $json );
-			}
-			if ( is_array( $alt ) ) {
-				$this->jf2 = array_merge( $this->jf2, $alt );
-			}
-			if ( ! empty( $jf2 ) ) {
-				if ( isset( $jf2['author'] ) ) {
-					if ( isset( $this->jf2['author'] ) && is_string( $this->jf2['author'] ) && is_array( $jf2['author'] ) ) {
-						$jf2['author']['name'] = $this->jf2['author'];
-					}
-					$this->jf2['author']   = $jf2['author'];
-				}
-			}
-			if ( isset( $alt['author'] ) && isset( $this->jf2['author'] ) && is_array( $this->jf2['author'] ) && ! wp_is_numeric_array( $this->jf2['author'] ) && ! isset( $this->jf2['author']['name'] ) ) {
-				$this->jf2['author']['name'] = $alt['author'];
+			foreach ( $remote as $alt ) {
+				$this->jf2 = self::fill_gaps( $this->jf2, $alt );
 			}
 		}
+
+		// Post type is derived, so derive it again now the gaps are filled.
+		if ( isset( $this->jf2['post-type'] ) && isset( $this->jf2['type'] ) && 'entry' === $this->jf2['type'] ) {
+			$this->jf2['post-type'] = post_type_discovery( $this->jf2 );
+		}
+
 		if ( ! isset( $this->jf2['url'] ) ) {
 			$this->jf2['url'] = $this->url;
 		}
@@ -600,5 +586,95 @@ class Parser {
 		}
 
 		$this->jf2['_links'] = $this->links;
+	}
+	/**
+	 * Response properties. An entry with any of these was marked up on purpose,
+	 * so it counts as having content even without a summary or content.
+	 *
+	 * @since 2.0.0
+	 * @var string[]
+	 */
+	const RESPONSE_PROPERTIES = array(
+		'in-reply-to',
+		'like-of',
+		'repost-of',
+		'bookmark-of',
+		'favorite-of',
+		'quotation-of',
+		'follow-of',
+		'tag-of',
+		'listen-of',
+		'watch-of',
+		'read-of',
+		'play-of',
+		'jam-of',
+		'rsvp',
+		'checkin',
+		'itinerary',
+		'ate',
+		'pk-ate',
+		'drank',
+		'pk-drank',
+	);
+
+	/**
+	 * Checks whether parsed jf2 has enough to stand on its own.
+	 *
+	 * A card needs a name, url or photo. Anything else needs content,
+	 * references, items or a response property, or, unless $require_content
+	 * is set, a summary.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $jf2             Parsed jf2.
+	 * @param bool  $require_content Optional. Whether a summary alone is not
+	 *                               enough. Default false.
+	 * @return bool True if no remote fallback is needed.
+	 */
+	public static function has_content( $jf2, $require_content = false ) {
+		if ( ! is_array( $jf2 ) ) {
+			return false;
+		}
+		if ( isset( $jf2['type'] ) && 'card' === $jf2['type'] ) {
+			$keys = array( 'name', 'url', 'photo' );
+		} else {
+			$keys = array_merge( array( 'content', 'refs', 'items' ), self::RESPONSE_PROPERTIES );
+			if ( ! $require_content ) {
+				$keys[] = 'summary';
+			}
+		}
+		foreach ( $keys as $key ) {
+			if ( ! empty( $jf2[ $key ] ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Adds a fallback's properties where the result doesn't have them yet.
+	 *
+	 * Existing values always win. As a special case, a fallback's author
+	 * name (a string) is added to an author card that has no name.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array      $jf2      Result so far.
+	 * @param array|null $fallback Properties from a fallback parser.
+	 * @return array The result with the gaps filled.
+	 */
+	public static function fill_gaps( $jf2, $fallback ) {
+		if ( ! is_array( $fallback ) ) {
+			return $jf2;
+		}
+		foreach ( $fallback as $key => $value ) {
+			if ( ! isset( $jf2[ $key ] ) || '' === $jf2[ $key ] || array() === $jf2[ $key ] ) {
+				$jf2[ $key ] = $value;
+			}
+		}
+		if ( isset( $fallback['author'], $jf2['author'] ) && is_string( $fallback['author'] ) && is_array( $jf2['author'] ) && ! wp_is_numeric_array( $jf2['author'] ) && empty( $jf2['author']['name'] ) ) {
+			$jf2['author']['name'] = $fallback['author'];
+		}
+		return $jf2;
 	}
 }

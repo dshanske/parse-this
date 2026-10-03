@@ -21,7 +21,7 @@ It also runs on ClassicPress 2.x.
 = What it parses =
 
 * **Microformats2.** When a page is marked up with microformats, they are used first.
-* **Other metadata.** If microformats don't yield content, it tries, in order: the page's WordPress REST API version (if the site advertises one), JSON-LD, a site-specific parser for YouTube or X (Twitter), and finally Open Graph, Dublin Core and other meta tags.
+* **Other metadata.** Microformats always come first. Other sources only fill in what microformats don't provide: a site-specific parser for YouTube or X (Twitter), then JSON-LD and Open Graph, Dublin Core and other meta tags. If there is still no content, the page's WordPress REST API version is fetched (when the site advertises one).
 * **Feeds.** RSS and Atom (through WordPress's SimplePie), JSON Feed 1 and 1.1, jf2 and mf2 JSON, and WordPress REST API post collections.
 * **Feed discovery.** It can list the feeds a page offers.
 
@@ -45,6 +45,7 @@ It also runs on ClassicPress 2.x.
 * `references`: move nested citations into `refs`, as the jf2 spec describes. Default true.
 * `location`: flatten a nested location into `latitude`, `longitude` and `altitude` properties, with `location` as a plain string. Default false.
 * `alternate`: use a `rel=alternate` jf2 or mf2 version of the page if it has one. Default false.
+* `require_content`: whether a summary alone isn't enough, so the page's WordPress REST API version is fetched for full content. Default: true for feeds, false otherwise.
 
 To list a page's feeds instead, use `( new ParseThis\Discovery() )->fetch( $url )`.
 
@@ -53,7 +54,7 @@ To list a page's feeds instead, use `( new ParseThis\Discovery() )->fetch( $url 
 `GET /wp-json/parse-this/1.0/parse?url=https://example.com/`
 
 * `url` (required): the URL to parse.
-* `return`, `follow`, `references`, `location`: as for `parse()` above.
+* `return`, `follow`, `references`, `location`, `require_content`: as for `parse()` above.
 * `mf2`: return mf2 instead of jf2.
 * `discovery`: list the URL's feeds instead of parsing it.
 
@@ -127,6 +128,7 @@ Yes. It is tested with ClassicPress 2.7 on PHP 7.4 to 8.3.
 * Move all classes and functions into the `ParseThis` namespace, with the `Parse_This_` prefix dropped from class names. The old names used by Post Kinds and Yarns remain as deprecated aliases; see "Upgrading from 1.x".
 * Add `ParseThis\pt_remote_get()`, used for all remote requests.
 * Remove the Instagram parser. Instagram stopped embedding the data it read; Instagram pages are now parsed from their Open Graph tags like any other page.
+* Microformats always win: other sources (JSON-LD, meta tags, the REST API) only fill in missing properties, and likes, bookmarks and other responses keep their microformats even without content. Add the `require_content` parse argument.
 * Microformats: keep every value of a property (for example several categories), parse nested citations without warnings, keep the type of h-review, h-product, h-resume, h-listing, h-recipe, h-item and h-leg, parse unrecognized h-* types, return a page's single top-level item (an h-feed with its URL) directly, and keep feed item author URLs as strings.
 * Give JSON Feed items and authors, and posts read through the WordPress REST API, their jf2 types. Add the `parse_this_rest_api_jf2_type` filter.
 * Keep JSON Feeds and REST API collections served as `application/json`, handle RSS items without enclosures on newer SimplePie, and no longer merge raw JSON into results.
