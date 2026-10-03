@@ -179,13 +179,13 @@ class JSONLD extends Base {
 
 		$return = array(
 			'type'      => 'cite',
-			'name'      => ifset( $music['name'] ),
-			'url'       => ifset( $music['url'] ),
-			'summary'   => ifset( $music['description'] ),
-			'duration'  => ifset( $music['duration'] ),
-			'category'  => ifset( $music['genre'] ),
-			'published' => normalize_iso8601( ifset( $music['datePublished'] ) ),
-			'featured'  => self::image_to_photo( ifset( $music['image'] ) ),
+			'name'      => $music['name'] ?? null,
+			'url'       => $music['url'] ?? null,
+			'summary'   => $music['description'] ?? null,
+			'duration'  => $music['duration'] ?? null,
+			'category'  => $music['genre'] ?? null,
+			'published' => normalize_iso8601( $music['datePublished'] ?? null ),
+			'featured'  => self::image_to_photo( $music['image'] ?? null ),
 		);
 		if ( isset( $music['releaseOf'] ) ) {
 			if ( isset( $music['releaseOf']['byArtist'] ) ) {
@@ -195,8 +195,8 @@ class JSONLD extends Base {
 						array_filter(
 							array(
 								'type' => 'card',
-								'name' => ifset( $artist['name'] ),
-								'url'  => ifset( $artist['@id'] ),
+								'name' => $artist['name'] ?? null,
+								'url'  => $artist['@id'] ?? null,
 							)
 						),
 					);
@@ -228,14 +228,14 @@ class JSONLD extends Base {
 
 		$return = array(
 			'type'      => 'cite',
-			'name'      => ifset( $movie['name'] ),
-			'url'       => ifset( $movie['url'] ),
-			'summary'   => ifset( $movie['description'] ),
-			'duration'  => ifset( $movie['duration'] ),
-			'category'  => ifset( $movie['genre'] ),
-			'published' => normalize_iso8601( ifset( $movie['datePublished'] ) ),
-			'featured'  => self::image_to_photo( ifset( $movie['image'] ) ),
-			'video'     => self::video_to_video( ifset( $movie['trailer'] ) ),
+			'name'      => $movie['name'] ?? null,
+			'url'       => $movie['url'] ?? null,
+			'summary'   => $movie['description'] ?? null,
+			'duration'  => $movie['duration'] ?? null,
+			'category'  => $movie['genre'] ?? null,
+			'published' => normalize_iso8601( $movie['datePublished'] ?? null ),
+			'featured'  => self::image_to_photo( $movie['image'] ?? null ),
+			'video'     => self::video_to_video( $movie['trailer'] ?? null ),
 		);
 
 		if ( empty( $return['duration'] ) && isset( $movie['timeRequired'] ) ) {
@@ -269,14 +269,14 @@ class JSONLD extends Base {
 		}
 		$return = array(
 			'type'      => 'event',
-			'name'      => ifset( $event['name'] ),
-			'url'       => ifset( $event['url'] ),
-			'summary'   => ifset( $event['description'] ),
-			'organizer' => self::organization_to_hcard( ifset( $event['organizer'] ) ),
-			'location'  => self::place_to_hcard( ifset( $event['location'] ) ),
-			'start'     => normalize_iso8601( ifset( $event['startDate'] ) ),
-			'end'       => normalize_iso8601( ifset( $event['endDate'] ) ),
-			'featured'  => self::image_to_photo( ifset( $event['image'] ) ),
+			'name'      => $event['name'] ?? null,
+			'url'       => $event['url'] ?? null,
+			'summary'   => $event['description'] ?? null,
+			'organizer' => self::organization_to_hcard( $event['organizer'] ?? null ),
+			'location'  => self::place_to_hcard( $event['location'] ?? null ),
+			'start'     => normalize_iso8601( $event['startDate'] ?? null ),
+			'end'       => normalize_iso8601( $event['endDate'] ?? null ),
+			'featured'  => self::image_to_photo( $event['image'] ?? null ),
 		);
 
 		return array_filter( $return );
@@ -336,12 +336,12 @@ class JSONLD extends Base {
 		}
 
 		$return = array(
-			'name'      => ifset( $audio['name'] ),
-			'summary'   => ifset( $audio['description'] ),
-			'featured'  => ifset( $audio['thumbnailUrl'] ),
-			'audio'     => ifset( $audio['contentUrl'] ),
-			'published' => normalize_iso8601( ifset( $audio['uploadDate'] ) ),
-			'duration'  => ifset( $audio['duration'] ),
+			'name'      => $audio['name'] ?? null,
+			'summary'   => $audio['description'] ?? null,
+			'featured'  => $audio['thumbnailUrl'] ?? null,
+			'audio'     => $audio['contentUrl'] ?? null,
+			'published' => normalize_iso8601( $audio['uploadDate'] ?? null ),
+			'duration'  => $audio['duration'] ?? null,
 		);
 		if ( isset( $audio['transcript'] ) ) {
 			$return['content'] = array(
@@ -373,12 +373,12 @@ class JSONLD extends Base {
 			return false;
 		}
 		$return = array(
-			'name'      => ifset( $video['name'] ),
-			'summary'   => ifset( $video['description'] ),
-			'featured'  => ifset( $video['thumbnailUrl'] ),
-			'video'     => ifset( $video['contentUrl'] ),
-			'published' => normalize_iso8601( ifset( $video['uploadDate'] ) ),
-			'duration'  => ifset( $video['duration'] ),
+			'name'      => $video['name'] ?? null,
+			'summary'   => $video['description'] ?? null,
+			'featured'  => $video['thumbnailUrl'] ?? null,
+			'video'     => $video['contentUrl'] ?? null,
+			'published' => normalize_iso8601( $video['uploadDate'] ?? null ),
+			'duration'  => $video['duration'] ?? null,
 		);
 
 		if ( isset( $video['transcript'] ) ) {
@@ -410,8 +410,8 @@ class JSONLD extends Base {
 		}
 		$return = array(
 			'type'      => 'geo',
-			'latitude'  => ifset( $geo['latitude'] ),
-			'longitude' => ifset( $geo['longitude'] ),
+			'latitude'  => $geo['latitude'] ?? null,
+			'longitude' => $geo['longitude'] ?? null,
 		);
 		return array_filter( $return );
 	}
@@ -431,11 +431,11 @@ class JSONLD extends Base {
 		}
 
 		$return = array(
-			'locality'       => ifset( $address['addressLocality'] ),
-			'region'         => ifset( $address['addressRegion'] ),
-			'country-name'   => ifset( $address['addressCountry'] ),
-			'postal-code'    => ifset( $address['postalCode'] ),
-			'street-address' => ifset( $address['streetAddress'] ),
+			'locality'       => $address['addressLocality'] ?? null,
+			'region'         => $address['addressRegion'] ?? null,
+			'country-name'   => $address['addressCountry'] ?? null,
+			'postal-code'    => $address['postalCode'] ?? null,
+			'street-address' => $address['streetAddress'] ?? null,
 		);
 		return array_filter( $return );
 	}
@@ -458,12 +458,12 @@ class JSONLD extends Base {
 		$hcard = array(
 			'type'  => 'card',
 			'_type' => 'place',
-			'name'  => ifset( $place['name'] ),
-			'note'  => ifset( $place['description'] ),
-			'tel'   => ifset( $place['telephone'] ),
-			'photo' => self::image_to_photo( ifset( $place['image'] ) ),
-			'me'    => ifset( $place['sameAs'] ),
-			'geo'   => self::geocoordinates_to_geo( ifset( $place['geo'] ) ),
+			'name'  => $place['name'] ?? null,
+			'note'  => $place['description'] ?? null,
+			'tel'   => $place['telephone'] ?? null,
+			'photo' => self::image_to_photo( $place['image'] ?? null ),
+			'me'    => $place['sameAs'] ?? null,
+			'geo'   => self::geocoordinates_to_geo( $place['geo'] ?? null ),
 		);
 
 		if ( isset( $place['address'] ) ) {
@@ -515,14 +515,14 @@ class JSONLD extends Base {
 
 			$author = array(
 				'type'      => 'card',
-				'name'      => ifset( $person['name'] ),
-				'email'     => ifset( $person['email'] ),
-				'photo'     => self::image_to_photo( ifset( $person['image'] ) ),
-				'url'       => ifset( $person['url'] ),
-				'me'        => ifset( $person['sameAs'] ),
-				'dt-bday'   => ifset( $person['birthDate'] ),
-				'job-title' => ifset( $person['jobTitle'] ),
-				'location'  => self::place_to_hcard( ifset( $person['location'] ) ),
+				'name'      => $person['name'] ?? null,
+				'email'     => $person['email'] ?? null,
+				'photo'     => self::image_to_photo( $person['image'] ?? null ),
+				'url'       => $person['url'] ?? null,
+				'me'        => $person['sameAs'] ?? null,
+				'dt-bday'   => $person['birthDate'] ?? null,
+				'job-title' => $person['jobTitle'] ?? null,
+				'location'  => self::place_to_hcard( $person['location'] ?? null ),
 			);
 		}
 		return array_filter( $author );
@@ -544,9 +544,9 @@ class JSONLD extends Base {
 		$publication = array(
 			'type'  => 'card',
 			'_type' => 'website',
-			'name'  => ifset( $website['name'] ),
-			'url'   => ifset( $website['url'] ),
-			'me'    => ifset( $website['sameAs'] ),
+			'name'  => $website['name'] ?? null,
+			'url'   => $website['url'] ?? null,
+			'me'    => $website['sameAs'] ?? null,
 		);
 		return array_filter( $publication );
 	}
@@ -568,16 +568,16 @@ class JSONLD extends Base {
 		$publication = array(
 			'type'     => 'card',
 			'_type'    => $organization['@type'],
-			'name'     => ifset( $organization['name'] ),
-			'photo'    => self::image_to_photo( ifset( $organization['logo'] ) ),
-			'url'      => ifset( $organization['url'] ),
-			'me'       => ifset( $organization['sameAs'] ),
-			'email'    => ifset( $organization['email'] ),
-			'location' => self::place_to_hcard( ifset( $organization['location'] ) ),
-			'summary'  => ifset( $organization['description'] ),
+			'name'     => $organization['name'] ?? null,
+			'photo'    => self::image_to_photo( $organization['logo'] ?? null ),
+			'url'      => $organization['url'] ?? null,
+			'me'       => $organization['sameAs'] ?? null,
+			'email'    => $organization['email'] ?? null,
+			'location' => self::place_to_hcard( $organization['location'] ?? null ),
+			'summary'  => $organization['description'] ?? null,
 		);
 		if ( empty( $publication['photo'] ) ) {
-			$publication['photo'] = self::image_to_photo( ifset( $organization['image'] ) );
+			$publication['photo'] = self::image_to_photo( $organization['image'] ?? null );
 		}
 		if ( isset( $organization['member'] ) ) {
 			$members = $organization['member'];
