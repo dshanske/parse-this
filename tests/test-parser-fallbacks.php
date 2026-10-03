@@ -401,4 +401,35 @@ class Parser_Fallbacks_Test extends Parse_This_TestCase {
 		);
 		$this->assertSame( array( 'Re: hello', 'mailto:jane@example.com' ), $jf2['in-reply-to'] );
 	}
+
+	/**
+	 * Nested h-* objects in properties are sanitized, with and without references (C-48).
+	 */
+	public function test_nested_objects_are_sanitized() {
+		$html = '<div class="h-entry"><a class="u-url" href="/a/">a</a><span class="p-name">N</span>'
+			. '<div class="p-in-reply-to h-cite"><span class="p-name">A <b>chat</b></span><span class="p-author h-card"><span class="p-name">Bob</span><a class="u-url" href="javascript:bad()">x</a></span></div>'
+			. '<div class="u-like-of h-cite"><a class="u-url" href="javascript:alert(1)">liked</a><span class="p-name">Liked</span></div>'
+			. '<div class="u-bookmark-of h-cite"><a class="u-url" href="https://example.org/b">B</a><span class="p-name">Bookmarked</span></div>'
+			. '<span class="p-category h-card"><a class="u-url p-name" href="javascript:c()">Alice</a></span>'
+			. '<span class="p-category h-card"><a class="u-url p-name" href="https://alice.example/">Alice</a></span>'
+			. '<div class="p-location h-card"><span class="p-name">Venue <i>x</i></span><a class="u-url" href="vbscript:v">v</a></div>'
+			. '<div class="e-content">Text</div></div>';
+
+		foreach ( array( false, true ) as $references ) {
+			$jf2  = $this->parse_html( $html, array( 'references' => $references ) );
+			$json = wp_json_encode( $jf2 );
+			$this->assertStringNotContainsString( 'javascript', $json );
+			$this->assertStringNotContainsString( 'vbscript', $json );
+			$this->assertSame( 'A chat', $jf2['in-reply-to']['name'] );
+			$this->assertSame( 'Bob', $jf2['in-reply-to']['author']['name'] );
+			$this->assertSame( 'Venue x', $jf2['location']['name'] );
+		}
+
+		// With references, nested objects move to refs, keyed only by safe URLs.
+		$keys = array_keys( $jf2['refs'] );
+		sort( $keys );
+		$this->assertSame( array( 'https://alice.example/', 'https://example.org/b' ), $keys );
+		$this->assertSame( 'Bookmarked', $jf2['refs']['https://example.org/b']['name'] );
+		$this->assertSame( array( 'https://alice.example/' ), $jf2['category'] );
+	}
 }

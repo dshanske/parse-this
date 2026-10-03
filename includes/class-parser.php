@@ -680,6 +680,11 @@ class Parser {
 	 *   HTML tags stripped. Line breaks are kept.
 	 * - A rich-text object ('html' with 'value' or 'text') outside content has
 	 *   its html filtered with allowed_html() and its text stripped of tags.
+	 * - Any string with a javascript:, data: or vbscript: scheme is removed,
+	 *   whatever the property: any property can be a URL, or hold a nested
+	 *   h-* object that jf2_references() replaces with its URL.
+	 * - refs is keyed by URL: entries whose key isn't an http or https URL are
+	 *   removed, and each referenced object is sanitized.
 	 * - content's html is left as it is: every source runs it through
 	 *   clean_content().
 	 * - Keys starting with an underscore (internal and debug data) are skipped.
@@ -708,7 +713,11 @@ class Parser {
 			if ( is_string( $key ) && '_' === substr( $key, 0, 1 ) ) {
 				continue;
 			}
-			if ( in_array( $key, self::URL_PROPERTIES, true ) || in_array( $key, self::RESPONSE_PROPERTIES, true ) ) {
+			if ( is_string( $value ) && self::has_unsafe_scheme( $value ) ) {
+				$value = '';
+			} elseif ( 'refs' === $key && is_array( $value ) ) {
+				$value = self::sanitize_refs( $value );
+			} elseif ( in_array( $key, self::URL_PROPERTIES, true ) || in_array( $key, self::RESPONSE_PROPERTIES, true ) ) {
 				$value = self::sanitize_urls( $value );
 			} elseif ( 'author' === $key && is_string( $value ) ) {
 				// Becomes a card later: a URL, or else a name.
@@ -837,19 +846,47 @@ class Parser {
 	 *
 	 * @param mixed $value A string, a list of values, or an object (such as a
 	 *                     card in category).
-	 * @return mixed The value with tags stripped.
+	 * @return mixed The value with tags stripped; an empty string for a value
+	 *               with an unsafe scheme, which is dropped from lists.
 	 */
 	private static function sanitize_text( $value ) {
 		if ( is_string( $value ) ) {
-			return wp_strip_all_tags( $value );
+			return self::has_unsafe_scheme( $value ) ? '' : wp_strip_all_tags( $value );
 		}
 		if ( ! is_array( $value ) ) {
 			return $value;
 		}
 		if ( wp_is_numeric_array( $value ) ) {
-			return array_map( array( __CLASS__, 'sanitize_text' ), $value );
+			return array_values(
+				array_filter(
+					array_map( array( __CLASS__, 'sanitize_text' ), $value ),
+					function ( $v ) {
+						return '' !== $v && array() !== $v;
+					}
+				)
+			);
 		}
 		return self::sanitize_output( $value );
+	}
+
+	/**
+	 * Sanitizes a refs map, which is keyed by the URL of each referenced object.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $refs Referenced objects keyed by URL.
+	 * @return array The entries whose key is an http or https URL, keyed by the
+	 *               sanitized URL, with each object sanitized.
+	 */
+	private static function sanitize_refs( $refs ) {
+		$clean = array();
+		foreach ( $refs as $url => $ref ) {
+			$url = is_string( $url ) ? esc_url_raw( trim( $url ), array( 'http', 'https' ) ) : '';
+			if ( '' !== $url && ! self::has_unsafe_scheme( $url ) ) {
+				$clean[ $url ] = self::sanitize_output( $ref );
+			}
+		}
+		return $clean;
 	}
 
 	/**
