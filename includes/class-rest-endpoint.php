@@ -167,8 +167,8 @@ class REST_Endpoint {
 	 *
 	 * Accepted parameters: url (required); mf2, to return mf2 instead of jf2;
 	 * discovery, to list the URL's feeds instead of parsing it; and return,
-	 * references, location, follow and require_content, which are passed to
-	 * Parser::parse().
+	 * references, location, follow, require_content and always_arrays, which
+	 * are passed to Parser::parse().
 	 *
 	 * @since 1.0.0
 	 *
@@ -205,6 +205,7 @@ class REST_Endpoint {
 		if ( null !== $require_content ) {
 			$args['require_content'] = rest_sanitize_boolean( $require_content );
 		}
+		$args['always_arrays'] = rest_sanitize_boolean( $request->get_param( 'always_arrays' ) );
 		$parse->parse( $args );
 		if ( $mf2 ) {
 			return $parse->get( 'mf2' );

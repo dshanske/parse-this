@@ -31,7 +31,7 @@ class Parser_Feeds_Test extends Parse_This_TestCase {
 		$this->assertSame( 'https://example.com/podcast/2.mp3', $item['audio'] );
 		$this->assertSame( 'PT1H2M5S', $item['duration'] );
 		$this->assertSame( array( 'Audio' ), $item['category'] );
-		$this->assertSame( 'audio', $item['post_type'] );
+		$this->assertSame( 'audio', $item['post-type'] );
 	}
 
 	/**

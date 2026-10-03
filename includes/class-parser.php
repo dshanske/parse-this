@@ -450,6 +450,11 @@ class Parser {
 	 *                              content when the page has none of its own. Null
 	 *                              (the default) means true when return is 'feed',
 	 *                              false otherwise.
+	 *     @type bool   $always_arrays Whether to always return category, photo,
+	 *                              video, audio, syndication, like-of, repost-of,
+	 *                              bookmark-of and in-reply-to as arrays, as Microsub
+	 *                              does. Default false, which follows jf2: a single
+	 *                              value is not wrapped in an array.
 	 * }
 	 * @return WP_Error|void WP_Error if there is no content to parse.
 	 */
@@ -464,12 +469,83 @@ class Parser {
 			'references'      => true,
 			'location'        => false,
 			'require_content' => null,
+			'always_arrays'   => false,
 		);
 		$args     = wp_parse_args( $args, $defaults );
 		// If not an option then revert to single.
 		if ( ! in_array( $args['return'], array( 'single', 'feed' ), true ) ) {
 			$args['return'] = 'single';
 		}
+		$result = $this->parse_sources( $args );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+		if ( is_array( $this->jf2 ) ) {
+			$this->jf2 = self::format_output( $this->jf2, $args );
+		}
+	}
+
+	/**
+	 * Normalizes the parse result and, for feeds, each item.
+	 *
+	 * Every author becomes a jf2 card (see jf2_author_to_card()). With
+	 * $args['always_arrays'], the properties in ARRAY_PROPERTIES are always arrays.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $jf2  Parse result.
+	 * @param array $args Parse arguments (see parse()).
+	 * @return array The normalized result.
+	 */
+	public static function format_output( $jf2, $args ) {
+		$jf2 = self::format_object( $jf2, $args );
+		if ( isset( $jf2['items'] ) && is_array( $jf2['items'] ) ) {
+			foreach ( $jf2['items'] as $key => $item ) {
+				if ( is_array( $item ) ) {
+					$jf2['items'][ $key ] = self::format_object( $item, $args );
+				}
+			}
+		}
+		return $jf2;
+	}
+
+	/**
+	 * Normalizes one jf2 object; see format_output().
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $jf2  jf2 object.
+	 * @param array $args Parse arguments.
+	 * @return array The normalized object.
+	 */
+	private static function format_object( $jf2, $args ) {
+		if ( array_key_exists( 'author', $jf2 ) ) {
+			$card = jf2_author_to_card( $jf2['author'] );
+			if ( null === $card ) {
+				unset( $jf2['author'] );
+			} else {
+				$jf2['author'] = $card;
+			}
+		}
+		if ( ! empty( $args['always_arrays'] ) ) {
+			foreach ( self::ARRAY_PROPERTIES as $property ) {
+				if ( isset( $jf2[ $property ] ) && ! wp_is_numeric_array( $jf2[ $property ] ) ) {
+					$jf2[ $property ] = array( $jf2[ $property ] );
+				}
+			}
+		}
+		return $jf2;
+	}
+
+	/**
+	 * Runs the parsers for the fetched content and stores the result in $jf2.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $args Parse arguments, with defaults applied (see parse()).
+	 * @return WP_Error|void WP_Error if there is no content to parse.
+	 */
+	private function parse_sources( $args ) {
 		if ( class_exists( RSS::class ) && ( $this->content instanceof \SimplePie\SimplePie || $this->content instanceof \SimplePie ) ) {
 			$this->jf2 = RSS::parse( $this->content, $this->url );
 
@@ -589,6 +665,25 @@ class Parser {
 
 		$this->jf2['_links'] = $this->links;
 	}
+	/**
+	 * Properties that are always arrays with the always_arrays argument. These are
+	 * the properties Microsub specifies as arrays of values.
+	 *
+	 * @since 2.0.0
+	 * @var string[]
+	 */
+	const ARRAY_PROPERTIES = array(
+		'category',
+		'photo',
+		'video',
+		'audio',
+		'syndication',
+		'like-of',
+		'repost-of',
+		'bookmark-of',
+		'in-reply-to',
+	);
+
 	/**
 	 * Response properties. An entry with any of these was marked up on purpose,
 	 * so it counts as having content even without a summary or content.

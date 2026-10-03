@@ -165,4 +165,63 @@ class Parser_Fallbacks_Test extends Parse_This_TestCase {
 		$this->assertSame( '2006-03-21T00:00:00+00:00', $jf2['published'] );
 		$this->assertSame( 'just setting up my #twttr with @biz', $jf2['content']['value'] );
 	}
+
+	/**
+	 * An author found only as a string (here an Open Graph tag) comes back as a card.
+	 */
+	public function test_string_author_becomes_card() {
+		$jf2 = $this->parse_html( '<html><head>' . self::OG . '<meta property="article:author" content="Alex Writer"></head><body><p>Plain page</p></body></html>' );
+
+		$this->assertSame(
+			array(
+				'type' => 'card',
+				'name' => 'Alex Writer',
+			),
+			$jf2['author']
+		);
+	}
+
+	/**
+	 * By default single values follow jf2; always_arrays gives Microsub-style arrays.
+	 */
+	public function test_always_arrays() {
+		$html = '<div class="h-entry"><a class="u-url" href="https://example.com/a/">a</a><img class="u-photo" src="https://example.com/p.jpg"><span class="p-category">one</span><a class="u-like-of" href="https://example.org/">l</a></div>';
+
+		$parser = new ParseThis\Parser();
+		$parser->set( $html, 'https://example.com/a/' );
+		$parser->parse();
+		$jf2 = $parser->get();
+		$this->assertSame( 'https://example.com/p.jpg', $jf2['photo'] );
+		$this->assertSame( 'one', $jf2['category'] );
+
+		$parser->parse( array( 'always_arrays' => true ) );
+		$jf2 = $parser->get();
+		$this->assertSame( array( 'https://example.com/p.jpg' ), $jf2['photo'] );
+		$this->assertSame( array( 'one' ), $jf2['category'] );
+		$this->assertSame( array( 'https://example.org/' ), $jf2['like-of'] );
+	}
+
+	/**
+	 * always_arrays also applies to every feed item.
+	 */
+	public function test_always_arrays_feed_items() {
+		$jf2 = ParseThis\Parser::format_output(
+			array(
+				'type'  => 'feed',
+				'items' => array(
+					array(
+						'type'  => 'entry',
+						'photo' => 'https://example.com/1.jpg',
+					),
+					array(
+						'type'  => 'entry',
+						'photo' => array( 'https://example.com/2.jpg', 'https://example.com/3.jpg' ),
+					),
+				),
+			),
+			array( 'always_arrays' => true )
+		);
+		$this->assertSame( array( 'https://example.com/1.jpg' ), $jf2['items'][0]['photo'] );
+		$this->assertCount( 2, $jf2['items'][1]['photo'] );
+	}
 }
