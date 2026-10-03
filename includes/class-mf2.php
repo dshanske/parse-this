@@ -721,7 +721,14 @@ class MF2 extends MF2_Utils {
 	 * parse_h(). With $args['references'], nested citations are moved to refs.
 	 * Adds the post type from post_type_discovery() as 'post-type'.
 	 *
+	 * Reviews may be published as an h-entry with review-of (a URL, or a nested
+	 * h-cite, h-card, h-event, h-item or h-product) and rating, best and worst,
+	 * as proposed in microformats/h-entry#32, or as an h-entry that is also an
+	 * h-review (which keeps h-review's item). Both get the post type review.
+	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Reads review-of, rating, best and worst, and recognizes
+	 *              h-entry h-review.
 	 *
 	 * @param array $entry h-entry or h-cite microformat.
 	 * @param array $mf    Parsed mf2 document.
@@ -746,6 +753,7 @@ class MF2 extends MF2_Utils {
 			'follow-of',
 			'listen-of',
 			'quotation-of',
+			'review-of',
 			'watch-of',
 			'read-of',
 			'play-of',
@@ -760,7 +768,7 @@ class MF2 extends MF2_Utils {
 		);
 		$data         = self::get_prop_array( $entry, $properties, $args );
 		$data['type'] = self::is_type( $entry, 'h-entry' ) ? 'entry' : 'cite';
-		$properties   = array( 'url', 'weather', 'temperature', 'rsvp', 'featured', 'swarm-coins', 'latitude', 'longitude' );
+		$properties   = array( 'url', 'weather', 'temperature', 'rsvp', 'featured', 'swarm-coins', 'latitude', 'longitude', 'rating', 'best', 'worst' );
 		foreach ( $properties as $property ) {
 			$data[ $property ] = self::get_plaintext( $entry, $property );
 		}
@@ -774,6 +782,10 @@ class MF2 extends MF2_Utils {
 			$data = jf2_references( $data );
 		}
 		$data['post-type'] = post_type_discovery( $data );
+		// Published as both h-entry and h-review, for consumers of either (microformats/h-entry#32).
+		if ( 'entry' === $data['type'] && self::is_type( $entry, 'h-review' ) ) {
+			$data['post-type'] = 'review';
+		}
 		return self::filter_empty( $data );
 	}
 

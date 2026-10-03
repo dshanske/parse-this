@@ -1118,8 +1118,10 @@ class Parser {
 			}
 		}
 
-		// Post type is derived, so derive it again now the gaps are filled.
-		if ( isset( $this->jf2['post-type'] ) && isset( $this->jf2['type'] ) && 'entry' === $this->jf2['type'] ) {
+		// Post type is derived, so derive it again now the gaps are filled. A
+		// review stays one: an h-entry that is also an h-review is a review, and
+		// the jf2 no longer shows the second type.
+		if ( isset( $this->jf2['post-type'] ) && isset( $this->jf2['type'] ) && 'entry' === $this->jf2['type'] && 'review' !== $this->jf2['post-type'] ) {
 			$this->jf2['post-type'] = post_type_discovery( $this->jf2 );
 		}
 
@@ -1176,6 +1178,7 @@ class Parser {
 		'bookmark-of',
 		'favorite-of',
 		'quotation-of',
+		'review-of',
 		'follow-of',
 		'tag-of',
 		'listen-of',

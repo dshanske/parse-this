@@ -58,6 +58,7 @@ Results follow [jf2](https://jf2.spec.indieweb.org/), with a few deliberate diff
 * A feed's entries are in `items`, as in Microsub timelines, rather than the JF2 Feed profile's `children`.
 * Nested citations are stored in `refs`, as XRay does, rather than jf2's `references`.
 * Entries get a `post-type` property from [Post Type Discovery](https://www.w3.org/TR/post-type-discovery/).
+* Reviews can be an h-review, or an h-entry with `review-of` (a URL, or a nested h-cite, h-card, h-event, h-item or h-product) and `rating`, `best` and `worst`, as proposed in [microformats/h-entry#32](https://github.com/microformats/h-entry/issues/32) and published by Post Kinds. Both, and an h-entry that is also an h-review, get the post type `review`.
 * `author` is always a card (or a list of cards), never a plain string.
 * Properties starting with an underscore (`_links`, `_rest`, ...) are internal or debugging data.
 
@@ -163,6 +164,7 @@ Yes. It is tested with ClassicPress 2.7 on PHP 7.4 to 8.3.
 * Fix content HTML losing the text before its first tag, which cut the opening words from most notes.
 * Return an error for HTTP error pages (`not_found`, `unauthorized`, `forbidden`, `http_error`) instead of parsing them as content; a 410 Gone page is still parsed, with `_code`.
 * Microformats: read `follow-of`; read the ingredients, yield, duration, nutrition and instructions of recipes, more event properties, and the replies and likes of reviews; give events, reviews and recipes a `post-type`; keep names and ratings of "0"; and follow Post Type Discovery for entries with a name and no content (articles).
+* Support reviews published as an h-entry with `review-of`, `rating`, `best` and `worst` (microformats/h-entry#32), as Post Kinds publishes them, and h-entry h-review; ratings are also kept on other entries (rated watches, reads and so on).
 * Return `rel=author` authors as jf2 cards, and give results that only meta tags filled the type `entry`.
 * Date posts read through the WordPress REST API from their GMT dates, so they are correct even without the site's timezone.
 * Read YouTube pages in full (they exceed the 1 MB limit) and extract the player data reliably.

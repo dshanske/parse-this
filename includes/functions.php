@@ -456,17 +456,20 @@ if ( ! function_exists( __NAMESPACE__ . '\\post_type_discovery' ) ) {
 	/**
 	 * Determines the IndieWeb post type of a jf2 or mf2 entry.
 	 *
-	 * Response properties decide the type first (rsvp, checkin, like-of,
+	 * Events, reviews and recipes are their own type. For an entry, response
+	 * properties decide the type first (review-of, rsvp, checkin, like-of,
 	 * in-reply-to, ...), then media (video, photo, audio). An entry with a name
-	 * that is not just the start of its content is an article; anything else is
-	 * a note.
+	 * that is not a prefix of its content (or summary) is an article; anything
+	 * else is a note.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Adds review (from review-of, or the review type) and recipe,
+	 *              and follows the spec for a name without content.
 	 *
 	 * @link https://indieweb.org/post-type-discovery
 	 *
 	 * @param array|mixed $jf2 jf2 object, or an mf2 object (converted first).
-	 * @return string The post type, 'event' for events, or an empty string.
+	 * @return string The post type, or an empty string for other types.
 	 */
 	function post_type_discovery( $jf2 ) {
 		if ( ! is_array( $jf2 ) ) {
@@ -484,6 +487,7 @@ if ( ! function_exists( __NAMESPACE__ . '\\post_type_discovery' ) ) {
 		}
 		if ( 'entry' === $jf2['type'] ) {
 			$map = array(
+				'review'    => array( 'review-of' ),
 				'rsvp'      => array( 'rsvp' ),
 				'checkin'   => array( 'checkin' ),
 				'itinerary' => array( 'itinerary' ),
