@@ -31,14 +31,14 @@ abstract class Parse_This_TestCase extends WP_UnitTestCase {
 		parent::set_up();
 		$this->responses = array();
 		$this->requests  = array();
-		add_filter( 'pre_http_request', array( $this, 'mock_http' ), 10, 3 );
+		add_filter( 'pre_http_request', array( $this, 'mock_http' ), 20, 3 );
 	}
 
 	/**
 	 * Removes the HTTP mock.
 	 */
 	public function tear_down() {
-		remove_filter( 'pre_http_request', array( $this, 'mock_http' ), 10 );
+		remove_filter( 'pre_http_request', array( $this, 'mock_http' ), 20 );
 		parent::tear_down();
 	}
 
@@ -94,6 +94,10 @@ abstract class Parse_This_TestCase extends WP_UnitTestCase {
 	 * @return array|WP_Error Mocked response, or WP_Error for an unmocked URL.
 	 */
 	public function mock_http( $pre, $args, $url ) {
+		// Another filter (such as Parser::fetch_feed() reusing a response) already answered.
+		if ( false !== $pre ) {
+			return $pre;
+		}
 		$this->requests[] = array(
 			'url'  => $url,
 			'args' => $args,

@@ -253,20 +253,43 @@ class Parser {
 	 * KSES sanitizer still runs, as for any feed WordPress fetches.
 	 *
 	 * @since 1.0.0
-	 * @since 2.0.0 Uses core's fetch_feed() instead of a copy of it.
+	 * @since 2.0.0 Uses core's fetch_feed() instead of a copy of it. Added $response.
 	 *
-	 * @param string $url Feed URL.
+	 * @param string     $url      Feed URL.
+	 * @param array|null $response Optional. A response already fetched for
+	 *                             $url. It is handed to SimplePie instead of
+	 *                             downloading the feed again.
 	 * @return \SimplePie|\SimplePie\SimplePie|\WP_Error The initialized feed, or
 	 *                                                   WP_Error if SimplePie
 	 *                                                   reports an error.
 	 */
-	public static function fetch_feed( $url ) {
+	public static function fetch_feed( $url, $response = null ) {
+		$url     = pt_secure_rewrite( $url );
 		$options = static function ( $feed ) {
 			$feed->enable_cache( false );
 			$feed->strip_htmltags( false );
 		};
 		add_action( 'wp_feed_options', $options );
-		$feed = \fetch_feed( pt_secure_rewrite( $url ) );
+
+		// Serve the response we already have to SimplePie's request for this URL, once.
+		$reuse = null;
+		if ( is_array( $response ) && ! is_wp_error( $response ) ) {
+			$reuse = static function ( $pre, $args, $request_url ) use ( &$response, $url ) {
+				if ( null !== $response && normalize_url( $request_url ) === normalize_url( $url ) ) {
+					$cached   = $response;
+					$response = null;
+					return $cached;
+				}
+				return $pre;
+			};
+			add_filter( 'pre_http_request', $reuse, 1, 3 );
+		}
+
+		$feed = \fetch_feed( $url );
+
+		if ( $reuse ) {
+			remove_filter( 'pre_http_request', $reuse, 1 );
+		}
 		remove_action( 'wp_feed_options', $options );
 		return $feed;
 	}
@@ -334,7 +357,7 @@ class Parser {
 		if ( empty( $url ) || ! wp_http_validate_url( $url ) ) {
 			return new \WP_Error( 'invalid-url', __( 'A valid URL was not provided.', 'parse-this' ) );
 		}
-		$url = pt_secure_rewrite( $url );
+		$url      = pt_secure_rewrite( $url );
 		$response = pt_remote_get( $url, array( 'redirection' => 0 ), array() );
 		$redirect = wp_remote_retrieve_header( $response, 'location' );
 		if ( ! $redirect ) {
@@ -396,7 +419,7 @@ class Parser {
 		// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway.
 		if ( class_exists( RSS::class ) && ( in_array( $this->content_type, array( 'application/rss+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/xml' ), true ) ) ) {
 			// Get a SimplePie feed object from the specified feed source.
-			$content = self::fetch_feed( $url );
+			$content = self::fetch_feed( $url, $response );
 			if ( is_wp_error( $content ) ) {
 				return false;
 			}

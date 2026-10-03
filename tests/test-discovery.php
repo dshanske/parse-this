@@ -51,6 +51,7 @@ class Discovery_Test extends Parse_This_TestCase {
 		$results = ( new ParseThis\Discovery() )->fetch( 'https://example.com/podcast/feed/' )['results'];
 		$this->assertSame( 'RSS', $results[0]['_feed_type'] );
 		$this->assertSame( 'Example Podcast', $results[0]['name'] );
+		$this->assertCount( 1, $this->requests ); // P-1.
 	}
 
 	/**

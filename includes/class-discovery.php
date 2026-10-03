@@ -141,7 +141,7 @@ class Discovery {
 		}
 		// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway.
 		if ( ( in_array( $content_type, array( 'application/rss+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/xml' ), true ) ) ) {
-			$content = Parser::fetch_feed( $url );
+			$content = Parser::fetch_feed( $url, $response );
 			if ( is_wp_error( $content ) ) {
 				return $content;
 			}

@@ -83,6 +83,8 @@ class Parser_Fetch_Test extends Parse_This_TestCase {
 		$this->assertSame( 'feed', $jf2['type'] );
 		$this->assertCount( 2, $jf2['items'] );
 		$this->assertSame( 0, (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_feed\\_%'" ) );
+		// The feed is downloaded once: SimplePie reuses fetch()'s response (P-1).
+		$this->assertCount( 1, $this->requests );
 	}
 
 	/**
