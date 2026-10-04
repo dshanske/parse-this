@@ -77,6 +77,7 @@ The endpoint requires the `edit_posts` capability (Contributors and above); the 
 * `pt_rewrite_secure`: the list of domains whose `http://` URLs are upgraded to `https://` before fetching.
 * `parse_this_img_filters`: an image URL found in a page, after the built-in exclusions (ads, spinners, tracking pixels and so on). Return an empty string to drop it.
 * `parse_this_url_shorteners`: the hosts treated as link shorteners. Links to them in a summary are expanded to where they redirect; other links are left as they are, without a request.
+* `parse_this_native_html_parser`: whether to parse HTML with PHP's own HTML5 parser on PHP 8.4 and later. Default true. Return false to use the bundled masterminds/html5 parser instead; the two only differ on invalid markup, where PHP's parser does what browsers do.
 * `parse_this_max_requests`: how many further requests one parse may make for followed author pages and short-link expansion. Default 10. Receives the URL.
 * `parse_this_cache_lifetime`: how long REST endpoint results are cached, in seconds. Default 15 minutes. Return 0 to turn caching off. Receives the URL.
 * `parse_this_rest_api_jf2_type`: the jf2 type for a post read through a site's WordPress REST API. Default `entry`. Receives the REST API post object, which includes its WordPress post type, and the site's REST API root URL.
@@ -180,6 +181,7 @@ Yes. It is tested with ClassicPress 2.7 on PHP 7.4 to 8.3.
 * Microformats: read `follow-of`; read the ingredients, yield, duration, nutrition and instructions of recipes, more event properties, and the replies and likes of reviews; give events, reviews and recipes a `post-type`; keep names and ratings of "0"; and follow Post Type Discovery for entries with a name and no content (articles).
 * Move any nested object with a URL to `refs`, not only citations, keeping the result one level deep, and pass unknown microformats properties through instead of dropping them.
 * Support reviews published as an h-entry with `review-of`, `rating`, `best` and `worst` (microformats/h-entry#32), as Post Kinds publishes them, and h-entry h-review; ratings are also kept on other entries (rated watches, reads and so on).
+* Parse HTML with PHP's own HTML5 parser on PHP 8.4 and later: several times faster than the bundled parser, and it handles invalid markup as browsers do. The `parse_this_native_html_parser` filter turns it off.
 * Add the `PARSE_THIS_VERSION` constant and the `parse_this_loaded` action, so plugins can require Parse This instead of bundling it.
 * Return `rel=author` authors as jf2 cards, and give results that only meta tags filled the type `entry`.
 * Date posts read through the WordPress REST API from their GMT dates, so they are correct even without the site's timezone.
