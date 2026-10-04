@@ -430,7 +430,17 @@ class Parser_Fallbacks_Test extends Parse_This_TestCase {
 		sort( $keys );
 		$this->assertSame( array( 'https://alice.example/', 'https://example.org/b' ), $keys );
 		$this->assertSame( 'Bookmarked', $jf2['refs']['https://example.org/b']['name'] );
-		$this->assertSame( array( 'https://alice.example/' ), $jf2['category'] );
+		// The tag with an unsafe URL stays inline, without it; the safe one is a reference.
+		$this->assertSame(
+			array(
+				array(
+					'name' => 'Alice',
+					'type' => 'card',
+				),
+				'https://alice.example/',
+			),
+			$jf2['category']
+		);
 	}
 
 	/**

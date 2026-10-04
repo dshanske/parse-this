@@ -455,7 +455,8 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 		$jf2 = $parse( '<article class="h-entry h-review"><span class="p-name">Review</span><div class="p-item h-product"><a class="u-url p-name" href="https://product.example/">Widget</a></div><data class="p-rating" value="3"></data><div class="e-content">Fine.</div></article>' );
 		$this->assertSame( 'entry', $jf2['type'] );
 		$this->assertSame( 'review', $jf2['post-type'] );
-		$this->assertSame( 'Widget', $jf2['item']['name'] );
+		$this->assertSame( array( 'https://product.example/' ), $jf2['item'] );
+		$this->assertSame( 'Widget', $jf2['refs']['https://product.example/']['name'] );
 		$this->assertSame( '3', $jf2['rating'] );
 
 		// A rating alone doesn't make a review.
@@ -474,5 +475,93 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 				)
 			)
 		);
+	}
+
+	/**
+	 * Any nested object with a URL moves to refs, keeping the result one level deep (C-57).
+	 */
+	public function test_any_nested_object_moves_to_refs() {
+		$html = '<div class="h-entry"><a class="u-url" href="https://example.com/a/">a</a><div class="e-content">Text</div>'
+			. '<div class="p-author h-card"><a class="u-url p-name" href="https://example.com/">Me</a></div>'
+			. '<div class="u-in-reply-to h-event"><a class="u-url p-name" href="https://ev.example/1">Meetup</a>'
+			. '<div class="p-location h-card"><a class="u-url p-name" href="https://venue.example/">Venue</a><data class="p-latitude" value="45.5"></data><data class="p-longitude" value="-122.6"></data></div></div>'
+			. '<div class="u-repost-of h-entry"><a class="u-url" href="https://post.example/9">p</a><span class="p-name">Reposted</span></div>'
+			. '<div class="p-location h-card"><a class="u-url p-name" href="https://venue.example/">Venue</a><data class="p-latitude" value="45.5"></data><data class="p-longitude" value="-122.6"></data></div>'
+			. '<div class="p-checkin h-adr"><span class="p-locality">Portland</span></div>'
+			. '</div>';
+		$parser = new ParseThis\Parser();
+		$parser->set( $html, 'https://example.com/a/' );
+		$parser->parse();
+		$jf2 = $parser->get();
+
+		$this->assertSame( array( 'https://ev.example/1' ), $jf2['in-reply-to'] );
+		$this->assertSame( array( 'https://post.example/9' ), $jf2['repost-of'] );
+		$this->assertSame( array( 'https://venue.example/' ), $jf2['location'] );
+		$this->assertSame( 'event', $jf2['refs']['https://ev.example/1']['type'] );
+		$this->assertSame( 'Reposted', $jf2['refs']['https://post.example/9']['name'] );
+		// The event's own location is merged into the same refs, not nested.
+		$this->assertSame( array( 'https://venue.example/' ), $jf2['refs']['https://ev.example/1']['location'] );
+		$this->assertSame( 'Venue', $jf2['refs']['https://venue.example/']['name'] );
+		$this->assertArrayNotHasKey( 'refs', $jf2['refs']['https://ev.example/1'] );
+		// Authors stay cards, and an object without a URL stays in place.
+		$this->assertSame( 'Me', $jf2['author']['name'] );
+		$this->assertSame( 'Portland', $jf2['checkin']['locality'] );
+
+		// The location argument still finds a location that moved to refs.
+		$parser->parse( array( 'location' => true ) );
+		$jf2 = $parser->get();
+		$this->assertSame( 'Venue', $jf2['location'] );
+		$this->assertSame( '45.5', $jf2['latitude'] );
+
+		// A feed's items are not references.
+		$feed = ParseThis\MF2::parse( '<div class="h-feed"><div class="h-entry"><a class="u-url" href="https://example.com/1">1</a></div><div class="h-entry"><a class="u-url" href="https://example.com/2">2</a></div></div>', 'https://example.com/', array( 'return' => 'feed', 'references' => true ) );
+		$this->assertCount( 2, $feed['items'] );
+		$this->assertArrayNotHasKey( 'refs', $feed );
+	}
+
+	/**
+	 * Properties Parse This doesn't know are passed through (C-58).
+	 */
+	public function test_unknown_properties_are_passed_through() {
+		$parse = function ( $html, $args = array() ) {
+			$parser = new ParseThis\Parser();
+			$parser->set( $html, 'https://example.com/a/' );
+			$parser->parse( $args );
+			return $parser->get();
+		};
+
+		$jf2 = $parse(
+			'<div class="h-entry"><a class="u-url" href="https://example.com/a/">a</a><p class="p-name e-content">Hello there</p>'
+			. '<span class="p-mood">happy</span>'
+			. '<div class="e-x-notes">Some <b>notes</b> <a href="javascript:x()">x</a></div>'
+			. '<div class="p-x-custom h-x-thing"><a class="u-url p-name" href="https://thing.example/">Thing</a><span class="p-colour">blue</span></div>'
+			. '</div>'
+		);
+		$this->assertSame( 'happy', $jf2['mood'] );
+		$this->assertStringContainsString( '<b>notes</b>', $jf2['x-notes']['html'] );
+		$this->assertStringNotContainsString( 'javascript', $jf2['x-notes']['html'] );
+		// The nested unknown type keeps its own unknown property, and moves to refs.
+		$this->assertSame( array( 'https://thing.example/' ), $jf2['x-custom'] );
+		$this->assertSame( 'x-thing', $jf2['refs']['https://thing.example/']['type'] );
+		$this->assertSame( 'blue', $jf2['refs']['https://thing.example/']['colour'] );
+		// A name that repeats the content is still dropped, not passed back through.
+		$this->assertArrayNotHasKey( 'name', $jf2 );
+
+		// Without references, the nested object stays in place.
+		$jf2 = $parse( '<div class="h-entry"><p class="e-content">Hi</p><div class="p-x-custom h-x-thing"><a class="u-url p-name" href="https://thing.example/">Thing</a></div></div>', array( 'references' => false ) );
+		$this->assertSame( 'Thing', $jf2['x-custom']['name'] );
+
+		$card = $parse( '<div class="h-card"><a class="u-url p-name" href="https://example.com/a/">Jane</a><span class="p-nickname">jd</span><span class="p-tel">555-0100</span><span class="p-org">Example Org</span></div>' );
+		$this->assertSame( 'jd', $card['nickname'] );
+		$this->assertSame( '555-0100', $card['tel'] );
+		$this->assertSame( 'Example Org', $card['org'] );
+
+		$resume = ParseThis\MF2::parse( '<div class="h-resume"><span class="p-name">CV</span><span class="p-skill">PHP</span><span class="p-skill">WordPress</span></div>', 'https://example.com/cv', array() );
+		$this->assertSame( array( 'PHP', 'WordPress' ), $resume['skill'] );
+
+		// A consumed property (description becomes content) is not repeated.
+		$review = ParseThis\MF2::parse( '<div class="h-review"><span class="p-name">Old</span><div class="e-description">Described</div></div>', 'https://example.com/r', array() );
+		$this->assertSame( 'Described', $review['content']['text'] );
+		$this->assertArrayNotHasKey( 'description', $review );
 	}
 }

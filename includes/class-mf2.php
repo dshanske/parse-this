@@ -25,6 +25,102 @@ defined( 'ABSPATH' ) || exit;
 class MF2 extends MF2_Utils {
 
 	/**
+	 * Properties the type parsers read, whether they output them as they are,
+	 * under another name (description becomes content) or not at all (a name
+	 * that repeats the content). Anything else is passed through by
+	 * add_unknown_properties().
+	 *
+	 * @since 2.0.0
+	 * @var string[]
+	 */
+	const KNOWN_PROPERTIES = array(
+		'additional-name',
+		'altitude',
+		'attendee',
+		'audio',
+		'author',
+		'bday',
+		'best',
+		'bookmark-of',
+		'brand',
+		'callsign',
+		'category',
+		'checked-in-by',
+		'checkin',
+		'content',
+		'country-name',
+		'description',
+		'destination',
+		'duration',
+		'email',
+		'end',
+		'extended-address',
+		'family-name',
+		'favorite-of',
+		'featured',
+		'follow-of',
+		'geo',
+		'given-name',
+		'honorific-prefix',
+		'honorific-suffix',
+		'identifier',
+		'in-reply-to',
+		'ingredient',
+		'instructions',
+		'invitee',
+		'item',
+		'itinerary',
+		'jam-of',
+		'label',
+		'latitude',
+		'like-of',
+		'listen-of',
+		'locality',
+		'location',
+		'longitude',
+		'name',
+		'note',
+		'num',
+		'number',
+		'nutrition',
+		'operator',
+		'organizer',
+		'origin',
+		'photo',
+		'pk-ate',
+		'pk-drank',
+		'play-of',
+		'post-office-box',
+		'postal-code',
+		'price',
+		'published',
+		'quotation-of',
+		'rating',
+		'read-of',
+		'region',
+		'repost-of',
+		'review-of',
+		'rsvp',
+		'start',
+		'street-address',
+		'summary',
+		'swarm-coins',
+		'syndication',
+		'tag-of',
+		'temperature',
+		'transit-type',
+		'uid',
+		'unit',
+		'updated',
+		'url',
+		'video',
+		'watch-of',
+		'weather',
+		'worst',
+		'yield',
+	);
+
+	/**
 	 * Author pages already fetched during this request, keyed by URL.
 	 *
 	 * @since 2.0.0
@@ -511,9 +607,14 @@ class MF2 extends MF2_Utils {
 	 *
 	 * Handles h-feed, h-card, h-entry, h-cite, h-event, h-review, h-recipe,
 	 * h-listing, h-product, h-resume, h-item, h-leg, h-adr, h-geo and
-	 * h-measure. Anything else goes to parse_hunknown().
+	 * h-measure. Anything else goes to parse_hunknown(). Properties no parser
+	 * knows are then passed through (see add_unknown_properties()), and with
+	 * $args['references'], nested objects with a URL are moved to refs (see
+	 * jf2_references()).
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Applies references to every type, not only entries, and
+	 *              passes unknown properties through.
 	 *
 	 * @param array $item Microformat.
 	 * @param array $mf   Parsed mf2 document.
@@ -521,6 +622,62 @@ class MF2 extends MF2_Utils {
 	 * @return array|null jf2 for the item.
 	 */
 	public static function parse_item( $item, $mf, $args ) {
+		$data = self::parse_item_by_type( $item, $mf, $args );
+		$data = self::add_unknown_properties( $data, $item, $args );
+		if ( is_array( $data ) && ! empty( $args['references'] ) ) {
+			$data = jf2_references( $data );
+		}
+		return $data;
+	}
+
+	/**
+	 * Adds the properties of a microformat that no type parser reads.
+	 *
+	 * Microformats parsing doesn't depend on a vocabulary, so properties
+	 * Parse This doesn't know (new or experimental ones, h-x-* extensions, an
+	 * h-card's org or nickname) are kept, converted like any other property
+	 * by get_prop_array(): one value as itself, several as a list, nested
+	 * microformats as jf2. Properties in KNOWN_PROPERTIES, and any the type
+	 * parser already set, are left alone. An h-card returned as the feed it
+	 * contains gets nothing added.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array|null $data jf2 from the type parser.
+	 * @param array      $item The microformat it came from.
+	 * @param array      $args Parse arguments (see Parser::parse()).
+	 * @return array|null $data with the unknown properties added.
+	 */
+	private static function add_unknown_properties( $data, $item, $args ) {
+		if ( ! is_array( $data ) || empty( $item['properties'] ) || ! is_array( $item['properties'] ) ) {
+			return $data;
+		}
+		if ( isset( $data['type'] ) && 'feed' === $data['type'] && ! self::is_type( $item, 'h-feed' ) ) {
+			return $data;
+		}
+		$unknown = array();
+		foreach ( array_keys( $item['properties'] ) as $property ) {
+			if ( is_string( $property ) && ! in_array( $property, self::KNOWN_PROPERTIES, true ) && ! array_key_exists( $property, $data ) ) {
+				$unknown[] = $property;
+			}
+		}
+		if ( $unknown ) {
+			$data = array_merge( $data, self::filter_empty( self::get_prop_array( $item, $unknown, $args ) ) );
+		}
+		return $data;
+	}
+
+	/**
+	 * Converts a microformat into jf2 with the parser for its type.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $item Microformat.
+	 * @param array $mf   Parsed mf2 document.
+	 * @param array $args Parse arguments (see Parser::parse()).
+	 * @return array|null jf2 for the item.
+	 */
+	private static function parse_item_by_type( $item, $mf, $args ) {
 		if ( self::is_type( $item, 'h-feed' ) ) {
 			return self::parse_hfeed( $item, $mf, $args );
 		} elseif ( self::is_type( $item, 'h-card' ) ) {
@@ -718,8 +875,7 @@ class MF2 extends MF2_Utils {
 	 *
 	 * Reads the response properties (in-reply-to, like-of, repost-of and so on),
 	 * media, location and check-in data, then the common properties from
-	 * parse_h(). With $args['references'], nested citations are moved to refs.
-	 * Adds the post type from post_type_discovery() as 'post-type'.
+	 * parse_h(). Adds the post type from post_type_discovery() as 'post-type'.
 	 *
 	 * Reviews may be published as an h-entry with review-of (a URL, or a nested
 	 * h-cite, h-card, h-event, h-item or h-product) and rating, best and worst,
@@ -777,10 +933,7 @@ class MF2 extends MF2_Utils {
 		if ( isset( $data['rsvp'] ) && is_string( $data['rsvp'] ) ) {
 			$data['rsvp'] = strtolower( trim( $data['rsvp'] ) );
 		}
-		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
-		if ( $args['references'] ) {
-			$data = jf2_references( $data );
-		}
+		$data              = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
 		$data['post-type'] = post_type_discovery( $data );
 		// Published as both h-entry and h-review, for consumers of either (microformats/h-entry#32).
 		if ( 'entry' === $data['type'] && self::is_type( $entry, 'h-review' ) ) {
