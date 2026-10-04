@@ -529,18 +529,21 @@ class Parser {
 		if ( is_array( $ct ) ) {
 			$this->content_type = array_shift( $ct );
 		}
-						$this->content_type = trim( $this->content_type );
-						// List of content types we know how to handle.
+		$this->content_type = trim( $this->content_type );
+		$content            = wp_remote_retrieve_body( $response );
+		// Feeds and JSON are often served with a generic or wrong content type.
+		$this->content_type = pt_sniff_content_type( $this->content_type, $content );
+		// List of content types we know how to handle.
 		if ( ! self::supported_content( $this->content_type ) ) {
 			return new \WP_Error( 'content-type', 'Content Type is Not Supported', array( 'content-type' => $this->content_type ) );
 		}
 
-		$content = wp_remote_retrieve_body( $response );
-
 		// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway.
 		if ( class_exists( RSS::class ) && ( in_array( $this->content_type, array( 'application/rss+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/xml' ), true ) ) ) {
-			// Get a SimplePie feed object from the specified feed source.
-			$content = self::fetch_feed( $url, $response );
+			// Get a SimplePie feed object from the specified feed source. SimplePie
+			// goes by the content type, so give it the sniffed one.
+			$response['headers']['content-type'] = $this->content_type;
+			$content                             = self::fetch_feed( $url, $response );
 			if ( is_wp_error( $content ) ) {
 				return false;
 			}

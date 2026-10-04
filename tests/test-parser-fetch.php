@@ -263,4 +263,35 @@ class Parser_Fetch_Test extends Parse_This_TestCase {
 		$this->assertSame( 'This post has been deleted.', $jf2['content']['text'] );
 		$this->assertSame( 410, $jf2['_code'] );
 	}
+
+	/**
+	 * Feeds and JSON served with a generic or wrong content type are recognized (X-11).
+	 */
+	public function test_content_type_sniffing() {
+		$rss = '<?xml version="1.0"?><rss version="2.0"><channel><title>Sniffed</title><link>https://example.com/</link><item><title>One</title><link>https://example.com/1</link><description>First post</description></item></channel></rss>';
+		$this->respond( 'https://example.com/rss-as-text', $rss, 'text/plain' );
+		$jf2 = $this->fetch_and_parse( 'https://example.com/rss-as-text' );
+		$this->assertSame( 'feed', $jf2['type'] );
+		$this->assertSame( 'Sniffed', $jf2['name'] );
+
+		$atom = '<?xml version="1.0" encoding="utf-8"?><!-- generator --><feed xmlns="http://www.w3.org/2005/Atom"><title>Atom</title><id>urn:x</id><updated>2026-01-01T00:00:00Z</updated><entry><title>E</title><id>urn:e</id><link href="https://example.com/e"/><updated>2026-01-01T00:00:00Z</updated><content>Entry</content></entry></feed>';
+		$this->respond( 'https://example.com/atom-as-html', $atom, 'text/html; charset=utf-8' );
+		$jf2 = $this->fetch_and_parse( 'https://example.com/atom-as-html' );
+		$this->assertSame( 'feed', $jf2['type'] );
+		$this->assertSame( 'Atom', $jf2['name'] );
+
+		$this->respond( 'https://example.com/feed.json', wp_json_encode( array( 'version' => 'https://jsonfeed.org/version/1.1', 'title' => 'JSON', 'items' => array( array( 'id' => '1', 'url' => 'https://example.com/1', 'content_text' => 'Hi' ) ) ) ), 'text/plain' );
+		$jf2 = $this->fetch_and_parse( 'https://example.com/feed.json' );
+		$this->assertSame( 'feed', $jf2['type'] );
+		$this->assertSame( 'JSON', $jf2['name'] );
+
+		$this->respond( 'https://example.com/mf2.json', wp_json_encode( array( 'items' => array( array( 'type' => array( 'h-entry' ), 'properties' => array( 'name' => array( 'From mf2 JSON' ), 'content' => array( 'Body' ) ) ) ), 'rels' => array(), 'rel-urls' => array() ) ), 'application/octet-stream' );
+		$jf2 = $this->fetch_and_parse( 'https://example.com/mf2.json' );
+		$this->assertSame( 'From mf2 JSON', $jf2['name'] );
+
+		// HTML, and XHTML with an XML declaration, are left as HTML.
+		$this->assertSame( 'text/html', ParseThis\pt_sniff_content_type( 'text/html', '<?xml version="1.0"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"><body><p>Hi</p></body></html>' ) );
+		$this->assertSame( 'text/html', ParseThis\pt_sniff_content_type( 'text/html', '<!DOCTYPE html><html><body>{ not json }</body></html>' ) );
+		$this->assertSame( 'application/rss+xml', ParseThis\pt_sniff_content_type( 'application/xml', "\xEF\xBB\xBF<?xml version=\"1.0\"?>\n<rdf:RDF xmlns:rdf=\"x\"></rdf:RDF>" ) );
+	}
 }
