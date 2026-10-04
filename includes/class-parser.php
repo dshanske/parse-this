@@ -226,11 +226,15 @@ class Parser {
 	/**
 	 * Sanitizes HTML content for display.
 	 *
-	 * Decodes entities, removes comments and <script> elements, then filters
-	 * the result through wp_kses() with an allow-list of text, media and
-	 * structural tags.
+	 * Removes comments and <script> elements, then filters the result through
+	 * wp_kses() with an allow-list of text, media and structural tags.
+	 *
+	 * Entities are left to the HTML parser: text the author escaped (such as
+	 * &lt;code&gt; in a sentence, or a < in a code sample) stays text.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 No longer decodes entities before parsing, which turned
+	 *              escaped text into markup.
 	 *
 	 * @param string $content HTML to clean. Non-strings are returned unchanged.
 	 * @param array  $strip   Optional. Tags to remove from the allow-list, as keys
@@ -241,8 +245,6 @@ class Parser {
 		if ( ! is_string( $content ) ) {
 			return $content;
 		}
-		// Decode escaped entities so that they can be stripped.
-		$content     = html_entity_decode( $content, ENT_COMPAT | ENT_HTML401, 'UTF-8' );
 		$content = preg_replace( '/<!--(.|\s)*?-->/', '', $content );
 		// Parse it as a document body: parsed as a whole document, text before
 		// the first element was dropped.

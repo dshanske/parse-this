@@ -472,4 +472,24 @@ class Parser_Fallbacks_Test extends Parse_This_TestCase {
 		$jf2 = $this->parse_html( '<html><head><meta property="og:type" content="profile"><meta property="og:title" content="Jane"></head><body></body></html>' );
 		$this->assertSame( 'card', $jf2['type'] );
 	}
+
+	/**
+	 * Escaped text stays text in cleaned HTML (C-59).
+	 */
+	public function test_clean_content_keeps_escaped_text() {
+		// XRay's html-escaping-in-html fixture.
+		$this->assertSame(
+			'This content has some <i>HTML escaped</i> entities such as &amp; ampersand, "quote", escaped &lt;code&gt; HTML tags, an ümlaut.',
+			ParseThis\Parser::clean_content( 'This content has some <i>HTML escaped</i> entities such as &amp; ampersand, &quot;quote&quot;, escaped &lt;code&gt; HTML tags, an &uuml;mlaut.' )
+		);
+		// A < in a code sample survives.
+		$this->assertSame(
+			'<p><code>mysql --database="w" &lt; ./schema.sql</code></p>',
+			ParseThis\Parser::clean_content( '<p><code>mysql --database="w" &lt; ./schema.sql</code></p>' )
+		);
+		// Escaped script tags shown as text stay visible, as text.
+		$this->assertSame( '&lt;script&gt;alert(1)&lt;/script&gt; text', ParseThis\Parser::clean_content( '&lt;script&gt;alert(1)&lt;/script&gt; text' ) );
+		// Named and numeric entities still come out as characters.
+		$this->assertSame( 'café — x', ParseThis\Parser::clean_content( 'caf&eacute; &#8212; x' ) );
+	}
 }
