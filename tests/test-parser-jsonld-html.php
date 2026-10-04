@@ -215,7 +215,9 @@ class Parser_JSONLD_HTML_Test extends Parse_This_TestCase {
 		$this->assertSame( '0', $jf2['worst'] );
 		$this->assertSame( 'It works well.', $jf2['content']['text'] );
 		$this->assertSame( 'Jane', $jf2['author']['name'] );
-		$this->assertSame( 'https://shop.example/widget', $jf2['refs']['https://shop.example/widget']['url'] ?? $jf2['review-of']['url'] );
+		// The reviewed product moves to refs, like nested objects from microformats.
+		$this->assertSame( array( 'https://shop.example/widget' ), $jf2['review-of'] );
+		$this->assertSame( 'Widget', $jf2['refs']['https://shop.example/widget']['name'] );
 
 		// A review of a book (no specific converter) is of a citation.
 		$jf2 = $this->parse_jsonld_graph(
