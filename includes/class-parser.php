@@ -107,6 +107,15 @@ class Parser {
 	private $code = 0;
 
 	/**
+	 * Kind of source the result was read from: mf2+html, html, mf2+json,
+	 * jf2+json, feed+json, xml (RSS or Atom) or wordpress (REST API).
+	 *
+	 * @since 2.0.0
+	 * @var string
+	 */
+	private $source_format = '';
+
+	/**
 	 * Sets up a parser for a URL.
 	 *
 	 * URLs on a list of hosts known to support HTTPS are upgraded to https://
@@ -443,6 +452,23 @@ class Parser {
 	}
 
 	/**
+	 * Reads a status code a page declares with <meta http-equiv="Status">.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param DOMDocument $doc Parsed page.
+	 * @return int The status code, or 0 if there is none.
+	 */
+	private static function meta_status( $doc ) {
+		foreach ( $doc->getElementsByTagName( 'meta' ) as $meta ) {
+			if ( 'status' === strtolower( trim( $meta->getAttribute( 'http-equiv' ) ) ) && preg_match( '/^\s*(\d{3})/', $meta->getAttribute( 'content' ), $match ) ) {
+				return (int) $match[1];
+			}
+		}
+		return 0;
+	}
+
+	/**
 	 * Builds the error returned for an HTTP error response.
 	 *
 	 * @since 2.0.0
@@ -515,6 +541,10 @@ class Parser {
 			return self::http_error( $this->code );
 		}
 
+		// Work from where the document is after any redirects, so relative links
+		// resolve against it and site parsers see its real host.
+		$url = pt_effective_url( $url, $response );
+
 		$raw = wp_remote_retrieve_header( $response, 'link' );
 		if ( ! empty( $raw ) ) {
 			$this->links = pt_parse_header_links( $raw );
@@ -524,8 +554,8 @@ class Parser {
 		if ( is_array( $this->content_type ) ) {
 			$this->content_type = array_pop( $this->content_type );
 		}
-						// Strip any character set off the content type.
-						$ct = explode( ';', $this->content_type );
+		// Strip any character set off the content type.
+		$ct = explode( ';', $this->content_type );
 		if ( is_array( $ct ) ) {
 			$this->content_type = array_shift( $ct );
 		}
@@ -549,6 +579,7 @@ class Parser {
 			}
 
 			$this->set( $content, $url, true );
+			$this->source_format = 'xml';
 			return true;
 		}
 
@@ -556,6 +587,7 @@ class Parser {
 			$content = json_decode( $content, true );
 			// Parsed mf2 is passed to the MF2 parser as content; jf2 is already in its final form.
 			$this->set( $content, $url, ( 'application/mf2+json' !== $this->content_type ) );
+			$this->source_format = ( 'application/mf2+json' === $this->content_type ) ? 'mf2+json' : 'jf2+json';
 			return true;
 		}
 
@@ -565,6 +597,8 @@ class Parser {
 			if ( class_exists( JSONFeed::class ) && isset( $content['version'] ) && false !== strpos( $content['version'], 'https://jsonfeed.org/version/' ) ) {
 				$content = JSONFeed::to_jf2( $content, $url );
 				$this->set( $content, $url, true );
+				$this->source_format = 'feed+json';
+				return true;
 				// This means we are probing a specific REST Endpoint as they return this.
 			} elseif ( wp_remote_retrieve_header( $response, 'x-wp-total' ) ) {
 				// Site details come from the REST API root, not the collection URL.
@@ -574,6 +608,8 @@ class Parser {
 				$content['_pages'] = wp_remote_retrieve_header( $response, 'x-wp-totalpages' );
 
 				$this->set( $content, $url, true );
+				$this->source_format = 'wordpress';
+				return true;
 			}
 		}
 
@@ -669,8 +705,11 @@ class Parser {
 		}
 		if ( is_array( $this->jf2 ) ) {
 			$this->jf2 = self::format_output( $this->jf2, $args );
-			if ( 410 === $this->code ) {
-				$this->jf2['_code'] = 410;
+			if ( $this->code ) {
+				$this->jf2['_code'] = $this->code;
+			}
+			if ( $this->source_format ) {
+				$this->jf2['_source_format'] = $this->source_format;
 			}
 		}
 	}
@@ -1069,8 +1108,8 @@ class Parser {
 	 */
 	private function parse_sources( $args ) {
 		if ( class_exists( RSS::class ) && ( $this->content instanceof \SimplePie\SimplePie || $this->content instanceof \SimplePie ) ) {
-			$this->jf2 = RSS::parse( $this->content, $this->url );
-
+			$this->jf2           = RSS::parse( $this->content, $this->url );
+			$this->source_format = 'xml';
 			return;
 		} elseif ( $this->doc instanceof \DOMDocument ) {
 			$content = $this->doc;
@@ -1085,8 +1124,9 @@ class Parser {
 		if ( 'application/json' === $this->content_type && empty( $this->jf2 ) ) {
 			$rest = RESTAPI::parse( $content, $this->url, $args );
 			if ( is_array( $rest ) && ! empty( $rest ) ) {
-				$this->jf2          = $rest;
-				$this->jf2['_rest'] = $content;
+				$this->jf2           = $rest;
+				$this->jf2['_rest']  = $content;
+				$this->source_format = 'wordpress';
 				return;
 			}
 			// Unrecognized JSON: return it as is.
@@ -1108,6 +1148,20 @@ class Parser {
 		// Ensure not already preparsed.
 		if ( empty( $this->jf2 ) ) {
 			$this->jf2 = MF2::parse( $content, $this->url, $args );
+			if ( ! $this->source_format ) {
+				if ( is_array( $content ) ) {
+					$this->source_format = 'mf2+json';
+				} else {
+					$this->source_format = empty( $this->jf2 ) ? 'html' : 'mf2+html';
+				}
+			}
+		}
+		// A page can declare its own status, as a deleted post's stub does.
+		if ( $this->doc instanceof \DOMDocument ) {
+			$status = self::meta_status( $this->doc );
+			if ( $status ) {
+				$this->code = $status;
+			}
 		}
 
 		// Microformats come first. A list means several top-level items, none of them this page.

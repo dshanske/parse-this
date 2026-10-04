@@ -487,6 +487,33 @@ if ( ! function_exists( __NAMESPACE__ . '\\normalize_iso8601' ) ) {
 	}
 }
 
+if ( ! function_exists( __NAMESPACE__ . '\\pt_effective_url' ) ) {
+	/**
+	 * Returns the URL a response finally came from, after any redirects.
+	 *
+	 * A fragment on the requested URL (which is never sent to the server) is
+	 * kept, so that it can still pick out part of the page.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $url      Requested URL.
+	 * @param array  $response Response from pt_remote_get().
+	 * @return string The final URL, or $url if it isn't known.
+	 */
+	function pt_effective_url( $url, $response ) {
+		$object = ( is_array( $response ) && isset( $response['http_response'] ) && is_object( $response['http_response'] ) && method_exists( $response['http_response'], 'get_response_object' ) ) ? $response['http_response']->get_response_object() : null;
+		if ( ! $object || empty( $object->url ) || ! is_string( $object->url ) || ! wp_http_validate_url( $object->url ) ) {
+			return $url;
+		}
+		$final    = $object->url;
+		$fragment = wp_parse_url( $url, PHP_URL_FRAGMENT );
+		if ( $fragment && ! wp_parse_url( $final, PHP_URL_FRAGMENT ) ) {
+			$final .= '#' . $fragment;
+		}
+		return $final;
+	}
+}
+
 if ( ! function_exists( __NAMESPACE__ . '\\pt_sniff_content_type' ) ) {
 	/**
 	 * Works out a response's real format when its content type is missing,
