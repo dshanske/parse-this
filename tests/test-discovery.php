@@ -88,4 +88,41 @@ class Discovery_Test extends Parse_This_TestCase {
 		}
 		$this->assertSame( 'https://example.com/x', $feed_url->invoke( null, 'https://example.com/x', array() ) );
 	}
+
+	/**
+	 * Links to mf2 JSON, rel=feed and multi-value rels are discovered (#75).
+	 */
+	public function test_discovery_mf2_links_and_rel_feed() {
+		$this->respond(
+			'https://example.com/links',
+			'<html><head>'
+			. '<link rel="alternate" type="application/mf2+json" href="/feed.mf2.json" title="mf2 JSON">'
+			. '<link rel="feed" type="text/html" href="/notes" title="Notes">'
+			. '<link rel="feed" href="/photos">'
+			. '<link rel="alternate feed" type="application/atom+xml" href="/atom.xml">'
+			. '<link rel="alternate" type="application/rdf+xml" href="/rss1.rdf">'
+			. '<link rel="alternate" type="text/html" hreflang="fr" href="/fr/">'
+			. '</head><body></body></html>'
+		);
+		$results = ( new ParseThis\Discovery() )->fetch( 'https://example.com/links' );
+		$found   = array();
+		foreach ( $results['results'] as $feed ) {
+			$found[ $feed['url'] ] = $feed['_feed_type'];
+		}
+
+		$this->assertSame( 'microformats', $found['https://example.com/feed.mf2.json'] ?? null );
+		$this->assertSame( 'microformats', $found['https://example.com/notes'] ?? null );
+		$this->assertSame( 'microformats', $found['https://example.com/photos'] ?? null );
+		$this->assertSame( 'atom', $found['https://example.com/atom.xml'] ?? null );
+		$this->assertSame( 'rss', $found['https://example.com/rss1.rdf'] ?? null );
+		// A translation is not a feed.
+		$this->assertArrayNotHasKey( 'https://example.com/fr/', $found );
+
+		// rel=feed links to other pages don't stop the page itself being listed as an h-feed.
+		$this->respond( 'https://example.com/home', '<html><head><link rel="feed" href="/all"></head><body><div class="h-feed"><a class="u-url" href="https://example.com/home">Home</a><div class="h-entry"><a class="u-url p-name" href="https://example.com/1">One</a></div></div></body></html>' );
+		$results = ( new ParseThis\Discovery() )->fetch( 'https://example.com/home' );
+		$urls    = wp_list_pluck( $results['results'], 'url' );
+		$this->assertContains( 'https://example.com/all', $urls );
+		$this->assertContains( 'https://example.com/home', $urls );
+	}
 }

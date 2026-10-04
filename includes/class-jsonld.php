@@ -19,6 +19,47 @@ defined( 'ABSPATH' ) || exit;
  * @since 1.0.0
  */
 class JSONLD extends Base {
+
+	/**
+	 * Schema.org Article and its subtypes, read as entries.
+	 *
+	 * @since 2.0.0
+	 * @var string[]
+	 */
+	const ARTICLE_TYPES = array( 'Article', 'AdvertiserContentArticle', 'NewsArticle', 'AnalysisNewsArticle', 'AskPublicNewsArticle', 'BackgroundNewsArticle', 'OpinionNewsArticle', 'ReportageNewsArticle', 'ReviewNewsArticle', 'Report', 'SatiricalArticle', 'ScholarlyArticle', 'MedicalScholarlyArticle', 'SocialMediaPosting', 'BlogPosting', 'LiveBlogPosting', 'DiscussionForumPosting', 'TechArticle', 'APIReference' );
+
+	/**
+	 * Schema.org WebPage and its subtypes. Read as an entry only when nothing
+	 * more specific describes the page, since SEO plugins add one to every page.
+	 *
+	 * @since 2.0.0
+	 * @var string[]
+	 */
+	const WEBPAGE_TYPES = array( 'WebPage', 'AboutPage', 'CheckoutPage', 'CollectionPage', 'ContactPage', 'FAQPage', 'ItemPage', 'MedicalWebPage', 'QAPage', 'RealEstateListing', 'SearchResultsPage' );
+
+	/**
+	 * Schema.org Review and its subtypes.
+	 *
+	 * @since 2.0.0
+	 * @var string[]
+	 */
+	const REVIEW_TYPES = array( 'Review', 'CriticReview', 'UserReview', 'EmployerReview', 'MediaReview', 'Recommendation', 'ClaimReview' );
+
+	/**
+	 * Schema.org Product and its subtypes.
+	 *
+	 * @since 2.0.0
+	 * @var string[]
+	 */
+	const PRODUCT_TYPES = array( 'Product', 'ProductModel', 'ProductGroup', 'IndividualProduct', 'SomeProducts' );
+
+	/**
+	 * Schema.org Event and its subtypes.
+	 *
+	 * @since 2.0.0
+	 * @var string[]
+	 */
+	const EVENT_TYPES = array( 'Event', 'BusinessEvent', 'ChildrensEvent', 'ComedyEvent', 'CourseInstance', 'DanceEvent', 'DeliveryEvent', 'EducationEvent', 'EventSeries', 'ExhibitionEvent', 'Festival', 'FoodEvent', 'Hackathon', 'LiteraryEvent', 'MusicEvent', 'PublicationEvent', 'BroadcastEvent', 'OnDemandEvent', 'SaleEvent', 'ScreeningEvent', 'SocialEvent', 'SportsEvent', 'TheaterEvent', 'VisualArtsEvent' );
 	/**
 	 * Parses every application/ld+json script in a document into jf2.
 	 *
@@ -60,17 +101,22 @@ class JSONLD extends Base {
 		if ( ! empty( $args['debug'] ) ) {
 			$jf2['_jsonld'] = $jsonld;
 		}
-		return array_filter( $jf2 );
+		return array_filter( $jf2, array( __CLASS__, 'is_set' ) );
 	}
 
 	/**
 	 * Converts a list of JSON-LD nodes into a single jf2 object.
 	 *
-	 * An article is preferred, with any video, audio, author and organization
-	 * nodes merged into it. Otherwise the first event, video, audio, media or
-	 * person node found is returned.
+	 * The most specific node describes the page: a review, recipe, event or
+	 * product, then an article
+	 * (with any video, audio, author and organization nodes merged into it),
+	 * then video, audio or media, then a web page, then a person. A more
+	 * specific node is filled in from the article or web page (author, dates,
+	 * publisher, image).
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Prefers reviews, recipes, events and products over articles
+	 *              and web page nodes, and recognizes their subtypes.
 	 *
 	 * @param array $jsonld List of JSON-LD nodes.
 	 * @return array jf2 properties, or the nodes converted so far keyed by type when
@@ -84,6 +130,18 @@ class JSONLD extends Base {
 		foreach ( $jsonld as $json ) {
 			$type = self::get_type( $json );
 			switch ( $type ) {
+				case 'review':
+					$jf2['review'] = self::review_to_hentry( $json );
+					break;
+				case 'recipe':
+					$jf2['recipe'] = self::recipe_to_hrecipe( $json );
+					break;
+				case 'product':
+					$jf2['product'] = self::product_to_hproduct( $json );
+					break;
+				case 'webpage':
+					$jf2['webpage'] = array_merge( $jf2['webpage'] ?? array(), (array) self::article_to_hentry( $json ) );
+					break;
 				case 'entry':
 					if ( ! array_key_exists( 'entry', $jf2 ) ) {
 						$jf2['entry'] = self::article_to_hentry( $json );
@@ -128,8 +186,52 @@ class JSONLD extends Base {
 			}
 		}
 		$return = null;
+		// The most specific description of the page wins; an article or web page
+		// node only fills in what it leaves out (author, dates, publisher).
+		$page = $jf2['entry'] ?? ( $jf2['webpage'] ?? array() );
+		foreach ( array( 'review', 'recipe', 'event', 'product' ) as $specific ) {
+			if ( ! empty( $jf2[ $specific ] ) ) {
+				$return = $jf2[ $specific ];
+				foreach ( array( 'author', 'published', 'updated', 'publication', 'featured' ) as $key ) {
+					if ( ! isset( $return[ $key ] ) && isset( $page[ $key ] ) ) {
+						$return[ $key ] = $page[ $key ];
+					}
+				}
+				break;
+			}
+		}
+		if ( null === $return ) {
+			$return = self::choose_general( $jf2 );
+			if ( null === $return ) {
+				return $jf2;
+			}
+		}
+
+		if ( ! array_key_exists( 'author', $return ) && array_key_exists( 'person', $jf2 ) ) {
+			$return['author'] = $jf2['person'];
+		}
+		if ( ! array_key_exists( 'publication', $return ) && array_key_exists( 'publisher', $jf2 ) ) {
+			$return['publication'] = $jf2['publisher'];
+		}
+		return array_filter( $return, array( __CLASS__, 'is_set' ) );
+	}
+
+	/**
+	 * Chooses among general JSON-LD nodes when no specific one describes the page.
+	 *
+	 * An article (with video, audio, author and organization merged in), then
+	 * video, audio or media, then a web page, then a person.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $jf2 Converted nodes keyed by type.
+	 * @return array|null The chosen jf2, or null if there is none.
+	 */
+	private static function choose_general( $jf2 ) {
+		$return = null;
 		if ( array_key_exists( 'entry', $jf2 ) ) {
-			$return = $jf2['entry'];
+			// The web page node fills in what the article leaves out.
+			$return = $jf2['entry'] + ( $jf2['webpage'] ?? array() );
 			if ( array_key_exists( 'video', $jf2 ) ) {
 				$return = array_merge( $return, $jf2['video'] );
 			}
@@ -142,27 +244,294 @@ class JSONLD extends Base {
 			if ( array_key_exists( 'org', $jf2 ) ) {
 				$return['org'] = $jf2['org'];
 			}
-		} elseif ( array_key_exists( 'event', $jf2 ) ) {
-			$return = $jf2['event'];
 		} elseif ( array_key_exists( 'video', $jf2 ) ) {
 			$return = $jf2['video'];
 		} elseif ( array_key_exists( 'audio', $jf2 ) ) {
 			$return = $jf2['audio'];
 		} elseif ( array_key_exists( 'media', $jf2 ) ) {
 			$return = $jf2['media'];
+		} elseif ( array_key_exists( 'webpage', $jf2 ) ) {
+			$return = $jf2['webpage'];
+			if ( array_key_exists( 'person', $jf2 ) && ! isset( $return['author'] ) ) {
+				$return['author'] = $jf2['person'];
+			}
 		} elseif ( array_key_exists( 'person', $jf2 ) ) {
 			$return = $jf2['person'];
-		} else {
-			return $jf2;
 		}
+		return $return;
+	}
 
-		if ( ! array_key_exists( 'author', $return ) && array_key_exists( 'person', $jf2 ) ) {
-			$return['author'] = $jf2['person'];
+	/**
+	 * Converts a Review node into a jf2 entry with review-of.
+	 *
+	 * Follows the h-entry review form Post Kinds publishes (microformats/h-entry#32):
+	 * the reviewed item goes in review-of, and the rating in rating, best and
+	 * worst, so the post type is review.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $review Review node.
+	 * @return array|false jf2 entry, or false if the node is not a review.
+	 */
+	public static function review_to_hentry( $review ) {
+		if ( 'review' !== self::get_type( $review ) ) {
+			return false;
 		}
-		if ( ! array_key_exists( 'publication', $return ) && array_key_exists( 'publisher', $jf2 ) ) {
-			$return['publication'] = $jf2['publisher'];
+		$rating = ( isset( $review['reviewRating'] ) && is_array( $review['reviewRating'] ) ) ? $review['reviewRating'] : array();
+		$body   = $review['reviewBody'] ?? null;
+		$jf2    = array(
+			'type'      => 'entry',
+			'name'      => $review['name'] ?? ( $review['headline'] ?? null ),
+			'url'       => $review['url'] ?? null,
+			'summary'   => $review['description'] ?? null,
+			'published' => normalize_iso8601( $review['datePublished'] ?? null ),
+			'updated'   => normalize_iso8601( $review['dateModified'] ?? null ),
+			'author'    => self::agent_to_hcard( $review['author'] ?? null ),
+			'review-of' => self::item_to_jf2( $review['itemReviewed'] ?? null ),
+			'rating'    => self::scalar( $rating['ratingValue'] ?? null ),
+			'best'      => self::scalar( $rating['bestRating'] ?? null ),
+			'worst'     => self::scalar( $rating['worstRating'] ?? null ),
+		);
+		if ( is_string( $body ) && '' !== trim( $body ) ) {
+			$jf2['content'] = array(
+				'html' => Parser::clean_content( $body ),
+				'text' => trim( wp_strip_all_tags( $body ) ),
+			);
 		}
-		return array_filter( $return );
+		$jf2              = array_filter( $jf2, array( __CLASS__, 'is_set' ) );
+		$jf2['post-type'] = post_type_discovery( $jf2 );
+		return $jf2;
+	}
+
+	/**
+	 * Converts a Product node into a jf2 product.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $product Product node.
+	 * @return array|false jf2 product (name, url, photo, description, brand,
+	 *                     identifier, price, category), or false if the node is
+	 *                     not a product.
+	 */
+	public static function product_to_hproduct( $product ) {
+		if ( 'product' !== self::get_type( $product ) ) {
+			return false;
+		}
+		$brand = $product['brand'] ?? null;
+		if ( is_array( $brand ) && ! wp_is_numeric_array( $brand ) ) {
+			$brand = $brand['name'] ?? null;
+		}
+		$offer = $product['offers'] ?? null;
+		if ( is_array( $offer ) && wp_is_numeric_array( $offer ) ) {
+			$offer = reset( $offer );
+		}
+		$price = null;
+		if ( is_array( $offer ) && isset( $offer['price'] ) ) {
+			$price = trim( self::scalar( $offer['price'] ) . ' ' . ( $offer['priceCurrency'] ?? '' ) );
+		} elseif ( is_array( $offer ) && isset( $offer['lowPrice'] ) ) {
+			$price = trim( self::scalar( $offer['lowPrice'] ) . ' ' . ( $offer['priceCurrency'] ?? '' ) );
+		}
+		$jf2 = array(
+			'type'        => 'product',
+			'name'        => $product['name'] ?? null,
+			'url'         => $product['url'] ?? null,
+			'photo'       => self::image_to_photo( $product['image'] ?? null ),
+			'description' => $product['description'] ?? null,
+			'brand'       => is_string( $brand ) ? $brand : null,
+			'identifier'  => $product['sku'] ?? ( $product['gtin13'] ?? ( $product['gtin'] ?? ( $product['mpn'] ?? null ) ) ),
+			'price'       => $price,
+			'category'    => $product['category'] ?? null,
+		);
+		return array_filter( $jf2, array( __CLASS__, 'is_set' ) );
+	}
+
+	/**
+	 * Converts a Recipe node into a jf2 recipe.
+	 *
+	 * Uses the same property names as h-recipe: ingredient, yield, duration,
+	 * nutrition and instructions (rich text).
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $recipe Recipe node.
+	 * @return array|false jf2 recipe, or false if the node is not a recipe.
+	 */
+	public static function recipe_to_hrecipe( $recipe ) {
+		if ( 'recipe' !== self::get_type( $recipe ) ) {
+			return false;
+		}
+		$yield = $recipe['recipeYield'] ?? null;
+		if ( is_array( $yield ) ) {
+			$yield = reset( $yield );
+		}
+		$nutrition = $recipe['nutrition'] ?? null;
+		if ( is_array( $nutrition ) ) {
+			$nutrition = $nutrition['calories'] ?? null;
+		}
+		$category         = array_merge( (array) ( $recipe['recipeCategory'] ?? array() ), (array) ( $recipe['recipeCuisine'] ?? array() ) );
+		$jf2              = array(
+			'type'         => 'recipe',
+			'name'         => $recipe['name'] ?? null,
+			'url'          => $recipe['url'] ?? null,
+			'summary'      => $recipe['description'] ?? null,
+			'photo'        => self::image_to_photo( $recipe['image'] ?? null ),
+			'published'    => normalize_iso8601( $recipe['datePublished'] ?? null ),
+			'author'       => self::agent_to_hcard( $recipe['author'] ?? null ),
+			'ingredient'   => array_values( array_filter( (array) ( $recipe['recipeIngredient'] ?? ( $recipe['ingredients'] ?? array() ) ), 'is_string' ) ),
+			'yield'        => self::scalar( $yield ),
+			'duration'     => $recipe['totalTime'] ?? ( $recipe['cookTime'] ?? null ),
+			'nutrition'    => self::scalar( $nutrition ),
+			'instructions' => self::instructions( $recipe['recipeInstructions'] ?? null ),
+			'category'     => array_values( array_filter( $category, 'is_string' ) ),
+		);
+		$jf2              = array_filter( $jf2, array( __CLASS__, 'is_set' ) );
+		$jf2['post-type'] = post_type_discovery( $jf2 );
+		return $jf2;
+	}
+
+	/**
+	 * Converts recipe instructions (text, HowToStep or HowToSection nodes) to rich text.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param mixed $instructions recipeInstructions value.
+	 * @return array|null Array with html (an ordered list) and text, or null.
+	 */
+	private static function instructions( $instructions ) {
+		if ( is_string( $instructions ) ) {
+			$instructions = '' === trim( $instructions ) ? array() : array( $instructions );
+		}
+		$steps = array();
+		foreach ( (array) $instructions as $step ) {
+			if ( is_string( $step ) ) {
+				$steps[] = $step;
+			} elseif ( is_array( $step ) && isset( $step['itemListElement'] ) ) {
+				// A HowToSection: its steps, in order.
+				foreach ( (array) $step['itemListElement'] as $inner ) {
+					$text = is_array( $inner ) ? ( $inner['text'] ?? ( $inner['name'] ?? null ) ) : $inner;
+					if ( is_string( $text ) ) {
+						$steps[] = $text;
+					}
+				}
+			} elseif ( is_array( $step ) ) {
+				$text = $step['text'] ?? ( $step['name'] ?? null );
+				if ( is_string( $text ) ) {
+					$steps[] = $text;
+				}
+			}
+		}
+		$steps = array_values( array_filter( array_map( 'trim', array_map( 'wp_strip_all_tags', $steps ) ) ) );
+		if ( ! $steps ) {
+			return null;
+		}
+		return array(
+			'html' => '<ol><li>' . implode( '</li><li>', array_map( 'esc_html', $steps ) ) . '</li></ol>',
+			'text' => implode( "\n", $steps ),
+		);
+	}
+
+	/**
+	 * Converts whatever a review is of into jf2.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param mixed $item itemReviewed value: a URL, or a node of any type.
+	 * @return array|string|null jf2 for the item, its URL, or null.
+	 */
+	private static function item_to_jf2( $item ) {
+		if ( is_string( $item ) ) {
+			return $item;
+		}
+		if ( ! is_array( $item ) ) {
+			return null;
+		}
+		if ( wp_is_numeric_array( $item ) ) {
+			$item = reset( $item );
+		}
+		switch ( self::get_type( $item ) ) {
+			case 'event':
+				return self::event_to_hevent( $item );
+			case 'media':
+				return self::media_to_hcite( $item );
+			case 'product':
+				return self::product_to_hproduct( $item );
+			case 'recipe':
+				return self::recipe_to_hrecipe( $item );
+			case 'place':
+				return self::place_to_hcard( $item );
+			case 'org':
+				return self::organization_to_hcard( $item );
+			case 'person':
+				return self::person_to_hcard( $item );
+		}
+		// Anything else (a Book, a LocalBusiness, a CreativeWork): a citation.
+		$cite = array(
+			'type'   => 'cite',
+			'name'   => $item['name'] ?? null,
+			'url'    => $item['url'] ?? ( $item['sameAs'] ?? null ),
+			'author' => self::agent_to_hcard( $item['author'] ?? null ),
+			'uid'    => $item['isbn'] ?? null,
+		);
+		$cite = array_filter( $cite, array( __CLASS__, 'is_set' ) );
+		return count( $cite ) > 1 ? $cite : null;
+	}
+
+	/**
+	 * Converts an author or creator value (a person, organization or name) into a card.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param mixed $agent author value.
+	 * @return array|null jf2 card, or null.
+	 */
+	private static function agent_to_hcard( $agent ) {
+		if ( is_array( $agent ) && wp_is_numeric_array( $agent ) ) {
+			$agent = reset( $agent );
+		}
+		if ( is_string( $agent ) && '' !== trim( $agent ) ) {
+			return array(
+				'type' => 'card',
+				'name' => trim( $agent ),
+			);
+		}
+		if ( ! is_array( $agent ) ) {
+			return null;
+		}
+		$card = ( 'org' === self::get_type( $agent ) ) ? self::organization_to_hcard( $agent ) : self::person_to_hcard( $agent );
+		if ( ! $card && isset( $agent['name'] ) && is_string( $agent['name'] ) ) {
+			$card = array(
+				'type' => 'card',
+				'name' => $agent['name'],
+			);
+		}
+		return $card ? $card : null;
+	}
+
+	/**
+	 * Returns a number or string value as a string.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param mixed $value Value.
+	 * @return string|null The value as a string, or null for anything else.
+	 */
+	private static function scalar( $value ) {
+		if ( is_int( $value ) || is_float( $value ) ) {
+			return (string) $value;
+		}
+		return ( is_string( $value ) && '' !== trim( $value ) ) ? trim( $value ) : null;
+	}
+
+	/**
+	 * Checks whether a value is worth keeping (keeps "0", unlike array_filter()).
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param mixed $value Value.
+	 * @return bool False for null, false, '' and empty arrays.
+	 */
+	private static function is_set( $value ) {
+		return null !== $value && false !== $value && '' !== $value && array() !== $value;
 	}
 
 	/**
@@ -655,19 +1024,28 @@ class JSONLD extends Base {
 	 * @since 2.0.0
 	 *
 	 * @param mixed $jsonld Node to check.
-	 * @return string|false One of entry, org, person, site, event, image, audio, video,
+	 * @return string|false One of review, recipe, product, entry (an article),
+	 *                      webpage, org, person, site, event, image, audio, video,
 	 *                      music, media, place or address, or false.
 	 */
 	public static function get_type( $jsonld ) {
-		if ( self::is_jsonld_type( $jsonld, array( 'WebPage', 'Article', 'NewsArticle', 'BlogPosting' ) ) ) {
+		if ( self::is_jsonld_type( $jsonld, self::REVIEW_TYPES ) ) {
+			return 'review';
+		} elseif ( self::is_jsonld_type( $jsonld, array( 'Recipe' ) ) ) {
+			return 'recipe';
+		} elseif ( self::is_jsonld_type( $jsonld, self::PRODUCT_TYPES ) ) {
+			return 'product';
+		} elseif ( self::is_jsonld_type( $jsonld, self::ARTICLE_TYPES ) ) {
 			return 'entry';
+		} elseif ( self::is_jsonld_type( $jsonld, self::WEBPAGE_TYPES ) ) {
+			return 'webpage';
 		} elseif ( self::is_jsonld_type( $jsonld, array( 'Organization', 'NewsMediaOrganization', 'NGO', 'MusicGroup' ) ) ) {
 			return 'org';
 		} elseif ( self::is_jsonld_type( $jsonld, array( 'Person' ) ) ) {
 			return 'person';
 		} elseif ( self::is_jsonld_type( $jsonld, array( 'WebSite' ) ) ) {
 			return 'site';
-		} elseif ( self::is_jsonld_type( $jsonld, array( 'Event', 'BusinessEvent' ) ) ) {
+		} elseif ( self::is_jsonld_type( $jsonld, self::EVENT_TYPES ) ) {
 			return 'event';
 		} elseif ( self::is_jsonld_type( $jsonld, array( 'ImageObject' ) ) ) {
 			return 'image';
@@ -700,7 +1078,7 @@ class JSONLD extends Base {
 	 * @return array|false jf2 entry, or false if the node is not an article.
 	 */
 	public static function article_to_hentry( $newsarticle ) {
-		if ( 'entry' !== self::get_type( $newsarticle ) ) {
+		if ( ! in_array( self::get_type( $newsarticle ), array( 'entry', 'webpage' ), true ) ) {
 			return false;
 		}
 		$jf2          = array();
@@ -739,8 +1117,8 @@ class JSONLD extends Base {
 
 		if ( isset( $newsarticle['articleBody'] ) ) {
 			$jf2['content'] = array(
-				'html'  => Parser::clean_content( $newsarticle['articleBody'] ),
-				'value' => wp_strip_all_tags( $newsarticle['articleBody'] ),
+				'html' => Parser::clean_content( $newsarticle['articleBody'] ),
+				'text' => trim( wp_strip_all_tags( $newsarticle['articleBody'] ) ),
 			);
 		}
 		if ( isset( $newsarticle['author'] ) ) {

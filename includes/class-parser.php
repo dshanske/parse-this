@@ -1269,6 +1269,12 @@ class Parser {
 			}
 		}
 
+		// Nested objects from the fallbacks (a JSON-LD review's product, an event's
+		// venue) move to refs like those from microformats.
+		if ( ! empty( $args['references'] ) ) {
+			$this->jf2 = jf2_references( $this->jf2 );
+		}
+
 		// Post type is derived, so derive it again now the gaps are filled. A
 		// review stays one: an h-entry that is also an h-review is a review, and
 		// the jf2 no longer shows the second type.
