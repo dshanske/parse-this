@@ -103,4 +103,72 @@ class Parser_JSONLD_HTML_Test extends Parse_This_TestCase {
 		$jf2 = ParseThis\HTML::parse( ParseThis\pt_load_domdocument( '<html><body><p>No title</p></body></html>' ), 'https://example.com/' );
 		$this->assertIsArray( $jf2 );
 	}
+
+	/**
+	 * Parses a page carrying the given JSON-LD graph, without other markup.
+	 *
+	 * @param array $graph JSON-LD nodes.
+	 * @return array jf2.
+	 */
+	private function parse_jsonld_graph( $graph ) {
+		$html   = '<html><head><script type="application/ld+json">' . wp_json_encode(
+			array(
+				'@context' => 'https://schema.org',
+				'@graph'   => $graph,
+			)
+		) . '</script></head><body></body></html>';
+		$parser = new ParseThis\Parser();
+		$parser->set( $html, 'https://example.com/page/' );
+		$parser->parse( array( 'html' => false ) );
+		return $parser->get();
+	}
+
+	/**
+	 * A specific type wins over the WebPage node SEO plugins add, and subtypes are known (#60).
+	 */
+	public function test_jsonld_specific_types_and_subtypes() {
+		$page = array(
+			'@type'         => 'WebPage',
+			'name'          => 'Page title',
+			'datePublished' => '2026-10-01T10:00:00+00:00',
+		);
+
+		$jf2 = $this->parse_jsonld_graph(
+			array(
+				$page,
+				array(
+					'@type'     => 'MusicEvent',
+					'name'      => 'Concert',
+					'startDate' => '2026-11-01T20:00:00+00:00',
+					'location'  => array(
+						'@type' => 'Place',
+						'name'  => 'The Hall',
+					),
+				),
+			)
+		);
+		$this->assertSame( 'event', $jf2['type'] );
+		$this->assertSame( 'Concert', $jf2['name'] );
+		$this->assertSame( '2026-10-01T10:00:00+00:00', $jf2['published'] );
+
+		$jf2 = $this->parse_jsonld_graph(
+			array(
+				$page,
+				array(
+					'@type'       => 'SocialMediaPosting',
+					'headline'    => 'A post',
+					'articleBody' => '<p>Body <b>text</b></p>',
+				),
+			)
+		);
+		$this->assertSame( 'entry', $jf2['type'] );
+		$this->assertSame( 'A post', $jf2['name'] );
+		$this->assertSame( 'Body text', $jf2['content']['text'] );
+		$this->assertSame( '<p>Body <b>text</b></p>', $jf2['content']['html'] );
+
+		// A WebPage alone is still an entry.
+		$jf2 = $this->parse_jsonld_graph( array( $page ) );
+		$this->assertSame( 'entry', $jf2['type'] );
+		$this->assertSame( 'Page title', $jf2['name'] );
+	}
 }

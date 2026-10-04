@@ -19,6 +19,31 @@ defined( 'ABSPATH' ) || exit;
  * @since 1.0.0
  */
 class JSONLD extends Base {
+
+	/**
+	 * Schema.org Article and its subtypes, read as entries.
+	 *
+	 * @since 2.0.0
+	 * @var string[]
+	 */
+	const ARTICLE_TYPES = array( 'Article', 'AdvertiserContentArticle', 'NewsArticle', 'AnalysisNewsArticle', 'AskPublicNewsArticle', 'BackgroundNewsArticle', 'OpinionNewsArticle', 'ReportageNewsArticle', 'ReviewNewsArticle', 'Report', 'SatiricalArticle', 'ScholarlyArticle', 'MedicalScholarlyArticle', 'SocialMediaPosting', 'BlogPosting', 'LiveBlogPosting', 'DiscussionForumPosting', 'TechArticle', 'APIReference' );
+
+	/**
+	 * Schema.org WebPage and its subtypes. Read as an entry only when nothing
+	 * more specific describes the page, since SEO plugins add one to every page.
+	 *
+	 * @since 2.0.0
+	 * @var string[]
+	 */
+	const WEBPAGE_TYPES = array( 'WebPage', 'AboutPage', 'CheckoutPage', 'CollectionPage', 'ContactPage', 'FAQPage', 'ItemPage', 'MedicalWebPage', 'QAPage', 'RealEstateListing', 'SearchResultsPage' );
+
+	/**
+	 * Schema.org Event and its subtypes.
+	 *
+	 * @since 2.0.0
+	 * @var string[]
+	 */
+	const EVENT_TYPES = array( 'Event', 'BusinessEvent', 'ChildrensEvent', 'ComedyEvent', 'CourseInstance', 'DanceEvent', 'DeliveryEvent', 'EducationEvent', 'EventSeries', 'ExhibitionEvent', 'Festival', 'FoodEvent', 'Hackathon', 'LiteraryEvent', 'MusicEvent', 'PublicationEvent', 'BroadcastEvent', 'OnDemandEvent', 'SaleEvent', 'ScreeningEvent', 'SocialEvent', 'SportsEvent', 'TheaterEvent', 'VisualArtsEvent' );
 	/**
 	 * Parses every application/ld+json script in a document into jf2.
 	 *
@@ -66,11 +91,15 @@ class JSONLD extends Base {
 	/**
 	 * Converts a list of JSON-LD nodes into a single jf2 object.
 	 *
-	 * An article is preferred, with any video, audio, author and organization
-	 * nodes merged into it. Otherwise the first event, video, audio, media or
-	 * person node found is returned.
+	 * The most specific node describes the page: an event, then an article
+	 * (with any video, audio, author and organization nodes merged into it),
+	 * then video, audio or media, then a web page, then a person. A more
+	 * specific node is filled in from the article or web page (author, dates,
+	 * publisher, image).
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Prefers events and other specific types over web page nodes,
+	 *              and recognizes Article and Event subtypes.
 	 *
 	 * @param array $jsonld List of JSON-LD nodes.
 	 * @return array jf2 properties, or the nodes converted so far keyed by type when
@@ -84,6 +113,9 @@ class JSONLD extends Base {
 		foreach ( $jsonld as $json ) {
 			$type = self::get_type( $json );
 			switch ( $type ) {
+				case 'webpage':
+					$jf2['webpage'] = array_merge( $jf2['webpage'] ?? array(), (array) self::article_to_hentry( $json ) );
+					break;
 				case 'entry':
 					if ( ! array_key_exists( 'entry', $jf2 ) ) {
 						$jf2['entry'] = self::article_to_hentry( $json );
@@ -128,8 +160,52 @@ class JSONLD extends Base {
 			}
 		}
 		$return = null;
+		// The most specific description of the page wins; an article or web page
+		// node only fills in what it leaves out (author, dates, publisher).
+		$page = $jf2['entry'] ?? ( $jf2['webpage'] ?? array() );
+		foreach ( array( 'event' ) as $specific ) {
+			if ( ! empty( $jf2[ $specific ] ) ) {
+				$return = $jf2[ $specific ];
+				foreach ( array( 'author', 'published', 'updated', 'publication', 'featured' ) as $key ) {
+					if ( ! isset( $return[ $key ] ) && isset( $page[ $key ] ) ) {
+						$return[ $key ] = $page[ $key ];
+					}
+				}
+				break;
+			}
+		}
+		if ( null === $return ) {
+			$return = self::choose_general( $jf2 );
+			if ( null === $return ) {
+				return $jf2;
+			}
+		}
+
+		if ( ! array_key_exists( 'author', $return ) && array_key_exists( 'person', $jf2 ) ) {
+			$return['author'] = $jf2['person'];
+		}
+		if ( ! array_key_exists( 'publication', $return ) && array_key_exists( 'publisher', $jf2 ) ) {
+			$return['publication'] = $jf2['publisher'];
+		}
+		return array_filter( $return );
+	}
+
+	/**
+	 * Chooses among general JSON-LD nodes when no specific one describes the page.
+	 *
+	 * An article (with video, audio, author and organization merged in), then
+	 * video, audio or media, then a web page, then a person.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $jf2 Converted nodes keyed by type.
+	 * @return array|null The chosen jf2, or null if there is none.
+	 */
+	private static function choose_general( $jf2 ) {
+		$return = null;
 		if ( array_key_exists( 'entry', $jf2 ) ) {
-			$return = $jf2['entry'];
+			// The web page node fills in what the article leaves out.
+			$return = $jf2['entry'] + ( $jf2['webpage'] ?? array() );
 			if ( array_key_exists( 'video', $jf2 ) ) {
 				$return = array_merge( $return, $jf2['video'] );
 			}
@@ -142,27 +218,21 @@ class JSONLD extends Base {
 			if ( array_key_exists( 'org', $jf2 ) ) {
 				$return['org'] = $jf2['org'];
 			}
-		} elseif ( array_key_exists( 'event', $jf2 ) ) {
-			$return = $jf2['event'];
 		} elseif ( array_key_exists( 'video', $jf2 ) ) {
 			$return = $jf2['video'];
 		} elseif ( array_key_exists( 'audio', $jf2 ) ) {
 			$return = $jf2['audio'];
 		} elseif ( array_key_exists( 'media', $jf2 ) ) {
 			$return = $jf2['media'];
+		} elseif ( array_key_exists( 'webpage', $jf2 ) ) {
+			$return = $jf2['webpage'];
+			if ( array_key_exists( 'person', $jf2 ) && ! isset( $return['author'] ) ) {
+				$return['author'] = $jf2['person'];
+			}
 		} elseif ( array_key_exists( 'person', $jf2 ) ) {
 			$return = $jf2['person'];
-		} else {
-			return $jf2;
 		}
-
-		if ( ! array_key_exists( 'author', $return ) && array_key_exists( 'person', $jf2 ) ) {
-			$return['author'] = $jf2['person'];
-		}
-		if ( ! array_key_exists( 'publication', $return ) && array_key_exists( 'publisher', $jf2 ) ) {
-			$return['publication'] = $jf2['publisher'];
-		}
-		return array_filter( $return );
+		return $return;
 	}
 
 	/**
@@ -655,19 +725,22 @@ class JSONLD extends Base {
 	 * @since 2.0.0
 	 *
 	 * @param mixed $jsonld Node to check.
-	 * @return string|false One of entry, org, person, site, event, image, audio, video,
-	 *                      music, media, place or address, or false.
+	 * @return string|false One of entry (an article), webpage, org, person, site,
+	 *                      event, image, audio, video, music, media, place or
+	 *                      address, or false.
 	 */
 	public static function get_type( $jsonld ) {
-		if ( self::is_jsonld_type( $jsonld, array( 'WebPage', 'Article', 'NewsArticle', 'BlogPosting' ) ) ) {
+		if ( self::is_jsonld_type( $jsonld, self::ARTICLE_TYPES ) ) {
 			return 'entry';
+		} elseif ( self::is_jsonld_type( $jsonld, self::WEBPAGE_TYPES ) ) {
+			return 'webpage';
 		} elseif ( self::is_jsonld_type( $jsonld, array( 'Organization', 'NewsMediaOrganization', 'NGO', 'MusicGroup' ) ) ) {
 			return 'org';
 		} elseif ( self::is_jsonld_type( $jsonld, array( 'Person' ) ) ) {
 			return 'person';
 		} elseif ( self::is_jsonld_type( $jsonld, array( 'WebSite' ) ) ) {
 			return 'site';
-		} elseif ( self::is_jsonld_type( $jsonld, array( 'Event', 'BusinessEvent' ) ) ) {
+		} elseif ( self::is_jsonld_type( $jsonld, self::EVENT_TYPES ) ) {
 			return 'event';
 		} elseif ( self::is_jsonld_type( $jsonld, array( 'ImageObject' ) ) ) {
 			return 'image';
@@ -700,7 +773,7 @@ class JSONLD extends Base {
 	 * @return array|false jf2 entry, or false if the node is not an article.
 	 */
 	public static function article_to_hentry( $newsarticle ) {
-		if ( 'entry' !== self::get_type( $newsarticle ) ) {
+		if ( ! in_array( self::get_type( $newsarticle ), array( 'entry', 'webpage' ), true ) ) {
 			return false;
 		}
 		$jf2          = array();
@@ -739,8 +812,8 @@ class JSONLD extends Base {
 
 		if ( isset( $newsarticle['articleBody'] ) ) {
 			$jf2['content'] = array(
-				'html'  => Parser::clean_content( $newsarticle['articleBody'] ),
-				'value' => wp_strip_all_tags( $newsarticle['articleBody'] ),
+				'html' => Parser::clean_content( $newsarticle['articleBody'] ),
+				'text' => trim( wp_strip_all_tags( $newsarticle['articleBody'] ) ),
 			);
 		}
 		if ( isset( $newsarticle['author'] ) ) {
