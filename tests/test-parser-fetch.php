@@ -263,4 +263,126 @@ class Parser_Fetch_Test extends Parse_This_TestCase {
 		$this->assertSame( 'This post has been deleted.', $jf2['content']['text'] );
 		$this->assertSame( 410, $jf2['_code'] );
 	}
+
+	/**
+	 * Feeds and JSON served with a generic or wrong content type are recognized (X-11).
+	 */
+	public function test_content_type_sniffing() {
+		$rss = '<?xml version="1.0"?><rss version="2.0"><channel><title>Sniffed</title><link>https://example.com/</link><item><title>One</title><link>https://example.com/1</link><description>First post</description></item></channel></rss>';
+		$this->respond( 'https://example.com/rss-as-text', $rss, 'text/plain' );
+		$jf2 = $this->fetch_and_parse( 'https://example.com/rss-as-text' );
+		$this->assertSame( 'feed', $jf2['type'] );
+		$this->assertSame( 'Sniffed', $jf2['name'] );
+
+		$atom = '<?xml version="1.0" encoding="utf-8"?><!-- generator --><feed xmlns="http://www.w3.org/2005/Atom"><title>Atom</title><id>urn:x</id><updated>2026-01-01T00:00:00Z</updated><entry><title>E</title><id>urn:e</id><link href="https://example.com/e"/><updated>2026-01-01T00:00:00Z</updated><content>Entry</content></entry></feed>';
+		$this->respond( 'https://example.com/atom-as-html', $atom, 'text/html; charset=utf-8' );
+		$jf2 = $this->fetch_and_parse( 'https://example.com/atom-as-html' );
+		$this->assertSame( 'feed', $jf2['type'] );
+		$this->assertSame( 'Atom', $jf2['name'] );
+
+		$this->respond( 'https://example.com/feed.json', wp_json_encode( array( 'version' => 'https://jsonfeed.org/version/1.1', 'title' => 'JSON', 'items' => array( array( 'id' => '1', 'url' => 'https://example.com/1', 'content_text' => 'Hi' ) ) ) ), 'text/plain' );
+		$jf2 = $this->fetch_and_parse( 'https://example.com/feed.json' );
+		$this->assertSame( 'feed', $jf2['type'] );
+		$this->assertSame( 'JSON', $jf2['name'] );
+
+		$this->respond( 'https://example.com/mf2.json', wp_json_encode( array( 'items' => array( array( 'type' => array( 'h-entry' ), 'properties' => array( 'name' => array( 'From mf2 JSON' ), 'content' => array( 'Body' ) ) ) ), 'rels' => array(), 'rel-urls' => array() ) ), 'application/octet-stream' );
+		$jf2 = $this->fetch_and_parse( 'https://example.com/mf2.json' );
+		$this->assertSame( 'From mf2 JSON', $jf2['name'] );
+
+		// HTML, and XHTML with an XML declaration, are left as HTML.
+		$this->assertSame( 'text/html', ParseThis\pt_sniff_content_type( 'text/html', '<?xml version="1.0"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"><body><p>Hi</p></body></html>' ) );
+		$this->assertSame( 'text/html', ParseThis\pt_sniff_content_type( 'text/html', '<!DOCTYPE html><html><body>{ not json }</body></html>' ) );
+		$this->assertSame( 'application/rss+xml', ParseThis\pt_sniff_content_type( 'application/xml', "\xEF\xBB\xBF<?xml version=\"1.0\"?>\n<rdf:RDF xmlns:rdf=\"x\"></rdf:RDF>" ) );
+	}
+
+	/**
+	 * Results report the HTTP status and the kind of source (X-4).
+	 */
+	public function test_response_metadata() {
+		$this->respond( 'https://example.com/mf2', '<div class="h-entry"><p class="e-content">Hi</p></div>' );
+		$jf2 = $this->fetch_and_parse( 'https://example.com/mf2' );
+		$this->assertSame( 200, $jf2['_code'] );
+		$this->assertSame( 'mf2+html', $jf2['_source_format'] );
+
+		$this->respond( 'https://example.com/plain', '<html><head><meta property="og:title" content="Plain"></head><body></body></html>' );
+		$this->assertSame( 'html', $this->fetch_and_parse( 'https://example.com/plain' )['_source_format'] );
+
+		$this->respond( 'https://example.com/rss', '<?xml version="1.0"?><rss version="2.0"><channel><title>R</title><link>https://example.com/</link></channel></rss>', 'application/rss+xml' );
+		$this->assertSame( 'xml', $this->fetch_and_parse( 'https://example.com/rss' )['_source_format'] );
+
+		$this->respond( 'https://example.com/feed.json', wp_json_encode( array( 'version' => 'https://jsonfeed.org/version/1', 'title' => 'J', 'items' => array() ) ), 'application/feed+json' );
+		$this->assertSame( 'feed+json', $this->fetch_and_parse( 'https://example.com/feed.json' )['_source_format'] );
+
+		$this->respond( 'https://example.com/mf2.json', wp_json_encode( array( 'items' => array( array( 'type' => array( 'h-entry' ), 'properties' => array( 'content' => array( 'Hi' ) ) ) ) ) ), 'application/mf2+json' );
+		$this->assertSame( 'mf2+json', $this->fetch_and_parse( 'https://example.com/mf2.json' )['_source_format'] );
+
+		// A page can declare its status, as a deleted post's stub does (XRay's MetaEquivDeleted).
+		$this->respond( 'https://example.com/deleted', '<html><head><meta http-equiv="STATUS" content="410 Gone"></head><body><div class="h-entry"><p class="e-content">This post has been deleted.</p></div></body></html>' );
+		$jf2 = $this->fetch_and_parse( 'https://example.com/deleted' );
+		$this->assertSame( 410, $jf2['_code'] );
+		$this->assertSame( 'This post has been deleted.', $jf2['content']['text'] );
+	}
+
+	/**
+	 * After a redirect, the document is read from where it ended up (X-4).
+	 */
+	public function test_effective_url_after_redirect() {
+		$final          = new WpOrg\Requests\Response();
+		$final->url     = 'https://example.org/posts/1/';
+		$final->success = true;
+		$redirected     = function ( $pre, $args, $url ) use ( $final ) {
+			if ( 'https://example.com/old/' !== $url ) {
+				return $pre;
+			}
+			return array(
+				'headers'       => array( 'content-type' => 'text/html' ),
+				'body'          => '<div class="h-entry"><p class="e-content">Moved</p><a class="u-photo" href="photo.jpg">p</a></div>',
+				'response'      => array(
+					'code'    => 200,
+					'message' => 'OK',
+				),
+				'cookies'       => array(),
+				'filename'      => null,
+				'http_response' => new WP_HTTP_Requests_Response( $final ),
+			);
+		};
+		add_filter( 'pre_http_request', $redirected, 5, 3 );
+		$parser = new ParseThis\Parser( 'https://example.com/old/' );
+		$parser->fetch();
+		$parser->parse();
+		remove_filter( 'pre_http_request', $redirected, 5 );
+		$jf2 = $parser->get();
+
+		$this->assertSame( 'https://example.org/posts/1/', $jf2['url'] );
+		$this->assertSame( 'https://example.org/posts/1/photo.jpg', $jf2['photo'] );
+
+		// A fragment on the requested URL is kept.
+		$response = array( 'http_response' => new WP_HTTP_Requests_Response( $final ) );
+		$this->assertSame( 'https://example.org/posts/1/#comment-5', ParseThis\pt_effective_url( 'https://example.com/old/#comment-5', $response ) );
+		$this->assertSame( 'https://example.com/x', ParseThis\pt_effective_url( 'https://example.com/x', array() ) );
+	}
+
+	/**
+	 * A URL fragment picks out part of the page (X-5).
+	 */
+	public function test_fragment_selects_element() {
+		$page = '<html><head><meta property="og:title" content="The Post Title"><meta property="og:description" content="About the post"></head><body>'
+			. '<article class="h-entry"><h1 class="p-name">The Post Title</h1><div class="e-content">This page has comments.</div>'
+			. '<div class="h-cite" id="comment-1000"><div class="p-author h-card"><span class="p-name">Commenter</span></div><p class="e-content">Comment text</p></div>'
+			. '</article></body></html>';
+		$this->respond( 'https://example.com/fragment-id', $page );
+
+		// XRay's EntryAtFragmentID: the comment, with no title borrowed from the page.
+		$jf2 = $this->fetch_and_parse( 'https://example.com/fragment-id#comment-1000' );
+		$this->assertSame( 'Comment text', $jf2['content']['text'] );
+		$this->assertSame( 'Commenter', $jf2['author']['name'] );
+		$this->assertArrayNotHasKey( 'name', $jf2 );
+		$this->assertSame( 'cite', $jf2['type'] );
+		$this->assertSame( 'https://example.com/fragment-id#comment-1000', $jf2['url'] );
+
+		// XRay's EntryAtNonExistentFragmentID: the whole page, without the fragment.
+		$jf2 = $this->fetch_and_parse( 'https://example.com/fragment-id#comment-404' );
+		$this->assertSame( 'The Post Title', $jf2['name'] );
+		$this->assertSame( 'https://example.com/fragment-id', $jf2['url'] );
+	}
 }

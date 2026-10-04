@@ -487,6 +487,133 @@ if ( ! function_exists( __NAMESPACE__ . '\\normalize_iso8601' ) ) {
 	}
 }
 
+if ( ! function_exists( __NAMESPACE__ . '\\pt_find_fragment_element' ) ) {
+	/**
+	 * Finds the element a URL fragment points to.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param DOMDocument $doc Parsed page.
+	 * @param string      $id  Fragment, without the #.
+	 * @return DOMElement|null The element with that id, or null.
+	 */
+	function pt_find_fragment_element( $doc, $id ) {
+		if ( ! $doc instanceof \DOMDocument || ! is_string( $id ) || '' === $id ) {
+			return null;
+		}
+		$id = rawurldecode( $id );
+		foreach ( $doc->getElementsByTagName( '*' ) as $element ) {
+			if ( $element->getAttribute( 'id' ) === $id ) {
+				return $element;
+			}
+		}
+		return null;
+	}
+}
+
+if ( ! function_exists( __NAMESPACE__ . '\\pt_effective_url' ) ) {
+	/**
+	 * Returns the URL a response finally came from, after any redirects.
+	 *
+	 * A fragment on the requested URL (which is never sent to the server) is
+	 * kept, so that it can still pick out part of the page.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $url      Requested URL.
+	 * @param array  $response Response from pt_remote_get().
+	 * @return string The final URL, or $url if it isn't known.
+	 */
+	function pt_effective_url( $url, $response ) {
+		$object = ( is_array( $response ) && isset( $response['http_response'] ) && is_object( $response['http_response'] ) && method_exists( $response['http_response'], 'get_response_object' ) ) ? $response['http_response']->get_response_object() : null;
+		if ( ! $object || empty( $object->url ) || ! is_string( $object->url ) || ! wp_http_validate_url( $object->url ) ) {
+			return $url;
+		}
+		$final    = $object->url;
+		$fragment = wp_parse_url( $url, PHP_URL_FRAGMENT );
+		if ( $fragment && ! wp_parse_url( $final, PHP_URL_FRAGMENT ) ) {
+			$final .= '#' . $fragment;
+		}
+		return $final;
+	}
+}
+
+if ( ! function_exists( __NAMESPACE__ . '\\pt_sniff_content_type' ) ) {
+	/**
+	 * Works out a response's real format when its content type is missing,
+	 * generic or wrong.
+	 *
+	 * Feeds are often served as text/plain or text/html, and JSON as
+	 * text/plain or application/octet-stream. A body whose root element is
+	 * <rss>, <rdf:RDF> or <feed> is a feed whatever the header says (an HTML
+	 * page can't have those roots). A body that is a JSON object is checked
+	 * for JSON Feed and mf2 JSON when the header is missing or generic.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $content_type Content type from the response, without
+	 *                             parameters.
+	 * @param string $body         Response body.
+	 * @return string The content type to use: application/rss+xml,
+	 *                application/atom+xml, application/feed+json or
+	 *                application/mf2+json when sniffed, otherwise
+	 *                $content_type unchanged.
+	 */
+	function pt_sniff_content_type( $content_type, $body ) {
+		if ( ! is_string( $body ) || '' === $body ) {
+			return $content_type;
+		}
+		$known = array( 'application/rss+xml', 'application/atom+xml', 'application/feed+json', 'application/mf2+json', 'application/jf2+json', 'application/jf2feed+json' );
+		if ( in_array( $content_type, $known, true ) ) {
+			return $content_type;
+		}
+		// Skip a byte order mark, the XML declaration, processing instructions, comments and a doctype.
+		$start = ltrim( substr( $body, 0, 4096 ), "\xEF\xBB\xBF \t\r\n" );
+		$start = preg_replace( '/^(\s*(<\?[^>]*\?>|<!--.*?-->|<!DOCTYPE[^>]*>))+\s*/is', '', $start );
+		if ( preg_match( '/^<(rss|rdf:RDF)[\s>]/i', $start ) ) {
+			return 'application/rss+xml';
+		}
+		if ( preg_match( '/^<feed[\s>]/i', $start ) ) {
+			return 'application/atom+xml';
+		}
+		$generic = array( '', 'text/plain', 'application/octet-stream', 'text/html' );
+		if ( in_array( $content_type, $generic, true ) && '{' === substr( $start, 0, 1 ) ) {
+			$json = json_decode( $body, true );
+			if ( is_array( $json ) && isset( $json['version'] ) && is_string( $json['version'] ) && 0 === strpos( $json['version'], 'https://jsonfeed.org/version/' ) ) {
+				return 'application/feed+json';
+			}
+			if ( is_array( $json ) && isset( $json['items'][0]['type'], $json['items'][0]['properties'] ) ) {
+				return 'application/mf2+json';
+			}
+		}
+		return $content_type;
+	}
+}
+
+if ( ! function_exists( __NAMESPACE__ . '\\name_is_content_prefix' ) ) {
+	/**
+	 * Checks whether a name only repeats the start of the content.
+	 *
+	 * Ignores a trailing ellipsis (... or …) on the name, as on truncated
+	 * titles, and ignores whitespace in both.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param mixed $name    Name.
+	 * @param mixed $content Content text.
+	 * @return bool True if both are non-empty strings and the content starts
+	 *              with the name.
+	 */
+	function name_is_content_prefix( $name, $content ) {
+		if ( ! is_string( $name ) || ! is_string( $content ) ) {
+			return false;
+		}
+		$name    = preg_replace( '/\\s+/u', '', preg_replace( '/\\s*(\\.\\.\\.|…)\\s*$/u', '', $name ) );
+		$content = preg_replace( '/\\s+/u', '', $content );
+		return '' !== $name && '' !== $content && 0 === strpos( $content, $name );
+	}
+}
+
 if ( ! function_exists( __NAMESPACE__ . '\\post_type_discovery' ) ) {
 	/**
 	 * Determines the IndieWeb post type of a jf2 or mf2 entry.
@@ -551,7 +678,8 @@ if ( ! function_exists( __NAMESPACE__ . '\\post_type_discovery' ) ) {
 				}
 			}
 			// https://www.w3.org/TR/post-type-discovery/#algorithm: a name that is not
-			// a prefix of the content (or summary, or nothing) makes an article.
+			// a prefix of the content (or summary, or nothing) makes an article. A
+			// truncated name (ending in an ellipsis) is compared without it.
 			$name = ( isset( $jf2['name'] ) && is_string( $jf2['name'] ) ) ? trim( preg_replace( '/\s+/u', ' ', $jf2['name'] ) ) : '';
 			if ( '' !== $name ) {
 				$content = $jf2['content'] ?? null;
@@ -562,7 +690,7 @@ if ( ! function_exists( __NAMESPACE__ . '\\post_type_discovery' ) ) {
 					$content = $jf2['summary'] ?? '';
 				}
 				$content = is_string( $content ) ? trim( preg_replace( '/\s+/u', ' ', $content ) ) : '';
-				if ( 0 !== strpos( $content, $name ) ) {
+				if ( ! name_is_content_prefix( $name, $content ) ) {
 					return 'article';
 				}
 			}

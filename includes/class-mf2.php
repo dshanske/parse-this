@@ -189,19 +189,26 @@ class MF2 extends MF2_Utils {
 	 * Finds the author of an item using the IndieWeb authorship algorithm.
 	 *
 	 * Uses the item's author h-card if it has one; otherwise an author URL, the
-	 * author name, or the document's rel=author link. When $follow is true and
-	 * the author page is on another URL, that page is fetched and parsed.
+	 * author name, or the document's rel=author link. With an author page:
+	 * when $follow is true and the page is on another URL, it is fetched and
+	 * its h-card chosen as the algorithm says (url and uid both the page, else
+	 * url matching a rel=me link), else an h-card on this page whose url is the
+	 * author page, else the author page's own item if that is a card. Without
+	 * $follow, an h-card on this page whose url is the author page is used.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Implements steps 7.2 to 7.4 of the algorithm. Added $args.
 	 *
 	 * @param array      $item   Microformat to find the author of.
 	 * @param array|bool $mf2    Parsed mf2 document the item came from.
 	 * @param bool       $follow Optional. Whether to fetch the author page.
 	 *                            Default false.
+	 * @param array      $args   Optional. Parse arguments, for parsing a fetched
+	 *                            author page.
 	 * @return array|null An h-card microformat, jf2 from the fetched author page, or null
 	 *                     if no author was found.
 	 */
-	public static function find_author( $item, $mf2, $follow = false ) {
+	public static function find_author( $item, $mf2, $follow = false, $args = array() ) {
 		// Follows the authorship algorithm at https://indieweb.org/authorship (steps numbered below).
 		$authorpage = false;
 		if ( self::has_prop( $item, 'author' ) ) {
@@ -245,36 +252,28 @@ class MF2 extends MF2_Utils {
 			$key = normalize_url( $authorpage );
 			if ( $follow && ! self::urls_match( $authorpage, self::get_plaintext( $mf2, 'url' ) ) && ( isset( self::$author_pages[ $key ] ) || Parser::use_request_budget() ) ) {
 				if ( ! isset( self::$author_pages[ $key ] ) ) {
-					$parse   = new Parser( $authorpage );
-					$fetched = $parse->fetch();
-					if ( is_wp_error( $fetched ) ) {
-						// The author page is missing or an error: keep its URL.
-						self::$author_pages[ $key ] = array(
-							'type'       => array( 'h-card' ),
-							'properties' => array( 'url' => array( $authorpage ) ),
-						);
-					} else {
-						$parse->parse();
-						self::$author_pages[ $key ] = $parse->get();
-					}
+					self::$author_pages[ $key ] = self::author_from_page( $authorpage, $mf2, $args );
 				}
 				return self::$author_pages[ $key ];
-			} else {
-				$rel = self::get_rel_urls( $mf2, $authorpage );
-				if ( $rel ) {
-					return array(
-						'type' => array( 'h-card' ),
-						'properties' => $rel,
-					);
-				} else {
-					return array(
-						'type'       => array( 'h-card' ),
-						'properties' => array(
-							'url' => array( $authorpage ),
-						),
-					);
-				}
 			}
+			// 7.4 "if the h-entry's page has 1+ h-card with url == author-page URL, use first such h-card"
+			$card = self::find_card_by_url( $mf2, $authorpage );
+			if ( $card ) {
+				return $card;
+			}
+			$rel = self::get_rel_urls( $mf2, $authorpage );
+			if ( $rel ) {
+				return array(
+					'type'       => array( 'h-card' ),
+					'properties' => $rel,
+				);
+			}
+			return array(
+				'type'       => array( 'h-card' ),
+				'properties' => array(
+					'url' => array( $authorpage ),
+				),
+			);
 		}
 	}
 
@@ -446,6 +445,22 @@ class MF2 extends MF2_Utils {
 			return $return;
 		}
 
+		// Several top-level items, and one is wanted: work out which is the page's.
+		if ( 'feed' !== $args['return'] ) {
+			$main = self::select_main_item( $input, $url );
+			if ( 'feed' === $main ) {
+				$args['return'] = 'feed';
+				return self::parse( $input, $url, $args );
+			}
+			if ( is_array( $main ) ) {
+				$return = self::parse_item( $main, $input, $args );
+				if ( is_array( $return ) && self::has_rel( $input, 'alternate' ) ) {
+					$return['_alternate'] = self::get_rel( $input, 'alternate' );
+				}
+				return $return;
+			}
+		}
+
 		$return = array();
 		$card   = null;
 		foreach ( $input['items'] as $key => $item ) {
@@ -535,7 +550,7 @@ class MF2 extends MF2_Utils {
 			$data['url'] = $args['url'];
 		}
 		$data['url'] = normalize_url( $data['url'] );
-		$author      = self::find_author( $entry, $mf, $args['follow'] );
+		$author      = self::find_author( $entry, $mf, $args['follow'], $args );
 		if ( self::is_microformat( $author ) ) {
 			$data['author'] = self::parse_hcard( $author, $mf, $args );
 		} else {
@@ -556,6 +571,10 @@ class MF2 extends MF2_Utils {
 		}
 		if ( isset( $data['items'] ) ) {
 			foreach ( $data['items'] as $key => $item ) {
+				// An entry in a feed with no author of its own is by the feed's author.
+				if ( empty( $item['author'] ) && ! empty( $data['author'] ) && 'card' !== ( $item['type'] ?? '' ) ) {
+					$item['author'] = $data['author'];
+				}
 				foreach ( $authors as $author ) {
 					if ( ! is_array( $author ) || empty( $author['url'] ) || ! isset( $item['author']['url'] ) ) {
 						continue;
@@ -628,6 +647,297 @@ class MF2 extends MF2_Utils {
 			$data = jf2_references( $data );
 		}
 		return $data;
+	}
+
+	/**
+	 * Fetches an author page and finds the author's h-card on it.
+	 *
+	 * Steps 7.1 to 7.3 of https://indieweb.org/authorship: an h-card whose url
+	 * and uid are both the author page, else one whose url is a rel=me link on
+	 * the page. Then step 7.4 (an h-card on the original page whose url is the
+	 * author page), then the author page's own main item if it is a card.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $authorpage Author page URL.
+	 * @param array  $mf2        Parsed mf2 document of the original page.
+	 * @param array  $args       Parse arguments.
+	 * @return array An h-card microformat, or jf2 for the author page's card.
+	 */
+	private static function author_from_page( $authorpage, $mf2, $args ) {
+		$fallback = array(
+			'type'       => array( 'h-card' ),
+			'properties' => array( 'url' => array( $authorpage ) ),
+		);
+		$response = pt_remote_get( strtok( $authorpage, '#' ) );
+		if ( is_wp_error( $response ) || (int) wp_remote_retrieve_response_code( $response ) >= 400 ) {
+			// The author page is missing or an error: keep its URL.
+			return self::find_card_by_url( $mf2, $authorpage ) ?? $fallback;
+		}
+		$body = wp_remote_retrieve_body( $response );
+		$type = pt_sniff_content_type( strtok( (string) wp_remote_retrieve_header( $response, 'content-type' ), ';' ), $body );
+		if ( 'application/mf2+json' === $type ) {
+			$page = json_decode( $body, true );
+		} else {
+			if ( ! class_exists( 'Mf2\Parser' ) ) {
+				require_once plugin_dir_path( __DIR__ ) . 'lib/mf2/Parser.php';
+			}
+			$page = ( new \Mf2\Parser( $body, $authorpage ) )->parse();
+		}
+		if ( ! is_array( $page ) || empty( $page['items'] ) ) {
+			return self::find_card_by_url( $mf2, $authorpage ) ?? $fallback;
+		}
+
+		$cards  = self::find_all_cards( $page );
+		$target = self::url_key( $authorpage );
+		// 7.2 "if author-page has 1+ h-card with url == uid == author-page's URL, then use first such h-card"
+		foreach ( $cards as $card ) {
+			$urls = array_map( array( __CLASS__, 'url_key' ), array_filter( (array) ( $card['properties']['url'] ?? array() ), 'is_string' ) );
+			$uids = array_map( array( __CLASS__, 'url_key' ), array_filter( (array) ( $card['properties']['uid'] ?? array() ), 'is_string' ) );
+			if ( in_array( $target, $urls, true ) && in_array( $target, $uids, true ) ) {
+				return self::card_with_url( $card, $authorpage );
+			}
+		}
+		// 7.3 "else if author-page has 1+ h-card with url property which matches the href of a rel-me link on the author-page"
+		$me = array_map( array( __CLASS__, 'url_key' ), array_filter( (array) ( $page['rels']['me'] ?? array() ), 'is_string' ) );
+		if ( $me ) {
+			foreach ( $cards as $card ) {
+				$urls = array_map( array( __CLASS__, 'url_key' ), array_filter( (array) ( $card['properties']['url'] ?? array() ), 'is_string' ) );
+				if ( array_intersect( $urls, $me ) ) {
+					return self::card_with_url( $card, $authorpage );
+				}
+			}
+		}
+		// 7.4 "if the h-entry's page has 1+ h-card with url == author-page URL, use first such h-card"
+		$card = self::find_card_by_url( $mf2, $authorpage );
+		if ( $card ) {
+			return $card;
+		}
+		// Otherwise the author page itself, if it is a card (a profile page).
+		$args['follow'] = false;
+		$args['return'] = 'single';
+		$main           = self::parse( $page, $authorpage, $args );
+		if ( is_array( $main ) && isset( $main['type'] ) && 'card' === $main['type'] ) {
+			// A profile page's card is about the page, whatever its own url says.
+			if ( empty( $main['url'] ) || ! is_string( $main['url'] ) || ! preg_match( '#^https?://#i', $main['url'] ) ) {
+				$main['url'] = $authorpage;
+			}
+			return $main;
+		}
+		return $fallback;
+	}
+
+	/**
+	 * Puts an author page URL first among a card's urls.
+	 *
+	 * A card can list several urls (an xmpp: address, say, before the web
+	 * page), and the first one becomes its url, so the one that is the author
+	 * page goes first; a card with no http(s) url gets the author page.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array  $card       h-card microformat.
+	 * @param string $authorpage Author page URL.
+	 * @return array The card with its urls reordered.
+	 */
+	private static function card_with_url( $card, $authorpage ) {
+		$urls   = array_values( array_filter( (array) ( $card['properties']['url'] ?? array() ), 'is_string' ) );
+		$target = self::url_key( $authorpage );
+		$first  = null;
+		foreach ( $urls as $i => $url ) {
+			if ( self::url_key( $url ) === $target ) {
+				$first = $url;
+				unset( $urls[ $i ] );
+				break;
+			}
+		}
+		if ( null === $first ) {
+			$web   = preg_grep( '#^https?://#i', $urls );
+			$first = $web ? null : $authorpage;
+		}
+		if ( null !== $first ) {
+			array_unshift( $urls, $first );
+		}
+		$card['properties']['url'] = array_values( $urls );
+		return $card;
+	}
+
+	/**
+	 * Finds the first h-card in a document whose url is a given URL.
+	 *
+	 * Looks at top-level items, items nested in their properties (such as an
+	 * h-feed's author) and children.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array|mixed $mf2 Parsed mf2 document.
+	 * @param string      $url URL to match.
+	 * @return array|null The h-card microformat, or null.
+	 */
+	private static function find_card_by_url( $mf2, $url ) {
+		$target = self::url_key( $url );
+		foreach ( self::find_all_cards( $mf2 ) as $card ) {
+			foreach ( (array) ( $card['properties']['url'] ?? array() ) as $card_url ) {
+				if ( is_string( $card_url ) && self::url_key( $card_url ) === $target ) {
+					return $card;
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Collects the h-cards in a document, at any depth.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array|mixed $mf2 Parsed mf2 document, or a list of microformats.
+	 * @return array[] h-card microformats, in document order, without their
+	 *                 children.
+	 */
+	private static function find_all_cards( $mf2 ) {
+		$items = ( is_array( $mf2 ) && isset( $mf2['items'] ) && is_array( $mf2['items'] ) ) ? $mf2['items'] : ( wp_is_numeric_array( $mf2 ) ? $mf2 : array() );
+		$cards = array();
+		foreach ( $items as $item ) {
+			if ( ! self::is_microformat( $item ) ) {
+				continue;
+			}
+			if ( self::is_type( $item, 'h-card' ) ) {
+				// As an author, a card is just the card: what it contains (such as the
+				// feed of the author's posts, whose entries point back to it) is not.
+				$card = $item;
+				unset( $card['children'] );
+				$cards[] = $card;
+			}
+			foreach ( (array) $item['properties'] as $values ) {
+				$cards = array_merge( $cards, self::find_all_cards( array_values( array_filter( (array) $values, array( __CLASS__, 'is_microformat' ) ) ) ) );
+			}
+			if ( isset( $item['children'] ) && is_array( $item['children'] ) ) {
+				$cards = array_merge( $cards, self::find_all_cards( $item['children'] ) );
+			}
+		}
+		return $cards;
+	}
+
+	/**
+	 * Chooses the item a page with several top-level items is about.
+	 *
+	 * Follows XRay: breadcrumbs are ignored; if only one item is left once
+	 * h-cards for other URLs are set aside, it is that one; otherwise an item
+	 * whose url is the page; otherwise, when the page's rel=author matches an
+	 * h-card on it (a sidebar profile), the first item that isn't a card; and
+	 * when entries remain, the page is a feed. Failing those, an h-feed, then
+	 * the first item of a known type.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array  $input Parsed mf2 document.
+	 * @param string $url   URL of the page.
+	 * @return array|string|null The chosen microformat, 'feed' if the page is a
+	 *                           feed, or null if none stands out.
+	 */
+	private static function select_main_item( $input, $url ) {
+		$page  = self::url_key( $url );
+		$items = array_values(
+			array_filter(
+				$input['items'],
+				function ( $item ) {
+					return is_array( $item ) && ! self::is_type( $item, 'h-breadcrumb' );
+				}
+			)
+		);
+
+		// Set aside h-cards for other URLs: a sidebar or footer profile.
+		$candidates = array_values(
+			array_filter(
+				$items,
+				function ( $item ) use ( $page ) {
+					$card_url = $item['properties']['url'][0] ?? null;
+					return ! ( self::is_type( $item, 'h-card' ) && is_string( $card_url ) && self::url_key( $card_url ) !== $page );
+				}
+			)
+		);
+		if ( 1 === count( $candidates ) ) {
+			return $candidates[0];
+		}
+
+		// An item whose url is this page.
+		foreach ( $items as $item ) {
+			foreach ( (array) ( $item['properties']['url'] ?? array() ) as $item_url ) {
+				if ( is_string( $item_url ) && self::url_key( $item_url ) === $page ) {
+					return $item;
+				}
+			}
+		}
+
+		// The page's author has an h-card here, so the first other item is the content.
+		$authors = array_map( array( __CLASS__, 'url_key' ), array_filter( (array) ( $input['rels']['author'] ?? array() ), 'is_string' ) );
+		if ( $authors ) {
+			foreach ( $items as $card ) {
+				if ( ! self::is_type( $card, 'h-card' ) ) {
+					continue;
+				}
+				foreach ( (array) ( $card['properties']['url'] ?? array() ) as $card_url ) {
+					if ( is_string( $card_url ) && in_array( self::url_key( $card_url ), $authors, true ) ) {
+						foreach ( $items as $item ) {
+							if ( ! self::is_type( $item, 'h-card' ) ) {
+								return $item;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Several entries and nothing else to go on: a list of posts.
+		foreach ( $candidates as $item ) {
+			if ( self::is_type( $item, 'h-entry' ) ) {
+				return 'feed';
+			}
+		}
+
+		foreach ( $candidates as $item ) {
+			if ( self::is_type( $item, 'h-feed' ) ) {
+				return $item;
+			}
+		}
+		foreach ( $candidates as $item ) {
+			foreach ( array( 'h-entry', 'h-cite', 'h-event', 'h-review', 'h-recipe', 'h-product', 'h-item', 'h-app', 'h-x-app' ) as $type ) {
+				if ( self::is_type( $item, $type ) ) {
+					return $item;
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Normalizes a URL for comparing it with a page's URL.
+	 *
+	 * Lowercases the host, adds a missing path, and drops the fragment and
+	 * utm_* tracking parameters, which shared links often carry.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $url URL.
+	 * @return string The comparable URL.
+	 */
+	private static function url_key( $url ) {
+		$url   = strtok( (string) $url, '#' );
+		$query = wp_parse_url( $url, PHP_URL_QUERY );
+		if ( $query ) {
+			wp_parse_str( $query, $params );
+			foreach ( array_keys( $params ) as $key ) {
+				if ( 0 === strpos( $key, 'utm_' ) ) {
+					unset( $params[ $key ] );
+				}
+			}
+			$url = strtok( $url, '?' );
+			if ( $params ) {
+				$url .= '?' . http_build_query( $params );
+			}
+		}
+		return (string) normalize_url( $url );
 	}
 
 	/**
@@ -762,10 +1072,12 @@ class MF2 extends MF2_Utils {
 	 * Returns the properties common to most microformat types.
 	 *
 	 * Reads name, published, updated, url, author, content and summary, drops
-	 * the name when it just repeats the content, and adds the document's
-	 * rel=syndication links.
+	 * the name when it only repeats the start of the content (see
+	 * name_is_content_prefix()), and adds the document's rel=syndication links.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Drops a name that is a prefix of the content, including a
+	 *              truncated one, not only one that contains all of it.
 	 *
 	 * @param array $entry Microformat.
 	 * @param array $mf    Parsed mf2 document.
@@ -778,7 +1090,7 @@ class MF2 extends MF2_Utils {
 		$data['published'] = self::get_published( $entry, true, null );
 		$data['updated']   = self::get_updated( $entry, true, null );
 		$data['url']       = normalize_url( self::get_plaintext( $entry, 'url' ) );
-		$author            = self::find_author( $entry, $mf, $args['follow'] );
+		$author            = self::find_author( $entry, $mf, $args['follow'], $args );
 		if ( self::is_microformat( $author ) ) {
 			$data['author'] = self::parse_hcard( $author, $mf, $args, $data['url'] );
 		} else {
@@ -787,9 +1099,10 @@ class MF2 extends MF2_Utils {
 		$data['content'] = self::parse_html_value( $entry, 'content' );
 		$data['summary'] = self::get_summary( $entry, $data['content'] );
 
-		// If name and content are equal remove name.
+		// A name that only repeats the start of the content (often implied, or
+		// truncated with an ellipsis) is not a title.
 		if ( is_array( $data['content'] ) && array_key_exists( 'text', $data['content'] ) ) {
-			if ( self::compare( $data['name'], $data['content']['text'] ) ) {
+			if ( name_is_content_prefix( $data['name'], $data['content']['text'] ) ) {
 				unset( $data['name'] );
 			}
 		}

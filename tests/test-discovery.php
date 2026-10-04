@@ -60,4 +60,32 @@ class Discovery_Test extends Parse_This_TestCase {
 	public function test_error() {
 		$this->assertWPError( ( new ParseThis\Discovery() )->fetch( 'https://example.com/missing/' ) );
 	}
+
+	/**
+	 * Discovery recognizes mf2 JSON feeds, sniffed feeds, and permanent redirects (X-11).
+	 */
+	public function test_discovery_formats_and_redirects() {
+		$this->respond( 'https://example.com/mf2-feed', wp_json_encode( array( 'items' => array( array( 'type' => array( 'h-feed' ), 'properties' => array(), 'children' => array() ) ) ) ), 'application/mf2+json' );
+		$results = ( new ParseThis\Discovery() )->fetch( 'https://example.com/mf2-feed' );
+		$this->assertSame( 'microformats', $results['results'][0]['_feed_type'] );
+		$this->assertSame( 'https://example.com/mf2-feed', $results['results'][0]['url'] );
+
+		$this->respond( 'https://example.com/plain-rss', '<?xml version="1.0"?><rss version="2.0"><channel><title>Plain</title><link>https://example.com/</link></channel></rss>', 'text/plain' );
+		$results = ( new ParseThis\Discovery() )->fetch( 'https://example.com/plain-rss' );
+		$this->assertSame( 'Plain', $results['results'][0]['name'] );
+
+		// The feed URL follows a permanent redirect, not a temporary one.
+		$feed_url = new ReflectionMethod( ParseThis\Discovery::class, 'feed_url' );
+		$feed_url->setAccessible( true );
+		foreach ( array( 301 => 'https://example.com/new-feed', 308 => 'https://example.com/new-feed', 302 => 'https://example.com/old-feed', 307 => 'https://example.com/old-feed' ) as $code => $expected ) {
+			$hop              = new WpOrg\Requests\Response();
+			$hop->status_code = $code;
+			$final            = new WpOrg\Requests\Response();
+			$final->url       = 'https://example.com/new-feed';
+			$final->history   = array( $hop );
+			$response         = array( 'http_response' => new WP_HTTP_Requests_Response( $final ) );
+			$this->assertSame( $expected, $feed_url->invoke( null, 'https://example.com/old-feed', $response ), "HTTP $code" );
+		}
+		$this->assertSame( 'https://example.com/x', $feed_url->invoke( null, 'https://example.com/x', array() ) );
+	}
 }

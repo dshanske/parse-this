@@ -107,6 +107,15 @@ class Parser {
 	private $code = 0;
 
 	/**
+	 * Kind of source the result was read from: mf2+html, html, mf2+json,
+	 * jf2+json, feed+json, xml (RSS or Atom) or wordpress (REST API).
+	 *
+	 * @since 2.0.0
+	 * @var string
+	 */
+	private $source_format = '';
+
+	/**
 	 * Sets up a parser for a URL.
 	 *
 	 * URLs on a list of hosts known to support HTTPS are upgraded to https://
@@ -443,6 +452,23 @@ class Parser {
 	}
 
 	/**
+	 * Reads a status code a page declares with <meta http-equiv="Status">.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param DOMDocument $doc Parsed page.
+	 * @return int The status code, or 0 if there is none.
+	 */
+	private static function meta_status( $doc ) {
+		foreach ( $doc->getElementsByTagName( 'meta' ) as $meta ) {
+			if ( 'status' === strtolower( trim( $meta->getAttribute( 'http-equiv' ) ) ) && preg_match( '/^\s*(\d{3})/', $meta->getAttribute( 'content' ), $match ) ) {
+				return (int) $match[1];
+			}
+		}
+		return 0;
+	}
+
+	/**
 	 * Builds the error returned for an HTTP error response.
 	 *
 	 * @since 2.0.0
@@ -497,7 +523,8 @@ class Parser {
 		// YouTube watch pages exceed 1 MB, and the player data is part-way through them.
 		$host     = wp_parse_url( $url, PHP_URL_HOST );
 		$args     = in_array( $host, array( 'youtube.com', 'www.youtube.com', 'm.youtube.com' ), true ) ? array( 'limit_response_size' => 3 * MB_IN_BYTES ) : array();
-		$response = pt_remote_get( $url, $args );
+		// A fragment is never sent to the server; it is kept to pick out part of the page.
+		$response = pt_remote_get( strtok( $url, '#' ), $args );
 		if ( is_wp_error( $response ) ) {
 			// pt_remote_get() reports a 403 or 415 that survives its retry as source_error.
 			$data = $response->get_error_data();
@@ -515,6 +542,10 @@ class Parser {
 			return self::http_error( $this->code );
 		}
 
+		// Work from where the document is after any redirects, so relative links
+		// resolve against it and site parsers see its real host.
+		$url = pt_effective_url( $url, $response );
+
 		$raw = wp_remote_retrieve_header( $response, 'link' );
 		if ( ! empty( $raw ) ) {
 			$this->links = pt_parse_header_links( $raw );
@@ -524,28 +555,32 @@ class Parser {
 		if ( is_array( $this->content_type ) ) {
 			$this->content_type = array_pop( $this->content_type );
 		}
-						// Strip any character set off the content type.
-						$ct = explode( ';', $this->content_type );
+		// Strip any character set off the content type.
+		$ct = explode( ';', $this->content_type );
 		if ( is_array( $ct ) ) {
 			$this->content_type = array_shift( $ct );
 		}
-						$this->content_type = trim( $this->content_type );
-						// List of content types we know how to handle.
+		$this->content_type = trim( $this->content_type );
+		$content            = wp_remote_retrieve_body( $response );
+		// Feeds and JSON are often served with a generic or wrong content type.
+		$this->content_type = pt_sniff_content_type( $this->content_type, $content );
+		// List of content types we know how to handle.
 		if ( ! self::supported_content( $this->content_type ) ) {
 			return new \WP_Error( 'content-type', 'Content Type is Not Supported', array( 'content-type' => $this->content_type ) );
 		}
 
-		$content = wp_remote_retrieve_body( $response );
-
 		// This is an RSS or Atom Feed URL and if it is not we do not know how to deal with XML anyway.
 		if ( class_exists( RSS::class ) && ( in_array( $this->content_type, array( 'application/rss+xml', 'application/atom+xml', 'text/xml', 'application/xml', 'text/xml' ), true ) ) ) {
-			// Get a SimplePie feed object from the specified feed source.
-			$content = self::fetch_feed( $url, $response );
+			// Get a SimplePie feed object from the specified feed source. SimplePie
+			// goes by the content type, so give it the sniffed one.
+			$response['headers']['content-type'] = $this->content_type;
+			$content                             = self::fetch_feed( $url, $response );
 			if ( is_wp_error( $content ) ) {
 				return false;
 			}
 
 			$this->set( $content, $url, true );
+			$this->source_format = 'xml';
 			return true;
 		}
 
@@ -553,6 +588,7 @@ class Parser {
 			$content = json_decode( $content, true );
 			// Parsed mf2 is passed to the MF2 parser as content; jf2 is already in its final form.
 			$this->set( $content, $url, ( 'application/mf2+json' !== $this->content_type ) );
+			$this->source_format = ( 'application/mf2+json' === $this->content_type ) ? 'mf2+json' : 'jf2+json';
 			return true;
 		}
 
@@ -562,6 +598,8 @@ class Parser {
 			if ( class_exists( JSONFeed::class ) && isset( $content['version'] ) && false !== strpos( $content['version'], 'https://jsonfeed.org/version/' ) ) {
 				$content = JSONFeed::to_jf2( $content, $url );
 				$this->set( $content, $url, true );
+				$this->source_format = 'feed+json';
+				return true;
 				// This means we are probing a specific REST Endpoint as they return this.
 			} elseif ( wp_remote_retrieve_header( $response, 'x-wp-total' ) ) {
 				// Site details come from the REST API root, not the collection URL.
@@ -571,6 +609,8 @@ class Parser {
 				$content['_pages'] = wp_remote_retrieve_header( $response, 'x-wp-totalpages' );
 
 				$this->set( $content, $url, true );
+				$this->source_format = 'wordpress';
+				return true;
 			}
 		}
 
@@ -666,8 +706,11 @@ class Parser {
 		}
 		if ( is_array( $this->jf2 ) ) {
 			$this->jf2 = self::format_output( $this->jf2, $args );
-			if ( 410 === $this->code ) {
-				$this->jf2['_code'] = 410;
+			if ( $this->code ) {
+				$this->jf2['_code'] = $this->code;
+			}
+			if ( $this->source_format ) {
+				$this->jf2['_source_format'] = $this->source_format;
 			}
 		}
 	}
@@ -976,10 +1019,43 @@ class Parser {
 	}
 
 	/**
+	 * Strips a leading # from category names and removes duplicates.
+	 *
+	 * A hashtag and a plain tag are the same category, as XRay treats them.
+	 * Values that aren't strings (person tags as nested cards) are kept.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param mixed $category A category value or a list of them.
+	 * @return mixed The cleaned value, in the same shape.
+	 */
+	private static function clean_categories( $category ) {
+		$list   = wp_is_numeric_array( $category );
+		$values = $list ? $category : array( $category );
+		$clean  = array();
+		$seen   = array();
+		foreach ( $values as $value ) {
+			if ( is_string( $value ) ) {
+				$value = trim( ltrim( trim( $value ), '#' ) );
+				if ( '' === $value || isset( $seen[ $value ] ) ) {
+					continue;
+				}
+				$seen[ $value ] = true;
+			}
+			$clean[] = $value;
+		}
+		if ( $list ) {
+			return $clean;
+		}
+		return $clean ? $clean[0] : '';
+	}
+
+	/**
 	 * Normalizes one jf2 object; see format_output().
 	 *
 	 * A type is required by jf2, so an object without one that has any properties
-	 * besides url (as when only meta tags filled it) becomes an entry.
+	 * besides url (as when only meta tags filled it) becomes an entry. Category
+	 * names lose a leading # and duplicates (see clean_categories()).
 	 *
 	 * @since 2.0.0
 	 *
@@ -997,6 +1073,12 @@ class Parser {
 			);
 			if ( $properties ) {
 				$jf2['type'] = 'entry';
+			}
+		}
+		if ( isset( $jf2['category'] ) ) {
+			$jf2['category'] = self::clean_categories( $jf2['category'] );
+			if ( array() === $jf2['category'] || '' === $jf2['category'] ) {
+				unset( $jf2['category'] );
 			}
 		}
 		if ( array_key_exists( 'author', $jf2 ) ) {
@@ -1027,8 +1109,8 @@ class Parser {
 	 */
 	private function parse_sources( $args ) {
 		if ( class_exists( RSS::class ) && ( $this->content instanceof \SimplePie\SimplePie || $this->content instanceof \SimplePie ) ) {
-			$this->jf2 = RSS::parse( $this->content, $this->url );
-
+			$this->jf2           = RSS::parse( $this->content, $this->url );
+			$this->source_format = 'xml';
 			return;
 		} elseif ( $this->doc instanceof \DOMDocument ) {
 			$content = $this->doc;
@@ -1043,8 +1125,9 @@ class Parser {
 		if ( 'application/json' === $this->content_type && empty( $this->jf2 ) ) {
 			$rest = RESTAPI::parse( $content, $this->url, $args );
 			if ( is_array( $rest ) && ! empty( $rest ) ) {
-				$this->jf2          = $rest;
-				$this->jf2['_rest'] = $content;
+				$this->jf2           = $rest;
+				$this->jf2['_rest']  = $content;
+				$this->source_format = 'wordpress';
 				return;
 			}
 			// Unrecognized JSON: return it as is.
@@ -1063,9 +1146,31 @@ class Parser {
 			return;
 		}
 
+		// A URL fragment (a comment's #comment-12, say) points to part of the page:
+		// parse only that element, and don't fill it in from the page's metadata.
+		$fragment = wp_parse_url( $this->url, PHP_URL_FRAGMENT );
+		$element  = $fragment ? pt_find_fragment_element( $this->doc, $fragment ) : null;
+		if ( $element && empty( $this->jf2 ) ) {
+			$content = $this->doc->saveHTML( $element );
+		}
+
 		// Ensure not already preparsed.
 		if ( empty( $this->jf2 ) ) {
 			$this->jf2 = MF2::parse( $content, $this->url, $args );
+			if ( ! $this->source_format ) {
+				if ( is_array( $content ) ) {
+					$this->source_format = 'mf2+json';
+				} else {
+					$this->source_format = empty( $this->jf2 ) ? 'html' : 'mf2+html';
+				}
+			}
+		}
+		// A page can declare its own status, as a deleted post's stub does.
+		if ( $this->doc instanceof \DOMDocument ) {
+			$status = self::meta_status( $this->doc );
+			if ( $status ) {
+				$this->code = $status;
+			}
 		}
 
 		// Microformats come first. A list means several top-level items, none of them this page.
@@ -1082,6 +1187,10 @@ class Parser {
 		 */
 		$host      = wp_parse_url( $this->url, PHP_URL_HOST );
 		$fallbacks = array();
+		if ( $element ) {
+			$args['html']   = false;
+			$args['jsonld'] = false;
+		}
 		if ( $args['html'] && in_array( $host, array( 'youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be' ), true ) ) {
 			$fallbacks[] = YouTube::parse( $this->content, $this->url, $args );
 		}
@@ -1091,7 +1200,9 @@ class Parser {
 		if ( $args['jsonld'] ) {
 			$fallbacks[] = JSONLD::parse( $this->doc, $this->url, $args );
 		}
-		$fallbacks[] = JSON::parse( $this->doc, $this->url, $args );
+		if ( ! $element ) {
+			$fallbacks[] = JSON::parse( $this->doc, $this->url, $args );
+		}
 		if ( $args['html'] ) {
 			$fallbacks[] = HTML::parse( $content, $this->url, $args );
 		}
@@ -1101,7 +1212,7 @@ class Parser {
 
 		// The REST alternate costs an HTTP request, so it only runs if there still isn't enough.
 		$require_content = isset( $args['require_content'] ) ? (bool) $args['require_content'] : ( 'feed' === $args['return'] );
-		if ( ! self::has_content( $this->jf2, $require_content ) ) {
+		if ( ! $element && ! self::has_content( $this->jf2, $require_content ) ) {
 			$remote = array();
 			if ( ! empty( $this->links ) ) {
 				$endpoint = pt_find_rest_endpoint( $this->links );
@@ -1127,8 +1238,11 @@ class Parser {
 			$this->jf2['post-type'] = post_type_discovery( $this->jf2 );
 		}
 
-		if ( ! isset( $this->jf2['url'] ) ) {
-			$this->jf2['url'] = $this->url;
+		// No url, or none on the web (a card listing only an xmpp: address): use the page.
+		$web_urls = preg_grep( '#^https?://#i', array_filter( (array) ( $this->jf2['url'] ?? array() ), 'is_string' ) );
+		if ( empty( $web_urls ) ) {
+			// A fragment that matched nothing doesn't identify the result.
+			$this->jf2['url'] = ( $fragment && ! $element ) ? strtok( $this->url, '#' ) : $this->url;
 		}
 			// Expand Short URLs in summary.
 		if ( isset( $this->jf2['summary'] ) ) {

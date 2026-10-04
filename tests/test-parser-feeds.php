@@ -97,4 +97,19 @@ class Parser_Feeds_Test extends Parse_This_TestCase {
 		$this->assertSame( 'card', $jf2['author']['type'] );
 		$this->assertArrayNotHasKey( 'author', $jf2['items'][1] ); // Empty authors list.
 	}
+
+	/**
+	 * Truncated RSS titles that repeat the content, and titles that are the link, are dropped (X-7).
+	 */
+	public function test_rss_duplicate_titles() {
+		$xml = '<?xml version="1.0"?><rss version="2.0"><channel><title>T</title><link>https://example.com/</link>'
+			. '<item><title>Just setting up my…</title><link>https://example.com/1</link><description>Just setting up my new site today.</description></item>'
+			. '<item><title>A real title</title><link>https://example.com/2</link><description>A real title is not dropped, even as a prefix.</description></item>'
+			. '<item><title>https://example.com/3</title><link>https://example.com/3</link><description>Link as title.</description></item>'
+			. '</channel></rss>';
+		$jf2 = ParseThis\RSS::parse( $this->simplepie( $xml ), 'https://example.com/feed' );
+		$this->assertArrayNotHasKey( 'name', $jf2['items'][0] );
+		$this->assertSame( 'A real title', $jf2['items'][1]['name'] );
+		$this->assertArrayNotHasKey( 'name', $jf2['items'][2] );
+	}
 }
