@@ -96,21 +96,33 @@ class JSONFeed extends Base {
 		$return['items'] = array();
 		$items = ( isset( $content['items'] ) && is_array( $content['items'] ) ) ? $content['items'] : array();
 		foreach ( $items as $item ) {
+			// Relative URLs in an item are relative to the item, or to the feed when it has no URL.
+			$item_url = isset( $item['url'] ) && is_string( $item['url'] ) ? pt_make_absolute_url( $item['url'], $url ) : null;
+			$base     = $item_url ? $item_url : $url;
+			$absolute = function ( $value ) use ( $base ) {
+				return ( is_string( $value ) && '' !== $value ) ? pt_make_absolute_url( $value, $base ) : null;
+			};
+			$html     = Parser::clean_content( pt_absolute_urls_in_html( $item['content_html'] ?? null, $base ) );
+			$text     = $item['content_text'] ?? null;
+			if ( ( ! is_string( $text ) || '' === trim( $text ) ) && is_string( $html ) ) {
+				// Feeds may give only HTML; jf2 content has text as well.
+				$text = trim( wp_strip_all_tags( $html ) );
+			}
 			$newitem = array_filter(
 				array(
 					'type'        => 'entry',
 					'uid'         => $item['id'] ?? null,
-					'url'         => $item['url'] ?? null,
-					'in-reply-to' => $item['external_url'] ?? null,
+					'url'         => $item_url,
+					'in-reply-to' => $absolute( $item['external_url'] ?? null ),
 					'name'        => $item['title'] ?? null,
 					'content'     => array_filter(
 						array(
-							'html' => Parser::clean_content( $item['content_html'] ?? null ),
-							'text' => $item['content_text'] ?? null,
+							'html' => $html,
+							'text' => $text,
 						)
 					),
 					'summary'     => $item['summary'] ?? null,
-					'featured'    => $item['image'] ?? null,
+					'featured'    => $absolute( $item['image'] ?? null ),
 					'published'   => normalize_iso8601( $item['date_published'] ?? null ),
 					'updated'     => normalize_iso8601( $item['date_modified'] ?? null ),
 					'author'      => self::get_author( $item ),
@@ -127,16 +139,16 @@ class JSONFeed extends Base {
 					$type = array_shift( $type );
 					switch ( $type ) {
 						case 'audio':
-							$newitem['audio'] = $attachment['url'];
+							$newitem['audio'] = $absolute( $attachment['url'] );
 							if ( isset( $attachment['duration_in_seconds'] ) ) {
 								$newitem['duration'] = seconds_to_iso8601( $attachment['duration_in_seconds'] );
 							}
 							break;
 						case 'image':
-							$newitem['photo'] = $attachment['url'];
+							$newitem['photo'] = $absolute( $attachment['url'] );
 							break;
 						case 'video':
-							$newitem['video'] = $attachment['url'];
+							$newitem['video'] = $absolute( $attachment['url'] );
 							if ( isset( $attachment['duration_in_seconds'] ) ) {
 								$newitem['duration'] = seconds_to_iso8601( $attachment['duration_in_seconds'] );
 							}
@@ -144,7 +156,8 @@ class JSONFeed extends Base {
 					}
 				}
 			}
-			$return['items'][] = $newitem;
+			$newitem['post-type'] = post_type_discovery( $newitem );
+			$return['items'][]    = array_filter( $newitem );
 		}
 		$return['_last_published'] = self::find_last_published( $return['items'] );
 		$return['_last_updated']   = self::find_last_updated( $return['items'] );
