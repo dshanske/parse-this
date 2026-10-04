@@ -30,6 +30,11 @@ function _manually_load_plugin() {
 }
 tests_add_filter( 'muplugins_loaded', '_manually_load_plugin' );
 
+// PARSE_THIS_NATIVE_HTML=0 runs the suite with masterminds/html5 even where PHP's HTML5 parser exists.
+if ( '0' === getenv( 'PARSE_THIS_NATIVE_HTML' ) ) {
+	tests_add_filter( 'parse_this_native_html_parser', '__return_false' );
+}
+
 // Start up the WP testing environment.
 require $_tests_dir . '/includes/bootstrap.php';
 

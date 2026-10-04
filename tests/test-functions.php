@@ -152,4 +152,43 @@ class Functions_Test extends Parse_This_TestCase {
 		$this->assertSame( 'note', ParseThis\post_type_discovery( array( 'type' => 'entry', 'content' => array( 'text' => 'Body' ) ) ) );
 		$this->assertSame( 'note', ParseThis\post_type_discovery( array( 'type' => 'entry', 'name' => '   ' ) ) );
 	}
+
+	/**
+	 * PHP's HTML5 parser is used when available, and can be turned off.
+	 */
+	public function test_native_html_parser() {
+		$html = '<div class="h-entry"><p class="p-name">Hello World<article class="e-content">Body</article></div><!-- a -- comment --><button @click="go()" x-on:click="go()">Go</button><span id="t">AT&T &copy 2026</span>';
+
+		if ( ! class_exists( 'Dom\HTMLDocument' ) ) {
+			$this->assertNull( ParseThis\pt_native_html_document( $html ) );
+			$this->markTestSkipped( 'PHP\'s HTML5 parser needs PHP 8.4 or later.' );
+		}
+
+		$doc = ParseThis\pt_native_html_document( $html );
+		$this->assertInstanceOf( 'DOMDocument', $doc );
+		// The HTML5 algorithm: an entity without a semicolon is decoded, and the button survives
+		// without its non-XML attributes.
+		$this->assertSame( 'AT&T © 2026', $doc->getElementById( 't' ) ? $doc->getElementById( 't' )->textContent : ( new DOMXPath( $doc ) )->query( '//span' )->item( 0 )->textContent );
+		$this->assertSame( 1, ( new DOMXPath( $doc ) )->query( '//button' )->length );
+		// <article> closes the <p>, as browsers do, so the name is just the title.
+		$mf2 = ( new Mf2\Parser( $doc, 'https://example.com/' ) )->parse();
+		$this->assertSame( array( 'Hello World' ), $mf2['items'][0]['properties']['name'] );
+
+		// pt_load_domdocument() uses it by default (unless the suite runs with PARSE_THIS_NATIVE_HTML=0)...
+		if ( apply_filters( 'parse_this_native_html_parser', true ) ) {
+			$this->assertSame( 'AT&T © 2026', ( new DOMXPath( ParseThis\pt_load_domdocument( $html ) ) )->query( '//span' )->item( 0 )->textContent );
+		}
+		// ...and not when the filter turns it off (masterminds leaves &copy without a semicolon as it is).
+		add_filter( 'parse_this_native_html_parser', '__return_false' );
+		$text = ( new DOMXPath( ParseThis\pt_load_domdocument( $html ) ) )->query( '//span' )->item( 0 )->textContent;
+		remove_filter( 'parse_this_native_html_parser', '__return_false' );
+		$this->assertSame( 'AT&T &copy 2026', $text );
+	}
+
+	/**
+	 * Empty HTML gives an empty document rather than an error.
+	 */
+	public function test_load_domdocument_empty() {
+		$this->assertInstanceOf( 'DOMDocument', ParseThis\pt_load_domdocument( '' ) );
+	}
 }

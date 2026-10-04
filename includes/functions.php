@@ -733,15 +733,38 @@ if ( ! function_exists( __NAMESPACE__ . '\\pt_load_domdocument' ) ) {
 	/**
 	 * Parses HTML into a DOMDocument.
 	 *
-	 * Uses the bundled masterminds/html5 parser when available, otherwise
-	 * PHP's DOMDocument with errors suppressed.
+	 * On PHP 8.4 and later, uses PHP's own HTML5 parser (Dom\HTMLDocument),
+	 * which builds the same tree a browser does and is several times faster
+	 * than masterminds/html5 (see pt_native_html_document()). It can be turned
+	 * off with the parse_this_native_html_parser filter. Otherwise, or if that
+	 * fails, uses the bundled masterminds/html5 parser, and failing that PHP's
+	 * DOMDocument with errors suppressed.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Uses PHP's HTML5 parser when available.
 	 *
 	 * @param string $content HTML.
 	 * @return DOMDocument The parsed document.
 	 */
 	function pt_load_domdocument( $content ) {
+		$content = (string) $content;
+		/**
+		 * Filters whether to parse HTML with PHP's own HTML5 parser (PHP 8.4+).
+		 *
+		 * Return false to use masterminds/html5 even when PHP's parser is
+		 * available. The two can differ on invalid markup, where PHP's parser
+		 * follows the HTML5 algorithm (as browsers do).
+		 *
+		 * @since 2.0.0
+		 *
+		 * @param bool $enabled Whether to use it. Default true.
+		 */
+		if ( class_exists( 'Dom\HTMLDocument' ) && apply_filters( 'parse_this_native_html_parser', true ) ) {
+			$doc = pt_native_html_document( $content );
+			if ( $doc ) {
+				return $doc;
+			}
+		}
 		if ( ! class_exists( '\Masterminds\HTML5', false ) ) {
 			$file = plugin_dir_path( __DIR__ ) . 'lib/html5/autoloader.php';
 			if ( file_exists( $file ) ) {
@@ -753,6 +776,10 @@ if ( ! function_exists( __NAMESPACE__ . '\\pt_load_domdocument' ) ) {
 			$doc = $doc->loadHTML( $content );
 		} else {
 			$doc = new \DOMDocument();
+			// DOMDocument::loadHTML() throws on an empty string in PHP 8.
+			if ( '' === trim( $content ) ) {
+				return $doc;
+			}
 			libxml_use_internal_errors( true );
 			if ( function_exists( 'mb_encode_numericentity' ) ) {
 				// DOMDocument assumes ISO-8859-1, so convert to UTF-8 and encode non-ASCII characters as entities.
@@ -766,6 +793,53 @@ if ( ! function_exists( __NAMESPACE__ . '\\pt_load_domdocument' ) ) {
 			libxml_use_internal_errors( false );
 		}
 		return $doc;
+	}
+}
+
+if ( ! function_exists( __NAMESPACE__ . '\\pt_native_html_document' ) ) {
+	/**
+	 * Parses HTML with PHP's HTML5 parser and returns it as a DOMDocument.
+	 *
+	 * Dom\HTMLDocument (PHP 8.4+) belongs to PHP's new DOM API, while php-mf2
+	 * and the rest of Parse This work with DOMDocument. The parsed tree is
+	 * passed across as XML, which reproduces it exactly without parsing the
+	 * HTML twice. Comments (which may contain "--") and attributes whose names
+	 * aren't valid XML (@click, x-on:click, :class) are removed first, since
+	 * XML can't hold them and nothing here reads them. Elements are kept out of
+	 * the XHTML namespace, so XPath queries such as //meta work as before.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $content HTML.
+	 * @return DOMDocument|null The parsed document, or null if PHP's parser
+	 *                          isn't available or the document can't be
+	 *                          passed across.
+	 */
+	function pt_native_html_document( $content ) {
+		if ( ! class_exists( 'Dom\HTMLDocument' ) ) {
+			return null;
+		}
+		try {
+			$html  = \Dom\HTMLDocument::createFromString( (string) $content, LIBXML_NOERROR | \Dom\HTML_NO_DEFAULT_NS );
+			$xpath = new \Dom\XPath( $html );
+			foreach ( iterator_to_array( $xpath->query( '//comment()' ) ) as $comment ) {
+				$comment->remove();
+			}
+			foreach ( iterator_to_array( $xpath->query( '//@*' ) ) as $attribute ) {
+				if ( ! preg_match( '/^[A-Za-z_][A-Za-z0-9_.\-]*$/', $attribute->name ) ) {
+					$attribute->ownerElement->removeAttribute( $attribute->name ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHP DOM property.
+				}
+			}
+			$xml = $html->saveXml();
+		} catch ( \Throwable $e ) {
+			return null;
+		}
+		$doc    = new \DOMDocument();
+		$errors = libxml_use_internal_errors( true );
+		$loaded = $doc->loadXML( $xml, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_PARSEHUGE );
+		libxml_clear_errors();
+		libxml_use_internal_errors( $errors );
+		return $loaded ? $doc : null;
 	}
 }
 if ( ! function_exists( __NAMESPACE__ . '\\pt_remote_get' ) ) {
