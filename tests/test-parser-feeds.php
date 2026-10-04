@@ -112,4 +112,52 @@ class Parser_Feeds_Test extends Parse_This_TestCase {
 		$this->assertSame( 'A real title', $jf2['items'][1]['name'] );
 		$this->assertArrayNotHasKey( 'name', $jf2['items'][2] );
 	}
+
+	/**
+	 * JSON Feed items get text, a post type and absolute URLs (X-17).
+	 */
+	public function test_jsonfeed_items() {
+		$jf2 = ParseThis\JSONFeed::to_jf2(
+			array(
+				'version' => 'https://jsonfeed.org/version/1.1',
+				'title'   => 'Feed',
+				'items'   => array(
+					array(
+						'id'           => '1',
+						'url'          => 'https://www.manton.org/2017/11/post.html',
+						'content_html' => '<p>See <a href="/about">this</a> <img src="img.jpg"></p>',
+						'image'        => 'image.jpg',
+					),
+					array(
+						'id'          => '2',
+						'title'       => 'An article',
+						'content_text' => 'Body text',
+						'image'       => '/image.jpg',
+						'attachments' => array(
+							array(
+								'url'       => 'episode.mp3',
+								'mime_type' => 'audio/mpeg',
+							),
+						),
+					),
+				),
+			),
+			'https://example.net/feed.json'
+		);
+
+		$first = $jf2['items'][0];
+		$this->assertSame( 'See this', $first['content']['text'] );
+		$this->assertStringContainsString( 'href="https://www.manton.org/about"', $first['content']['html'] );
+		$this->assertStringContainsString( 'src="https://www.manton.org/2017/11/img.jpg"', $first['content']['html'] );
+		// Relative to the item's url (XRay's testJSONFeedRelativeImages).
+		$this->assertSame( 'https://www.manton.org/2017/11/image.jpg', $first['featured'] );
+		$this->assertSame( 'photo', ParseThis\post_type_discovery( array( 'type' => 'entry', 'photo' => 'x' ) ) );
+		$this->assertSame( 'note', $first['post-type'] );
+
+		// An item without a url: relative to the feed.
+		$second = $jf2['items'][1];
+		$this->assertSame( 'https://example.net/image.jpg', $second['featured'] );
+		$this->assertSame( 'https://example.net/episode.mp3', $second['audio'] );
+		$this->assertSame( 'audio', $second['post-type'] );
+	}
 }
