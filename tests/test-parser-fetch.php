@@ -361,4 +361,28 @@ class Parser_Fetch_Test extends Parse_This_TestCase {
 		$this->assertSame( 'https://example.org/posts/1/#comment-5', ParseThis\pt_effective_url( 'https://example.com/old/#comment-5', $response ) );
 		$this->assertSame( 'https://example.com/x', ParseThis\pt_effective_url( 'https://example.com/x', array() ) );
 	}
+
+	/**
+	 * A URL fragment picks out part of the page (X-5).
+	 */
+	public function test_fragment_selects_element() {
+		$page = '<html><head><meta property="og:title" content="The Post Title"><meta property="og:description" content="About the post"></head><body>'
+			. '<article class="h-entry"><h1 class="p-name">The Post Title</h1><div class="e-content">This page has comments.</div>'
+			. '<div class="h-cite" id="comment-1000"><div class="p-author h-card"><span class="p-name">Commenter</span></div><p class="e-content">Comment text</p></div>'
+			. '</article></body></html>';
+		$this->respond( 'https://example.com/fragment-id', $page );
+
+		// XRay's EntryAtFragmentID: the comment, with no title borrowed from the page.
+		$jf2 = $this->fetch_and_parse( 'https://example.com/fragment-id#comment-1000' );
+		$this->assertSame( 'Comment text', $jf2['content']['text'] );
+		$this->assertSame( 'Commenter', $jf2['author']['name'] );
+		$this->assertArrayNotHasKey( 'name', $jf2 );
+		$this->assertSame( 'cite', $jf2['type'] );
+		$this->assertSame( 'https://example.com/fragment-id#comment-1000', $jf2['url'] );
+
+		// XRay's EntryAtNonExistentFragmentID: the whole page, without the fragment.
+		$jf2 = $this->fetch_and_parse( 'https://example.com/fragment-id#comment-404' );
+		$this->assertSame( 'The Post Title', $jf2['name'] );
+		$this->assertSame( 'https://example.com/fragment-id', $jf2['url'] );
+	}
 }

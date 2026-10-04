@@ -487,6 +487,30 @@ if ( ! function_exists( __NAMESPACE__ . '\\normalize_iso8601' ) ) {
 	}
 }
 
+if ( ! function_exists( __NAMESPACE__ . '\\pt_find_fragment_element' ) ) {
+	/**
+	 * Finds the element a URL fragment points to.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param DOMDocument $doc Parsed page.
+	 * @param string      $id  Fragment, without the #.
+	 * @return DOMElement|null The element with that id, or null.
+	 */
+	function pt_find_fragment_element( $doc, $id ) {
+		if ( ! $doc instanceof \DOMDocument || ! is_string( $id ) || '' === $id ) {
+			return null;
+		}
+		$id = rawurldecode( $id );
+		foreach ( $doc->getElementsByTagName( '*' ) as $element ) {
+			if ( $element->getAttribute( 'id' ) === $id ) {
+				return $element;
+			}
+		}
+		return null;
+	}
+}
+
 if ( ! function_exists( __NAMESPACE__ . '\\pt_effective_url' ) ) {
 	/**
 	 * Returns the URL a response finally came from, after any redirects.

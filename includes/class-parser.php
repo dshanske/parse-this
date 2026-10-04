@@ -523,7 +523,8 @@ class Parser {
 		// YouTube watch pages exceed 1 MB, and the player data is part-way through them.
 		$host     = wp_parse_url( $url, PHP_URL_HOST );
 		$args     = in_array( $host, array( 'youtube.com', 'www.youtube.com', 'm.youtube.com' ), true ) ? array( 'limit_response_size' => 3 * MB_IN_BYTES ) : array();
-		$response = pt_remote_get( $url, $args );
+		// A fragment is never sent to the server; it is kept to pick out part of the page.
+		$response = pt_remote_get( strtok( $url, '#' ), $args );
 		if ( is_wp_error( $response ) ) {
 			// pt_remote_get() reports a 403 or 415 that survives its retry as source_error.
 			$data = $response->get_error_data();
@@ -1145,6 +1146,14 @@ class Parser {
 			return;
 		}
 
+		// A URL fragment (a comment's #comment-12, say) points to part of the page:
+		// parse only that element, and don't fill it in from the page's metadata.
+		$fragment = wp_parse_url( $this->url, PHP_URL_FRAGMENT );
+		$element  = $fragment ? pt_find_fragment_element( $this->doc, $fragment ) : null;
+		if ( $element && empty( $this->jf2 ) ) {
+			$content = $this->doc->saveHTML( $element );
+		}
+
 		// Ensure not already preparsed.
 		if ( empty( $this->jf2 ) ) {
 			$this->jf2 = MF2::parse( $content, $this->url, $args );
@@ -1178,6 +1187,10 @@ class Parser {
 		 */
 		$host      = wp_parse_url( $this->url, PHP_URL_HOST );
 		$fallbacks = array();
+		if ( $element ) {
+			$args['html']   = false;
+			$args['jsonld'] = false;
+		}
 		if ( $args['html'] && in_array( $host, array( 'youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be' ), true ) ) {
 			$fallbacks[] = YouTube::parse( $this->content, $this->url, $args );
 		}
@@ -1187,7 +1200,9 @@ class Parser {
 		if ( $args['jsonld'] ) {
 			$fallbacks[] = JSONLD::parse( $this->doc, $this->url, $args );
 		}
-		$fallbacks[] = JSON::parse( $this->doc, $this->url, $args );
+		if ( ! $element ) {
+			$fallbacks[] = JSON::parse( $this->doc, $this->url, $args );
+		}
 		if ( $args['html'] ) {
 			$fallbacks[] = HTML::parse( $content, $this->url, $args );
 		}
@@ -1197,7 +1212,7 @@ class Parser {
 
 		// The REST alternate costs an HTTP request, so it only runs if there still isn't enough.
 		$require_content = isset( $args['require_content'] ) ? (bool) $args['require_content'] : ( 'feed' === $args['return'] );
-		if ( ! self::has_content( $this->jf2, $require_content ) ) {
+		if ( ! $element && ! self::has_content( $this->jf2, $require_content ) ) {
 			$remote = array();
 			if ( ! empty( $this->links ) ) {
 				$endpoint = pt_find_rest_endpoint( $this->links );
@@ -1224,7 +1239,8 @@ class Parser {
 		}
 
 		if ( ! isset( $this->jf2['url'] ) ) {
-			$this->jf2['url'] = $this->url;
+			// A fragment that matched nothing doesn't identify the result.
+			$this->jf2['url'] = ( $fragment && ! $element ) ? strtok( $this->url, '#' ) : $this->url;
 		}
 			// Expand Short URLs in summary.
 		if ( isset( $this->jf2['summary'] ) ) {
