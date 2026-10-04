@@ -446,6 +446,22 @@ class MF2 extends MF2_Utils {
 			return $return;
 		}
 
+		// Several top-level items, and one is wanted: work out which is the page's.
+		if ( 'feed' !== $args['return'] ) {
+			$main = self::select_main_item( $input, $url );
+			if ( 'feed' === $main ) {
+				$args['return'] = 'feed';
+				return self::parse( $input, $url, $args );
+			}
+			if ( is_array( $main ) ) {
+				$return = self::parse_item( $main, $input, $args );
+				if ( is_array( $return ) && self::has_rel( $input, 'alternate' ) ) {
+					$return['_alternate'] = self::get_rel( $input, 'alternate' );
+				}
+				return $return;
+			}
+		}
+
 		$return = array();
 		$card   = null;
 		foreach ( $input['items'] as $key => $item ) {
@@ -628,6 +644,127 @@ class MF2 extends MF2_Utils {
 			$data = jf2_references( $data );
 		}
 		return $data;
+	}
+
+	/**
+	 * Chooses the item a page with several top-level items is about.
+	 *
+	 * Follows XRay: breadcrumbs are ignored; if only one item is left once
+	 * h-cards for other URLs are set aside, it is that one; otherwise an item
+	 * whose url is the page; otherwise, when the page's rel=author matches an
+	 * h-card on it (a sidebar profile), the first item that isn't a card; and
+	 * when entries remain, the page is a feed. Failing those, an h-feed, then
+	 * the first item of a known type.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array  $input Parsed mf2 document.
+	 * @param string $url   URL of the page.
+	 * @return array|string|null The chosen microformat, 'feed' if the page is a
+	 *                           feed, or null if none stands out.
+	 */
+	private static function select_main_item( $input, $url ) {
+		$page  = self::url_key( $url );
+		$items = array_values(
+			array_filter(
+				$input['items'],
+				function ( $item ) {
+					return is_array( $item ) && ! self::is_type( $item, 'h-breadcrumb' );
+				}
+			)
+		);
+
+		// Set aside h-cards for other URLs: a sidebar or footer profile.
+		$candidates = array_values(
+			array_filter(
+				$items,
+				function ( $item ) use ( $page ) {
+					$card_url = $item['properties']['url'][0] ?? null;
+					return ! ( self::is_type( $item, 'h-card' ) && is_string( $card_url ) && self::url_key( $card_url ) !== $page );
+				}
+			)
+		);
+		if ( 1 === count( $candidates ) ) {
+			return $candidates[0];
+		}
+
+		// An item whose url is this page.
+		foreach ( $items as $item ) {
+			foreach ( (array) ( $item['properties']['url'] ?? array() ) as $item_url ) {
+				if ( is_string( $item_url ) && self::url_key( $item_url ) === $page ) {
+					return $item;
+				}
+			}
+		}
+
+		// The page's author has an h-card here, so the first other item is the content.
+		$authors = array_map( array( __CLASS__, 'url_key' ), array_filter( (array) ( $input['rels']['author'] ?? array() ), 'is_string' ) );
+		if ( $authors ) {
+			foreach ( $items as $card ) {
+				if ( ! self::is_type( $card, 'h-card' ) ) {
+					continue;
+				}
+				foreach ( (array) ( $card['properties']['url'] ?? array() ) as $card_url ) {
+					if ( is_string( $card_url ) && in_array( self::url_key( $card_url ), $authors, true ) ) {
+						foreach ( $items as $item ) {
+							if ( ! self::is_type( $item, 'h-card' ) ) {
+								return $item;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Several entries and nothing else to go on: a list of posts.
+		foreach ( $candidates as $item ) {
+			if ( self::is_type( $item, 'h-entry' ) ) {
+				return 'feed';
+			}
+		}
+
+		foreach ( $candidates as $item ) {
+			if ( self::is_type( $item, 'h-feed' ) ) {
+				return $item;
+			}
+		}
+		foreach ( $candidates as $item ) {
+			foreach ( array( 'h-entry', 'h-cite', 'h-event', 'h-review', 'h-recipe', 'h-product', 'h-item', 'h-app', 'h-x-app' ) as $type ) {
+				if ( self::is_type( $item, $type ) ) {
+					return $item;
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Normalizes a URL for comparing it with a page's URL.
+	 *
+	 * Lowercases the host, adds a missing path, and drops the fragment and
+	 * utm_* tracking parameters, which shared links often carry.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $url URL.
+	 * @return string The comparable URL.
+	 */
+	private static function url_key( $url ) {
+		$url   = strtok( (string) $url, '#' );
+		$query = wp_parse_url( $url, PHP_URL_QUERY );
+		if ( $query ) {
+			wp_parse_str( $query, $params );
+			foreach ( array_keys( $params ) as $key ) {
+				if ( 0 === strpos( $key, 'utm_' ) ) {
+					unset( $params[ $key ] );
+				}
+			}
+			$url = strtok( $url, '?' );
+			if ( $params ) {
+				$url .= '?' . http_build_query( $params );
+			}
+		}
+		return (string) normalize_url( $url );
 	}
 
 	/**

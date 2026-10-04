@@ -612,4 +612,44 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 
 		$this->assertSame( 'note', ParseThis\post_type_discovery( array( 'type' => 'entry', 'name' => 'Short post…', 'summary' => 'Short post that goes on' ) ) );
 	}
+
+	/**
+	 * On a page with several items, the one the page is about is chosen (X-1).
+	 */
+	public function test_main_item_selection() {
+		$parse = function ( $html, $url = 'https://example.com/post/' ) {
+			$parser = new ParseThis\Parser();
+			$parser->set( $html, $url );
+			$parser->parse();
+			return $parser->get();
+		};
+
+		// A common theme: a breadcrumb, a sidebar author card, and the post (whose url has tracking).
+		$jf2 = $parse( '<html><head><link rel="author" href="https://example.com/"></head><body><nav class="h-breadcrumb"><a class="p-name u-url" href="https://example.com/blog/">Blog</a></nav><div class="h-card"><a class="u-url p-name" href="https://example.com/">Jane</a><img class="u-photo" src="https://example.com/jane.jpg"></div><article class="h-entry"><h1 class="p-name">Post</h1><div class="e-content">Body</div><a class="u-url" href="https://example.com/post/?utm_source=x">perma</a></article></body></html>' );
+		$this->assertSame( 'entry', $jf2['type'] );
+		$this->assertSame( 'Post', $jf2['name'] );
+		$this->assertArrayNotHasKey( '_jf2', $jf2 );
+
+		// XRay's h-entry-is-not-first: a breadcrumb before the entry, which has no url.
+		$jf2 = $parse( '<div class="h-breadcrumb"><a class="p-name u-url" href="https://example.com/2016">2016</a></div><div class="h-entry"><p class="p-content">Hello World</p></div>' );
+		$this->assertSame( 'entry', $jf2['type'] );
+		$this->assertSame( 'Hello World', $jf2['content']['text'] );
+
+		// XRay's h-entry-with-two-h-cards-before-it.
+		$jf2 = $parse( '<a href="https://example.org/a" class="h-card">A</a><a href="https://example.org/b" class="h-card">B</a><div class="h-entry"><p class="p-content">Hello World</p></div>' );
+		$this->assertSame( 'Hello World', $jf2['content']['text'] );
+
+		// The page's rel=author card on the page: the first other item is the content.
+		$jf2 = $parse( '<html><head><link rel="author" href="https://example.com/me"></head><body><div class="h-card"><a class="u-url p-name" href="https://example.com/me">Me</a></div><div class="h-event"><span class="p-name">Meetup</span></div><div class="h-entry"><p class="e-content">Other</p></div></body></html>' );
+		$this->assertSame( 'event', $jf2['type'] );
+
+		// A list of entries is a feed.
+		$jf2 = $parse( '<div class="h-entry"><a class="u-url p-name" href="https://example.com/1">One</a></div><div class="h-entry"><a class="u-url p-name" href="https://example.com/2">Two</a></div>', 'https://example.com/' );
+		$this->assertSame( 'feed', $jf2['type'] );
+		$this->assertCount( 2, $jf2['items'] );
+
+		// The item whose url is the page wins over the others.
+		$jf2 = $parse( '<div class="h-entry"><a class="u-url p-name" href="https://example.com/1">One</a></div><div class="h-entry"><a class="u-url p-name" href="https://example.com/post/">This one</a></div>' );
+		$this->assertSame( 'This one', $jf2['name'] );
+	}
 }
