@@ -1238,7 +1238,9 @@ class Parser {
 			$this->jf2['post-type'] = post_type_discovery( $this->jf2 );
 		}
 
-		if ( ! isset( $this->jf2['url'] ) ) {
+		// No url, or none on the web (a card listing only an xmpp: address): use the page.
+		$web_urls = preg_grep( '#^https?://#i', array_filter( (array) ( $this->jf2['url'] ?? array() ), 'is_string' ) );
+		if ( empty( $web_urls ) ) {
 			// A fragment that matched nothing doesn't identify the result.
 			$this->jf2['url'] = ( $fragment && ! $element ) ? strtok( $this->url, '#' ) : $this->url;
 		}

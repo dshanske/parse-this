@@ -652,4 +652,58 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 		$jf2 = $parse( '<div class="h-entry"><a class="u-url p-name" href="https://example.com/1">One</a></div><div class="h-entry"><a class="u-url p-name" href="https://example.com/post/">This one</a></div>' );
 		$this->assertSame( 'This one', $jf2['name'] );
 	}
+
+	/**
+	 * The authorship algorithm's author-page steps, 7.2 to 7.4 (X-2).
+	 */
+	public function test_authorship_author_page_steps() {
+		$parse = function ( $html, $args = array() ) {
+			$parser = new ParseThis\Parser();
+			$parser->set( $html, 'https://example.com/post/' );
+			$parser->parse( $args );
+			return $parser->get();
+		};
+		$entry = '<div class="h-entry"><p class="e-content">Hi</p><a class="u-author" href="https://example.org/about">a</a></div>';
+
+		// 7.4, without following: an h-card on this page whose url is the author page.
+		$jf2 = $parse( $entry . '<div class="h-card"><a class="u-url p-name" href="https://example.org/about">On Page</a></div>' );
+		$this->assertSame( 'On Page', $jf2['author']['name'] );
+
+		// 7.2: on the author page, the card whose url and uid are the page, not the first card.
+		$this->respond( 'https://example.org/about', '<div class="h-card"><a class="u-url p-name" href="https://example.org/friend">A Friend</a></div><div class="h-card"><a class="u-url u-uid p-name" href="https://example.org/about">The Author</a></div>' );
+		$jf2 = $parse( $entry, array( 'follow' => true ) );
+		$this->assertSame( 'The Author', $jf2['author']['name'] );
+
+		// 7.3: the card whose url is a rel=me link, with the author page's url first.
+		$this->respond( 'https://example.org/me', '<a rel="me" href="https://example.org/me">me</a><div class="h-card"><a class="u-url" href="xmpp://me@example.org">x</a><a class="u-url p-name" href="https://example.org/me">Rel Me</a></div>' );
+		$jf2 = $parse( '<div class="h-entry"><p class="e-content">Hi</p><a class="u-author" href="https://example.org/me">a</a></div>', array( 'follow' => true ) );
+		$this->assertSame( 'Rel Me', $jf2['author']['name'] );
+		$this->assertSame( 'https://example.org/me', $jf2['author']['url'] );
+
+		// A profile page whose only card has no web url: the author page is its url.
+		$this->respond( 'https://example.org/profile', '<div class="h-card"><span class="p-name">No Url</span><a class="u-url" href="xmpp://x@example.org">x</a></div>' );
+		$jf2 = $parse( '<div class="h-entry"><p class="e-content">Hi</p><a class="u-author" href="https://example.org/profile">a</a></div>', array( 'follow' => true ) );
+		$this->assertSame( 'No Url', $jf2['author']['name'] );
+		$this->assertSame( 'https://example.org/profile', $jf2['author']['url'] );
+	}
+
+	/**
+	 * Feed entries without an author get the feed's author (X-2).
+	 */
+	public function test_feed_author_for_entries() {
+		$feed = ParseThis\MF2::parse( '<div class="h-feed"><div class="p-author h-card"><a class="u-url p-name" href="https://example.com/">Author Name</a></div><div class="h-entry"><a class="u-url p-name" href="https://example.com/1">One</a></div><div class="h-entry"><a class="u-url p-name" href="https://example.com/2">Two</a></div></div>', 'https://example.com/', array( 'return' => 'feed' ) );
+		$this->assertSame( 'Author Name', $feed['items'][0]['author']['name'] );
+		$this->assertSame( 'Author Name', $feed['items'][1]['author']['name'] );
+
+		// XRay's h-card-with-child-h-feed: entries whose author is the page's own card,
+		// which contains them, are parsed without recursing forever.
+		$html = '<div class="h-card"><a href="https://example.com/me" class="u-url p-name">Author Name</a><ul class="h-feed">'
+			. '<li class="h-entry"><a href="https://example.com/1" class="u-url p-name">One</a><a href="https://example.com/me" class="u-author">Author Name</a></li>'
+			. '<li class="h-entry"><a href="https://example.com/2" class="u-url p-name">Two</a><a href="https://example.com/me" class="u-author">Author Name</a></li>'
+			. '</ul></div>';
+		$feed = ParseThis\MF2::parse( $html, 'https://example.com/me', array( 'return' => 'feed' ) );
+		$this->assertSame( 'feed', $feed['type'] );
+		$this->assertCount( 2, $feed['items'] );
+		$this->assertSame( 'Author Name', $feed['items'][0]['author']['name'] );
+	}
 }
