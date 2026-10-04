@@ -154,8 +154,19 @@ if ( ! function_exists( __NAMESPACE__ . '\\jf2_location' ) ) {
 		if ( ! array_key_exists( 'location', $data ) ) {
 			return $data;
 		}
-		$location = $data['location'];
-		if ( is_string( $location ) ) {
+		// jf2_references() may have moved the location or check-in to refs,
+		// leaving its URL (as a one-item list) in its place.
+		$from_refs = function ( $value ) use ( $data ) {
+			if ( is_array( $value ) && wp_is_numeric_array( $value ) && 1 === count( $value ) ) {
+				$value = $value[0];
+			}
+			if ( is_string( $value ) && isset( $data['refs'][ $value ] ) && is_array( $data['refs'][ $value ] ) ) {
+				return $data['refs'][ $value ];
+			}
+			return $value;
+		};
+		$location  = $from_refs( $data['location'] );
+		if ( ! is_array( $location ) || wp_is_numeric_array( $location ) ) {
 			return $data;
 		}
 		foreach ( array( 'latitude', 'longitude', 'altitude' ) as $prop ) {
@@ -169,6 +180,9 @@ if ( ! function_exists( __NAMESPACE__ . '\\jf2_location' ) ) {
 			$data['location'] = $location['name'];
 		} else {
 			unset( $data['location'] );
+		}
+		if ( isset( $data['checkin'] ) ) {
+			$data['checkin'] = $from_refs( $data['checkin'] );
 		}
 		if ( array_key_exists( 'checkin', $data ) && is_array( $data['checkin'] ) ) {
 			foreach ( $location as $key => $value ) {
@@ -227,13 +241,18 @@ if ( ! function_exists( __NAMESPACE__ . '\\jf2_author_to_card' ) ) {
 
 if ( ! function_exists( __NAMESPACE__ . '\\jf2_references' ) ) {
 	/**
-	 * Moves nested citations into refs, per the jf2 spec.
+	 * Moves nested objects into refs, per the jf2 spec.
 	 *
-	 * Properties holding h-cite objects are replaced by their URLs, and the
-	 * citations are stored in refs keyed by URL. Typed category values are
-	 * moved the same way.
+	 * Any nested typed object with an http or https URL (an h-cite, h-card,
+	 * h-event, h-product or any other type) is replaced by its URL, and stored
+	 * in refs keyed by that URL, so the result is one level deep. The property
+	 * becomes a list of values, as before. Objects without such a URL stay in place, authors stay
+	 * cards, and a feed's items are left alone. References that a nested object
+	 * carries are merged into the same refs.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Moves any typed object with a URL, not only citations, and
+	 *              merges nested refs.
 	 *
 	 * @link https://jf2.spec.indieweb.org/#references
 	 *
@@ -241,26 +260,42 @@ if ( ! function_exists( __NAMESPACE__ . '\\jf2_references' ) ) {
 	 * @return array The updated object.
 	 */
 	function jf2_references( $data ) {
+		if ( ! is_array( $data ) ) {
+			return $data;
+		}
+		// Authors stay cards, and a feed's entries are not references.
+		$skip = array( 'refs', 'author', 'items', 'children' );
 		foreach ( $data as $key => $val ) {
-			if ( 'refs' === $key || ! is_array( $val ) ) {
+			if ( ! is_array( $val ) || in_array( $key, $skip, true ) || ( is_string( $key ) && '_' === substr( $key, 0, 1 ) ) ) {
 				continue;
 			}
 			$values  = wp_is_numeric_array( $val ) ? $val : array( $val );
 			$changed = false;
 			foreach ( $values as $i => $value ) {
-				if ( ! is_array( $value ) || ! isset( $value['url'] ) || ! is_string( $value['url'] ) || ! isset( $value['type'] ) ) {
+				if ( ! is_array( $value ) ) {
 					continue;
 				}
-				// Any typed category (a person tag, say) is a reference; elsewhere only citations are.
-				if ( 'category' !== $key && 'cite' !== $value['type'] ) {
+				// A nested object may carry references of its own: keep one flat refs.
+				if ( isset( $value['refs'] ) && is_array( $value['refs'] ) ) {
+					foreach ( $value['refs'] as $ref_url => $ref ) {
+						$data['refs'][ $ref_url ] = isset( $data['refs'][ $ref_url ] ) ? $data['refs'][ $ref_url ] + $ref : $ref;
+					}
+					unset( $value['refs'] );
+					$values[ $i ] = $value;
+					$changed      = true;
+				}
+				$url = $value['url'] ?? null;
+				if ( is_array( $url ) ) {
+					$url = reset( $url );
+				}
+				// Any typed object with an http(s) URL is a reference. One without
+				// stays in place, where sanitizing can drop a bad URL and keep the rest.
+				if ( empty( $value['type'] ) || ! is_string( $value['type'] ) || ! is_string( $url ) || ! preg_match( '#^https?://#i', trim( $url ) ) ) {
 					continue;
 				}
-				if ( ! isset( $data['refs'] ) ) {
-					$data['refs'] = array();
-				}
-				$data['refs'][ $value['url'] ] = $value;
-				$values[ $i ]                  = $value['url'];
-				$changed                       = true;
+				$data['refs'][ $url ] = isset( $data['refs'][ $url ] ) ? $data['refs'][ $url ] + $value : $value;
+				$values[ $i ]         = $url;
+				$changed              = true;
 			}
 			if ( $changed ) {
 				$data[ $key ] = $values;

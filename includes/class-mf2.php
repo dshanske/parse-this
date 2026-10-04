@@ -511,9 +511,12 @@ class MF2 extends MF2_Utils {
 	 *
 	 * Handles h-feed, h-card, h-entry, h-cite, h-event, h-review, h-recipe,
 	 * h-listing, h-product, h-resume, h-item, h-leg, h-adr, h-geo and
-	 * h-measure. Anything else goes to parse_hunknown().
+	 * h-measure. Anything else goes to parse_hunknown(). With
+	 * $args['references'], nested objects with a URL are then moved to refs
+	 * (see jf2_references()).
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Applies references to every type, not only entries.
 	 *
 	 * @param array $item Microformat.
 	 * @param array $mf   Parsed mf2 document.
@@ -521,6 +524,24 @@ class MF2 extends MF2_Utils {
 	 * @return array|null jf2 for the item.
 	 */
 	public static function parse_item( $item, $mf, $args ) {
+		$data = self::parse_item_by_type( $item, $mf, $args );
+		if ( is_array( $data ) && ! empty( $args['references'] ) ) {
+			$data = jf2_references( $data );
+		}
+		return $data;
+	}
+
+	/**
+	 * Converts a microformat into jf2 with the parser for its type.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $item Microformat.
+	 * @param array $mf   Parsed mf2 document.
+	 * @param array $args Parse arguments (see Parser::parse()).
+	 * @return array|null jf2 for the item.
+	 */
+	private static function parse_item_by_type( $item, $mf, $args ) {
 		if ( self::is_type( $item, 'h-feed' ) ) {
 			return self::parse_hfeed( $item, $mf, $args );
 		} elseif ( self::is_type( $item, 'h-card' ) ) {
@@ -718,8 +739,7 @@ class MF2 extends MF2_Utils {
 	 *
 	 * Reads the response properties (in-reply-to, like-of, repost-of and so on),
 	 * media, location and check-in data, then the common properties from
-	 * parse_h(). With $args['references'], nested citations are moved to refs.
-	 * Adds the post type from post_type_discovery() as 'post-type'.
+	 * parse_h(). Adds the post type from post_type_discovery() as 'post-type'.
 	 *
 	 * Reviews may be published as an h-entry with review-of (a URL, or a nested
 	 * h-cite, h-card, h-event, h-item or h-product) and rating, best and worst,
@@ -777,10 +797,7 @@ class MF2 extends MF2_Utils {
 		if ( isset( $data['rsvp'] ) && is_string( $data['rsvp'] ) ) {
 			$data['rsvp'] = strtolower( trim( $data['rsvp'] ) );
 		}
-		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
-		if ( $args['references'] ) {
-			$data = jf2_references( $data );
-		}
+		$data              = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
 		$data['post-type'] = post_type_discovery( $data );
 		// Published as both h-entry and h-review, for consumers of either (microformats/h-entry#32).
 		if ( 'entry' === $data['type'] && self::is_type( $entry, 'h-review' ) ) {
