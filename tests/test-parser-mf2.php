@@ -518,4 +518,50 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 		$this->assertCount( 2, $feed['items'] );
 		$this->assertArrayNotHasKey( 'refs', $feed );
 	}
+
+	/**
+	 * Properties Parse This doesn't know are passed through (C-58).
+	 */
+	public function test_unknown_properties_are_passed_through() {
+		$parse = function ( $html, $args = array() ) {
+			$parser = new ParseThis\Parser();
+			$parser->set( $html, 'https://example.com/a/' );
+			$parser->parse( $args );
+			return $parser->get();
+		};
+
+		$jf2 = $parse(
+			'<div class="h-entry"><a class="u-url" href="https://example.com/a/">a</a><p class="p-name e-content">Hello there</p>'
+			. '<span class="p-mood">happy</span>'
+			. '<div class="e-x-notes">Some <b>notes</b> <a href="javascript:x()">x</a></div>'
+			. '<div class="p-x-custom h-x-thing"><a class="u-url p-name" href="https://thing.example/">Thing</a><span class="p-colour">blue</span></div>'
+			. '</div>'
+		);
+		$this->assertSame( 'happy', $jf2['mood'] );
+		$this->assertStringContainsString( '<b>notes</b>', $jf2['x-notes']['html'] );
+		$this->assertStringNotContainsString( 'javascript', $jf2['x-notes']['html'] );
+		// The nested unknown type keeps its own unknown property, and moves to refs.
+		$this->assertSame( array( 'https://thing.example/' ), $jf2['x-custom'] );
+		$this->assertSame( 'x-thing', $jf2['refs']['https://thing.example/']['type'] );
+		$this->assertSame( 'blue', $jf2['refs']['https://thing.example/']['colour'] );
+		// A name that repeats the content is still dropped, not passed back through.
+		$this->assertArrayNotHasKey( 'name', $jf2 );
+
+		// Without references, the nested object stays in place.
+		$jf2 = $parse( '<div class="h-entry"><p class="e-content">Hi</p><div class="p-x-custom h-x-thing"><a class="u-url p-name" href="https://thing.example/">Thing</a></div></div>', array( 'references' => false ) );
+		$this->assertSame( 'Thing', $jf2['x-custom']['name'] );
+
+		$card = $parse( '<div class="h-card"><a class="u-url p-name" href="https://example.com/a/">Jane</a><span class="p-nickname">jd</span><span class="p-tel">555-0100</span><span class="p-org">Example Org</span></div>' );
+		$this->assertSame( 'jd', $card['nickname'] );
+		$this->assertSame( '555-0100', $card['tel'] );
+		$this->assertSame( 'Example Org', $card['org'] );
+
+		$resume = ParseThis\MF2::parse( '<div class="h-resume"><span class="p-name">CV</span><span class="p-skill">PHP</span><span class="p-skill">WordPress</span></div>', 'https://example.com/cv', array() );
+		$this->assertSame( array( 'PHP', 'WordPress' ), $resume['skill'] );
+
+		// A consumed property (description becomes content) is not repeated.
+		$review = ParseThis\MF2::parse( '<div class="h-review"><span class="p-name">Old</span><div class="e-description">Described</div></div>', 'https://example.com/r', array() );
+		$this->assertSame( 'Described', $review['content']['text'] );
+		$this->assertArrayNotHasKey( 'description', $review );
+	}
 }
