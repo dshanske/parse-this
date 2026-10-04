@@ -125,4 +125,26 @@ class Discovery_Test extends Parse_This_TestCase {
 		$this->assertContains( 'https://example.com/all', $urls );
 		$this->assertContains( 'https://example.com/home', $urls );
 	}
+
+	/**
+	 * application/json alternates are JSON Feeds, except WordPress REST API resources (CMP-12).
+	 */
+	public function test_discovery_application_json() {
+		$this->respond(
+			'https://example.com/post/',
+			'<html><head>'
+			. '<link rel="alternate" type="application/json" href="/feed.json" title="JSON Feed">'
+			. '<link rel="alternate" type="application/json" href="https://example.com/wp-json/wp/v2/posts/5">'
+			. '<link rel="alternate" type="application/json" href="https://example.com/?rest_route=/wp/v2/posts/5">'
+			. '<link rel="alternate" type="application/atom+xml" href="/atom.xml">'
+			. '</head><body></body></html>'
+		);
+		$results = ( new ParseThis\Discovery() )->fetch( 'https://example.com/post/' );
+		$found   = array();
+		foreach ( $results['results'] as $feed ) {
+			$found[] = $feed['_feed_type'] . ' ' . $feed['url'];
+		}
+		// Ranked: JSON Feed before Atom, and no REST API post listed as a feed.
+		$this->assertSame( array( 'jsonfeed https://example.com/feed.json', 'atom https://example.com/atom.xml' ), $found );
+	}
 }

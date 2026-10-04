@@ -5,16 +5,19 @@ Parse This turns URLs into structured jf2 data.
 
 Parse This fetches a URL and turns it into [jf2](https://jf2.spec.indieweb.org/), a simple JSON format for posts, people and feeds. The result can be used for link previews, feed readers, replies and likes, and similar features.
 
-It started from the parsing code in Press This, which was removed from WordPress, and has grown from there. It runs as a standalone plugin, and it is also bundled as a library in the Post Kinds and Yarns Microsub plugins.
+It started from the parsing code in Press This, which was removed from WordPress, and has grown from there. It runs as a standalone plugin that other plugins, such as Post Kinds and Yarns Microsub, can require or bundle.
 
 It also runs on ClassicPress 2.x.
 
 ### What it parses
 
-* **Microformats2.** When a page is marked up with microformats, they are used first.
-* **Other metadata.** Microformats always come first. Other sources only fill in what microformats don't provide: a site-specific parser for YouTube or X (Twitter), then JSON-LD and Open Graph, Dublin Core and other meta tags. If there is still no content, the page's WordPress REST API version is fetched (when the site advertises one).
-* **Feeds.** RSS and Atom (through WordPress's SimplePie), JSON Feed 1 and 1.1, jf2 and mf2 JSON, and WordPress REST API post collections.
-* **Feed discovery.** It can list the feeds a page offers.
+* **Microformats2.** When a page is marked up with microformats, they are used first: entries, cards, events, reviews (including h-entry reviews with `review-of`), recipes, products and any other type. On a busy page it picks the item the page is about, and it follows the IndieWeb authorship algorithm.
+* **Other metadata.** Other sources only fill in what microformats don't provide: a site-specific parser for YouTube or X (Twitter), then JSON-LD (articles, events, reviews, products, recipes, media and people) and Open Graph, Dublin Core and other meta tags. If there is still no content, the page's WordPress REST API version is fetched, when the site advertises one.
+* **Parts of pages.** A link with a fragment (`#comment-12`) is parsed as just that part of the page. A WordPress comment link whose page has no microformats for it is read from the site's REST API as a reply.
+* **Feeds.** RSS and Atom (through WordPress's SimplePie), JSON Feed 1 and 1.1, jf2 and mf2 JSON, and WordPress REST API post collections, including feeds served with the wrong content type.
+* **Feed discovery.** It lists the feeds a page offers: alternates, `rel=feed` links, h-feeds and the WordPress REST API.
+
+On PHP 8.4 and later, HTML is parsed with PHP's own HTML5 parser; on older PHP, with the bundled masterminds/html5 parser.
 
 ### Using it from PHP
 
@@ -33,7 +36,7 @@ It also runs on ClassicPress 2.x.
 * `limit`: maximum number of feed items. Default 150.
 * `jsonld`: try JSON-LD. Default true.
 * `html`: fall back to meta tags. Default true.
-* `references`: move nested citations into `refs`, as the jf2 spec describes. Default true.
+* `references`: move nested objects with a URL (citations, cards, events, ...) into `refs`, as the jf2 spec describes. Default true.
 * `location`: flatten a nested location into `latitude`, `longitude` and `altitude` properties, with `location` as a plain string. Default false.
 * `alternate`: use a `rel=alternate` jf2 or mf2 version of the page if it has one. Default false.
 * `require_content`: whether a summary alone isn't enough, so the page's WordPress REST API version is fetched for full content. Default: true for feeds, false otherwise.
@@ -150,49 +153,55 @@ Yes. It is tested with ClassicPress 2.7 on PHP 7.4 to 8.3.
 
 ## Changelog
 
-### 2.0.0 ( unreleased )
+### 2.0.0 ( 2026-10-03 )
 
-* Requires PHP 7.4 and WordPress 6.2 (or ClassicPress 2.x). Tested up to WordPress 7.1.
-* Fix more than 30 bugs, many of them fatal errors on PHP 8. Affected: RSS feeds and dates, the WordPress REST API on plain-permalink sites, JSON-LD, the HTML meta-tag parser, microformats (h-resume, h-leg, h-geo, h-feed authors), JSON Feed, Twitter, YouTube and feed discovery.
-* Fix `get()` on the parser so that keys other than `jf2` and `mf2` work.
-* Parse HTTP Link headers that contain several links, or commas inside URLs.
-* Move all classes and functions into the `ParseThis` namespace, with the `Parse_This_` prefix dropped from class names. The old names used by Post Kinds and Yarns remain as deprecated aliases; see "Upgrading from 1.x".
-* Add `ParseThis\pt_remote_get()`, used for all remote requests.
-* Remove the Instagram parser. Instagram stopped embedding the data it read; Instagram pages are now parsed from their Open Graph tags like any other page.
-* Remove the `ifset()` helper in favour of PHP's `??` operator. It was only needed for PHP 5.6; it also added missing keys to the arrays it read.
-* RSS and Atom items use `post-type`, like other sources, instead of `post_type`.
-* Authors are always returned as cards. Add the `always_arrays` parse argument for Microsub-style arrays.
-* Microformats always win: other sources (JSON-LD, meta tags, the REST API) only fill in missing properties, and likes, bookmarks and other responses keep their microformats even without content. Add the `require_content` parse argument.
-* Microformats: keep every value of a property (for example several categories), parse nested citations without warnings, keep the type of h-review, h-product, h-resume, h-listing, h-recipe, h-item and h-leg, parse unrecognized h-* types, return a page's single top-level item (an h-feed with its URL) directly, and keep feed item author URLs as strings.
-* Give JSON Feed items and authors, and posts read through the WordPress REST API, their jf2 types. Add the `parse_this_rest_api_jf2_type` filter.
-* Keep JSON Feeds and REST API collections served as `application/json`, handle RSS items without enclosures on newer SimplePie, and no longer merge raw JSON into results.
-* Use core's `fetch_feed()` for RSS and Atom, now that core's SimplePie is current.
-* Performance: download feeds once rather than twice; only expand links in summaries from known link shorteners (filterable with `parse_this_url_shorteners`), which removes a request per link; read REST API tags from the embedded data instead of one request per post; request only the site details needed from a site's REST API index (177 bytes instead of about 580 KB); fetch each followed author page once per request; stop parsing feed items once the limit is reached; and fix REST API caching, which never worked for long URLs.
-* Cache REST endpoint results for 15 minutes. Add the `nocache` parameter and the `parse_this_cache_lifetime` filter.
-* Include raw source data (`_meta`, `_jsonld`, `_yt` and so on) only with the new `debug` argument, rather than whenever `WP_DEBUG` is on.
-* Security: the REST endpoint and the Tools > Parse This page require `edit_posts` (filterable with `parse_this_rest_capability`); the endpoint's parameters are declared and validated; the debug page sends its nonce in a header instead of the URL; output from fetched pages is sanitized; one parse makes at most 10 further requests (`parse_this_max_requests`); plugin files exit when loaded outside WordPress; and the OPML class handles invalid input safely.
-* Fix content HTML losing the text before its first tag, which cut the opening words from most notes.
-* Microformats: on pages with several items, choose the one the page is about (ignoring breadcrumbs and sidebar profiles) instead of returning them all; follow the rest of the authorship algorithm (a card with url and uid, rel=me, or on the page itself), and give feed entries without an author the feed's author; and parse only the element a URL fragment points to, such as a comment. A WordPress comment link (`#comment-NNN`) whose page has no microformats for it, or doesn't show it, is read from the site's REST API as a reply.
-* JSON-LD: read reviews (as h-entry reviews with `review-of` and `rating`), products and recipes; recognize Article and Event subtypes; prefer them over the WebPage node SEO plugins add to every page; and move their nested objects to `refs` like microformats.
-* Discovery: find `application/mf2+json` alternates, `rel=feed` links and RSS 1.0 feeds, and read multi-value `rel` attributes.
-* Report `_code` and `_source_format` on fetched results, read pages from the address they end up at after redirects, recognize feeds and JSON served with the wrong content type, drop titles that only repeat the start of the content, and strip leading `#` from categories.
-* Keep escaped text as text in content HTML: `&lt;code&gt;` in a sentence, or a `<` in a code sample, no longer turns into markup or disappears.
-* Return an error for HTTP error pages (`not_found`, `unauthorized`, `forbidden`, `http_error`) instead of parsing them as content; a 410 Gone page is still parsed, with `_code`.
-* Microformats: read `follow-of`; read the ingredients, yield, duration, nutrition and instructions of recipes, more event properties, and the replies and likes of reviews; give events, reviews and recipes a `post-type`; keep names and ratings of "0"; and follow Post Type Discovery for entries with a name and no content (articles).
-* Move any nested object with a URL to `refs`, not only citations, keeping the result one level deep, and pass unknown microformats properties through instead of dropping them.
-* Support reviews published as an h-entry with `review-of`, `rating`, `best` and `worst` (microformats/h-entry#32), as Post Kinds publishes them, and h-entry h-review; ratings are also kept on other entries (rated watches, reads and so on).
-* Parse HTML with PHP's own HTML5 parser on PHP 8.4 and later: several times faster than the bundled parser, and it handles invalid markup as browsers do. The `parse_this_native_html_parser` filter turns it off.
-* Add the `PARSE_THIS_VERSION` constant and the `parse_this_loaded` action, so plugins can require Parse This instead of bundling it.
-* Return `rel=author` authors as jf2 cards, and give results that only meta tags filled the type `entry`.
-* Date posts read through the WordPress REST API from their GMT dates, so they are correct even without the site's timezone.
-* Read YouTube pages in full (they exceed the 1 MB limit) and extract the player data reliably.
-* Recognize x.com post URLs, and use the publish.x.com oEmbed endpoint.
-* Fix YouTube feed discovery for `@handle` URLs and the video ID in parsed videos.
-* Update the bundled php-mf2 (0.5.0) and masterminds/html5 (2.11.0) libraries.
-* Remove polyfills for functions WordPress 6.2 already provides, and the deprecated `who` argument to `get_users()`.
-* Use the `parse-this` text domain throughout.
-* Document every function, class and filter in the source, following the WordPress documentation standards.
-* Test against WordPress 6.2, the latest WordPress and ClassicPress 2.7.
+A major update. Please read "Upgrading from 1.x" if another plugin of yours uses Parse This.
+
+Requirements:
+
+* Requires PHP 7.4 and WordPress 6.2, or ClassicPress 2.x. Tested up to WordPress 7.1 and PHP 8.5.
+
+Changes to be aware of:
+
+* Everything is in the `ParseThis` namespace, and class names drop the `Parse_This_` prefix (`Parse_This` is now `ParseThis\Parser`). The old names Post Kinds and Yarns use still work, as deprecated aliases.
+* Output: nested objects with a URL move to `refs`; authors are always cards; RSS and Atom items use `post-type` (not `post_type`); unknown microformats properties are kept; and fetched results carry `_code` and `_source_format`.
+* `fetch()` returns a `WP_Error` for HTTP error pages (`not_found`, `unauthorized`, `forbidden`, `http_error`) instead of parsing them; a 410 Gone page is still parsed.
+* The REST endpoint and the Tools > Parse This page require the `edit_posts` capability (filterable with `parse_this_rest_capability`), and its parameters are validated.
+* Raw source data (`_meta`, `_jsonld` and so on) is only included with the new `debug` argument, not whenever `WP_DEBUG` is on.
+* Plugins that use Parse This should require it rather than bundle it: see "Using Parse This from another plugin". `PARSE_THIS_VERSION` and the `parse_this_loaded` action help with that.
+* The Instagram parser and the `ifset()` helper are removed.
+
+New:
+
+* Microformats always come first; JSON-LD, meta tags and the REST API only fill gaps. The `require_content` argument controls when a summary is enough.
+* Microformats: choose the item a busy page is about; the full authorship algorithm, with feed entries inheriting the feed's author; reviews as an h-entry with `review-of`, `rating`, `best` and `worst` (as Post Kinds publishes them); complete h-event, h-review and h-recipe parsing; `follow-of`; and every value of repeated properties.
+* Links with a fragment parse just that element; WordPress comment links fall back to the site's REST API.
+* JSON-LD: reviews, products, recipes, and Article and Event subtypes, preferred over the WebPage node SEO plugins add.
+* Feeds and JSON served with the wrong content type are recognized. JSON Feed items get plain text, a `post-type` and absolute URLs.
+* Discovery finds mf2 JSON alternates, `rel=feed` links, RSS 1.0, multi-value `rel` attributes and JSON Feeds advertised as `application/json`, and follows permanent redirects.
+* PHP's own HTML5 parser is used on PHP 8.4 and later: several times faster, and it handles invalid markup as browsers do (`parse_this_native_html_parser` turns it off).
+* The `always_arrays` argument returns Microsub-style arrays.
+* New filters: `parse_this_rest_api_jf2_type`, `parse_this_url_shorteners`, `parse_this_max_requests`, `parse_this_cache_lifetime`, `parse_this_rest_capability` and `parse_this_native_html_parser`.
+
+Fixes:
+
+* More than 50 bugs, many of them fatal errors on PHP 8, across RSS and Atom, the WordPress REST API, JSON-LD, meta tags, microformats, JSON Feed, X (Twitter), YouTube and feed discovery.
+* Content HTML no longer loses the text before its first tag, and escaped text (`&lt;code&gt;`) no longer turns into markup.
+* REST API posts are dated from their GMT dates; YouTube pages are read in full; titles that only repeat the content are dropped; names and ratings of "0" are kept; post types follow Post Type Discovery.
+
+Performance:
+
+* Feeds are downloaded once rather than twice; only link-shortener URLs in summaries are expanded; REST API tags and site details need far fewer requests; followed author pages are fetched once per request; REST endpoint results are cached for 15 minutes (`nocache` and `parse_this_cache_lifetime`).
+
+Security:
+
+* Output from fetched pages is sanitized (URLs limited to http and https, tags stripped from plain text, a safe set of HTML tags in content); one parse makes at most 10 further requests; the debug page sends its nonce in a header; plugin files exit when loaded outside WordPress; the OPML class handles invalid input safely.
+
+Developers:
+
+* Core's `fetch_feed()` is used for RSS and Atom; all requests go through `ParseThis\pt_remote_get()`.
+* The bundled php-mf2 (0.5.0) and masterminds/html5 (2.11.0) are updated, and polyfills WordPress 6.2 provides are removed.
+* Every function, class and hook is documented, and the plugin is tested on WordPress 6.2, the latest WordPress and ClassicPress 2.7 with PHP 7.4 to 8.5.
 
 ### 1.0.1 ( 2021-04-02 )
 
@@ -202,4 +211,10 @@ Yes. It is tested with ClassicPress 2.7 on PHP 7.4 to 8.3.
 ### 1.0.0 ( 2020-12-15 )
 
 * First Official Release. Prior to this point it was in a point release.
+
+## Upgrade Notice
+
+### 2.0.0
+
+A major update: classes and functions move to the ParseThis namespace (the old names Post Kinds and Yarns use still work), the output format changes in places, and the REST endpoint now requires the edit_posts capability. Requires PHP 7.4 and WordPress 6.2.
 
