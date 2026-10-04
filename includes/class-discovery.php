@@ -23,6 +23,7 @@ class Discovery {
 	 * Maps a feed MIME type to the plugin's feed type name.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Recognizes application/mf2+json and application/rdf+xml.
 	 *
 	 * @param string $type MIME type from a link's type attribute.
 	 * @return string One of 'jsonfeed', 'json', 'rss', 'atom', 'jf2feed',
@@ -36,12 +37,14 @@ class Discovery {
 				return 'json';
 			case 'text/xml':
 			case 'application/rss+xml':
+			case 'application/rdf+xml':
 				return 'rss';
 			case 'application/atom+xml':
 				return 'atom';
 			case 'application/jf2feed+json':
 				return 'jf2feed';
 			case 'text/mf2+html':
+			case 'application/mf2+json':
 				return 'microformats';
 			default:
 				return '';
@@ -225,14 +228,23 @@ class Discovery {
 				$mf2 = false;
 				foreach ( $xpath->query( '(//link|//a)[@rel and @href]' ) as $link ) {
 					$rel   = $link->getAttribute( 'rel' );
+					$rels  = preg_split( '/\s+/', strtolower( trim( $rel ) ) );
 					$href  = $link->getAttribute( 'href' );
 					$title = $link->getAttribute( 'title' );
-					$type  = self::get_feed_type( $link->getAttribute( 'type' ) );
-					if ( 'microformats' === $type ) {
+					$mime  = strtolower( trim( strtok( $link->getAttribute( 'type' ), ';' ) ) );
+					$type  = self::get_feed_type( $mime );
+					// rel=feed points to an h-feed page (https://indieweb.org/rel-feed); with
+					// rel=alternate, text/html is usually a translation, not a feed.
+					if ( in_array( 'feed', $rels, true ) && in_array( $mime, array( '', 'text/html' ), true ) ) {
+						$type = 'microformats';
+					}
+					// An mf2 alternate of this page means the page itself needn't be checked;
+					// rel=feed links point to other feed pages.
+					if ( 'microformats' === $type && in_array( 'alternate', $rels, true ) ) {
 						$mf2 = true;
 					}
 
-					if ( in_array( $rel, array( 'alternate', 'feed' ), true ) && ! empty( $type ) ) {
+					if ( array_intersect( $rels, array( 'alternate', 'feed' ) ) && ! empty( $type ) ) {
 						$links[] = array_filter(
 							array(
 								'url'        => pt_make_absolute_url( $href, $url ),
@@ -244,7 +256,7 @@ class Discovery {
 							)
 						);
 					}
-					if ( 'https://api.w.org/' === $rel && empty( $wprest ) ) {
+					if ( in_array( 'https://api.w.org/', $rels, true ) && empty( $wprest ) ) {
 						$wprest[] = array_filter(
 							array(
 								'url'        => untrailingslashit( pt_make_absolute_url( $href, $url ) ),
