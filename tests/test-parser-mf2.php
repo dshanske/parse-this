@@ -590,4 +590,26 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 		$parser->parse();
 		$this->assertSame( 'solo', $parser->get()['category'] );
 	}
+
+	/**
+	 * A name that only repeats the start of the content is not a title (X-7).
+	 */
+	public function test_duplicate_names() {
+		$this->assertTrue( ParseThis\name_is_content_prefix( 'Hello there this is…', 'Hello there this is a note about things' ) );
+		$this->assertTrue( ParseThis\name_is_content_prefix( 'Hello there...', "Hello\n there, friend" ) );
+		$this->assertFalse( ParseThis\name_is_content_prefix( 'A Title', 'Body text' ) );
+		$this->assertFalse( ParseThis\name_is_content_prefix( '…', 'Body text' ) );
+
+		// XRay's content-with-prefixed-name: the truncated name is dropped, and it's a note.
+		$jf2 = ParseThis\MF2::parse( '<div class="h-entry"><p class="p-name">This page has a link...</p><div class="e-content">This page has a link to target.example.com and some <b>formatted text</b>.</div></div>', 'https://example.com/a/', array() );
+		$this->assertArrayNotHasKey( 'name', $jf2 );
+		$this->assertSame( 'note', $jf2['post-type'] );
+
+		// A distinct name stays, and makes an article.
+		$jf2 = ParseThis\MF2::parse( '<div class="h-entry"><p class="p-name">Hello World</p><div class="e-content">This page has a link.</div></div>', 'https://example.com/a/', array() );
+		$this->assertSame( 'Hello World', $jf2['name'] );
+		$this->assertSame( 'article', $jf2['post-type'] );
+
+		$this->assertSame( 'note', ParseThis\post_type_discovery( array( 'type' => 'entry', 'name' => 'Short post…', 'summary' => 'Short post that goes on' ) ) );
+	}
 }

@@ -487,6 +487,30 @@ if ( ! function_exists( __NAMESPACE__ . '\\normalize_iso8601' ) ) {
 	}
 }
 
+if ( ! function_exists( __NAMESPACE__ . '\\name_is_content_prefix' ) ) {
+	/**
+	 * Checks whether a name only repeats the start of the content.
+	 *
+	 * Ignores a trailing ellipsis (... or …) on the name, as on truncated
+	 * titles, and ignores whitespace in both.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param mixed $name    Name.
+	 * @param mixed $content Content text.
+	 * @return bool True if both are non-empty strings and the content starts
+	 *              with the name.
+	 */
+	function name_is_content_prefix( $name, $content ) {
+		if ( ! is_string( $name ) || ! is_string( $content ) ) {
+			return false;
+		}
+		$name    = preg_replace( '/\\s+/u', '', preg_replace( '/\\s*(\\.\\.\\.|…)\\s*$/u', '', $name ) );
+		$content = preg_replace( '/\\s+/u', '', $content );
+		return '' !== $name && '' !== $content && 0 === strpos( $content, $name );
+	}
+}
+
 if ( ! function_exists( __NAMESPACE__ . '\\post_type_discovery' ) ) {
 	/**
 	 * Determines the IndieWeb post type of a jf2 or mf2 entry.
@@ -551,7 +575,8 @@ if ( ! function_exists( __NAMESPACE__ . '\\post_type_discovery' ) ) {
 				}
 			}
 			// https://www.w3.org/TR/post-type-discovery/#algorithm: a name that is not
-			// a prefix of the content (or summary, or nothing) makes an article.
+			// a prefix of the content (or summary, or nothing) makes an article. A
+			// truncated name (ending in an ellipsis) is compared without it.
 			$name = ( isset( $jf2['name'] ) && is_string( $jf2['name'] ) ) ? trim( preg_replace( '/\s+/u', ' ', $jf2['name'] ) ) : '';
 			if ( '' !== $name ) {
 				$content = $jf2['content'] ?? null;
@@ -562,7 +587,7 @@ if ( ! function_exists( __NAMESPACE__ . '\\post_type_discovery' ) ) {
 					$content = $jf2['summary'] ?? '';
 				}
 				$content = is_string( $content ) ? trim( preg_replace( '/\s+/u', ' ', $content ) ) : '';
-				if ( 0 !== strpos( $content, $name ) ) {
+				if ( ! name_is_content_prefix( $name, $content ) ) {
 					return 'article';
 				}
 			}

@@ -283,6 +283,15 @@ class RSS extends Base {
 			$return['category'] = array();
 		}
 
+		// A truncated title that only repeats the start of the content (or the
+		// description), or a title that is just the link, is not a title.
+		$name = is_string( $return['name'] ) ? trim( $return['name'] ) : '';
+		$text      = $return['content']['text'] ?? $return['summary'];
+		$truncated = preg_match( '/(\.\.\.|…)$/u', $name ) && name_is_content_prefix( $name, $text );
+		if ( '' !== $name && ( $truncated || $name === $return['url'] ) ) {
+			unset( $return['name'] );
+		}
+
 		// To cover the non obvious types.
 		$medium_map = array(
 			'application/x-shockwave-flash' => 'video',

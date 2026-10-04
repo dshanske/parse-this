@@ -762,10 +762,12 @@ class MF2 extends MF2_Utils {
 	 * Returns the properties common to most microformat types.
 	 *
 	 * Reads name, published, updated, url, author, content and summary, drops
-	 * the name when it just repeats the content, and adds the document's
-	 * rel=syndication links.
+	 * the name when it only repeats the start of the content (see
+	 * name_is_content_prefix()), and adds the document's rel=syndication links.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.0 Drops a name that is a prefix of the content, including a
+	 *              truncated one, not only one that contains all of it.
 	 *
 	 * @param array $entry Microformat.
 	 * @param array $mf    Parsed mf2 document.
@@ -787,9 +789,10 @@ class MF2 extends MF2_Utils {
 		$data['content'] = self::parse_html_value( $entry, 'content' );
 		$data['summary'] = self::get_summary( $entry, $data['content'] );
 
-		// If name and content are equal remove name.
+		// A name that only repeats the start of the content (often implied, or
+		// truncated with an ellipsis) is not a title.
 		if ( is_array( $data['content'] ) && array_key_exists( 'text', $data['content'] ) ) {
-			if ( self::compare( $data['name'], $data['content']['text'] ) ) {
+			if ( name_is_content_prefix( $data['name'], $data['content']['text'] ) ) {
 				unset( $data['name'] );
 			}
 		}
