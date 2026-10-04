@@ -385,4 +385,69 @@ class Parser_Fetch_Test extends Parse_This_TestCase {
 		$this->assertSame( 'The Post Title', $jf2['name'] );
 		$this->assertSame( 'https://example.com/fragment-id', $jf2['url'] );
 	}
+
+	/**
+	 * A WordPress comment link without microformats falls back to the REST API.
+	 */
+	public function test_comment_link_falls_back_to_rest_api() {
+		$comment_markup = '<html><head></head><body><article class="h-entry"><h1 class="p-name">Post</h1><div class="e-content">Body</div></article>'
+			. '<li id="comment-12" class="comment"><article id="div-comment-12" class="comment-body"><div class="comment-author vcard"><b class="fn"><a href="https://joe.example/" class="url">Joe</a></b></div><div class="comment-content"><p>Nice post</p></div></article></li>'
+			. '</body></html>';
+		$link           = array( 'link' => '<https://example.com/wp-json/>; rel="https://api.w.org/"' );
+		$comment        = function ( $id, $parent ) {
+			return wp_json_encode(
+				array(
+					'id'                 => $id,
+					'post'               => 5,
+					'parent'             => $parent,
+					'author_name'        => 'Joe',
+					'author_url'         => 'https://joe.example/',
+					'date_gmt'           => '2026-09-11T00:34:27',
+					'content'            => array( 'rendered' => '<p>Nice post</p>' ),
+					'link'               => 'https://example.com/post/#comment-' . $id,
+					'author_avatar_urls' => array(
+						'24' => 'https://avatar.example/24',
+						'96' => 'https://avatar.example/96',
+					),
+				)
+			);
+		};
+
+		// Default comment markup (only a vcard): the REST API gives the reply.
+		$this->respond( 'https://example.com/post/', $comment_markup, 'text/html', $link );
+		$this->respond( 'https://example.com/wp-json/wp/v2/comments/12', $comment( 12, 0 ), 'application/json' );
+		$jf2 = $this->fetch_and_parse( 'https://example.com/post/#comment-12' );
+		$this->assertSame( 'reply', $jf2['post-type'] );
+		$this->assertSame( 'https://example.com/post/', $jf2['in-reply-to'] );
+		$this->assertSame( 'Joe', $jf2['author']['name'] );
+		$this->assertSame( 'https://avatar.example/96', $jf2['author']['photo'] );
+		$this->assertSame( 'Nice post', $jf2['content']['text'] );
+		$this->assertSame( '2026-09-11T00:34:27+00:00', $jf2['published'] );
+		$this->assertSame( 'wordpress', $jf2['_source_format'] );
+		$this->assertArrayNotHasKey( 'name', $jf2 );
+
+		// A threaded comment that isn't on this page, with the REST root in a <link>.
+		$this->respond( 'https://example.com/post2/', '<html><head><link rel="https://api.w.org/" href="https://example.com/wp-json/"></head><body><article class="h-entry"><div class="e-content">Body</div></article></body></html>' );
+		$this->respond( 'https://example.com/wp-json/wp/v2/comments/13', $comment( 13, 12 ), 'application/json' );
+		$jf2 = $this->fetch_and_parse( 'https://example.com/post2/#comment-13' );
+		$this->assertSame( 'https://example.com/post/#comment-12', $jf2['in-reply-to'] );
+
+		// Comments marked up with microformats don't need the REST API.
+		$this->respond( 'https://example.com/post3/', '<html><body><div class="h-cite" id="comment-14"><p class="e-content">Marked up</p></div></body></html>', 'text/html', $link );
+		$this->requests = array();
+		$jf2            = $this->fetch_and_parse( 'https://example.com/post3/#comment-14' );
+		$this->assertSame( 'Marked up', $jf2['content']['text'] );
+		$this->assertCount( 1, $this->requests );
+
+		// Without a REST root, the page's own result stands.
+		$this->respond( 'https://example.com/post4/', $comment_markup );
+		$jf2 = $this->fetch_and_parse( 'https://example.com/post4/#comment-12' );
+		$this->assertSame( 'card', $jf2['type'] );
+
+		// A comment the REST API won't give (not approved) leaves the page's result.
+		$this->respond( 'https://example.com/post5/', $comment_markup, 'text/html', array( 'link' => '<https://example.net/wp-json/>; rel="https://api.w.org/"' ) );
+		$this->respond( 'https://example.net/wp-json/wp/v2/comments/12', wp_json_encode( array( 'code' => 'rest_forbidden', 'message' => 'No' ) ), 'application/json', array(), 401 );
+		$jf2 = $this->fetch_and_parse( 'https://example.com/post5/#comment-12' );
+		$this->assertSame( 'card', $jf2['type'] );
+	}
 }

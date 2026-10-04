@@ -495,6 +495,73 @@ class RESTAPI {
 	}
 
 	/**
+	 * Fetches a WordPress comment through the REST API and converts it to jf2.
+	 *
+	 * Used for a #comment-NNN link whose page doesn't mark the comment up with
+	 * microformats (as default WordPress comment markup doesn't), or doesn't
+	 * show it (a later comment page).
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $rest_url REST API root URL.
+	 * @param int    $id       Comment ID.
+	 * @return array|null jf2 entry for the comment, or null if it can't be read
+	 *                    (not approved, comments closed to the API, not found).
+	 */
+	public static function fetch_comment( $rest_url, $id ) {
+		$comment = self::fetch( $rest_url, '/wp/v2/comments/' . absint( $id ), false, array() );
+		if ( ! is_array( $comment ) || empty( $comment['id'] ) || empty( $comment['link'] ) ) {
+			return null;
+		}
+		return self::get_comment( $comment );
+	}
+
+	/**
+	 * Converts a REST API comment into a jf2 entry.
+	 *
+	 * The comment is a reply: to its parent comment when it is threaded, and
+	 * otherwise to the post, whose URL is the comment's link without its
+	 * fragment.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $comment REST API comment object.
+	 * @return array jf2 entry.
+	 */
+	public static function get_comment( $comment ) {
+		$link = is_string( $comment['link'] ?? null ) ? $comment['link'] : '';
+		$post = strtok( $link, '#' );
+		$html = Parser::clean_content( self::get_rendered( 'content', $comment ) );
+		// The largest avatar size given.
+		$avatars = ( isset( $comment['author_avatar_urls'] ) && is_array( $comment['author_avatar_urls'] ) ) ? $comment['author_avatar_urls'] : array();
+		ksort( $avatars, SORT_NUMERIC );
+		$parent = absint( $comment['parent'] ?? 0 );
+		$jf2    = array(
+			'type'        => 'entry',
+			'url'         => $link,
+			'published'   => self::post_datetime( $comment, 'date' ),
+			'author'      => array_filter(
+				array(
+					'type'  => 'card',
+					'name'  => $comment['author_name'] ?? null,
+					'url'   => $comment['author_url'] ?? null,
+					'photo' => $avatars ? end( $avatars ) : null,
+				)
+			),
+			'content'     => array_filter(
+				array(
+					'html' => $html,
+					'text' => trim( wp_strip_all_tags( $html ) ),
+				)
+			),
+			'in-reply-to' => $parent ? $post . '#comment-' . $parent : $post,
+		);
+		$jf2              = array_filter( $jf2 );
+		$jf2['post-type'] = post_type_discovery( $jf2 );
+		return $jf2;
+	}
+
+	/**
 	 * Converts a single REST API post into a jf2 entry.
 	 *
 	 * @since 1.0.0
