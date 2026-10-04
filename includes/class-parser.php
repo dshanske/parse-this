@@ -452,6 +452,31 @@ class Parser {
 	}
 
 	/**
+	 * Finds the WordPress REST API root a page advertises.
+	 *
+	 * Looks at the Link header, then at <link rel="https://api.w.org/"> in the
+	 * page.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @return string|false The REST API root URL, or false if there is none.
+	 */
+	private function find_rest_root() {
+		$root = pt_find_rest_endpoint( $this->links );
+		if ( $root ) {
+			return $root;
+		}
+		if ( $this->doc instanceof \DOMDocument ) {
+			foreach ( $this->doc->getElementsByTagName( 'link' ) as $link ) {
+				if ( in_array( 'https://api.w.org/', preg_split( '/\s+/', trim( $link->getAttribute( 'rel' ) ) ), true ) && $link->getAttribute( 'href' ) ) {
+					return pt_make_absolute_url( $link->getAttribute( 'href' ), $this->url );
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * Reads a status code a page declares with <meta http-equiv="Status">.
 	 *
 	 * @since 2.0.0
@@ -1170,6 +1195,19 @@ class Parser {
 			$status = self::meta_status( $this->doc );
 			if ( $status ) {
 				$this->code = $status;
+			}
+		}
+
+		// A WordPress comment link (#comment-NNN) whose page gives no entry for it
+		// (default comment markup doesn't), or doesn't show it (a later comment
+		// page, where the post would be parsed instead): ask the site's REST API.
+		if ( $fragment && preg_match( '/^comment-(\d+)$/', $fragment, $match ) && ( ! $element || ! in_array( $this->jf2['type'] ?? '', array( 'entry', 'cite' ), true ) ) ) {
+			$rest_root = $this->find_rest_root();
+			$comment   = ( $rest_root && self::use_request_budget() ) ? RESTAPI::fetch_comment( $rest_root, (int) $match[1] ) : null;
+			if ( $comment ) {
+				$this->jf2           = $comment;
+				$this->source_format = 'wordpress';
+				$element             = true;
 			}
 		}
 
