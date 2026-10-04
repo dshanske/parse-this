@@ -109,9 +109,23 @@ Version 2.0.0 moved everything into the `ParseThis` namespace and dropped the `P
 
 Other old global names are no longer defined. Please switch to the namespaced names.
 
+= Using Parse This from another plugin =
+
+The recommended way is to require the Parse This plugin rather than bundle a copy. On WordPress 6.5 and later, add `Requires Plugins: parse-this` to your plugin's header. On older WordPress and ClassicPress, which don't read that header, check that Parse This is loaded and new enough before using it:
+
+    add_action( 'plugins_loaded', function () {
+        if ( ! defined( 'PARSE_THIS_VERSION' ) || version_compare( PARSE_THIS_VERSION, '2.0.0', '<' ) ) {
+            // Show a notice asking for Parse This 2.0.0 or later, and skip the features that need it.
+            return;
+        }
+        // Use ParseThis\Parser and the rest here.
+    }, 11 );
+
+`PARSE_THIS_VERSION` is the version of the copy of Parse This that loaded. It isn't defined by copies older than 2.0.0, so an older copy bundled in another plugin shows up as missing. The `parse_this_loaded` action fires, with the version, once Parse This has loaded.
+
 = Bundling Parse This in another plugin =
 
-Copy the plugin into your plugin (for example under `lib/parse-this/`) and load it only if the standalone plugin hasn't already, from `plugins_loaded` at priority 10 or later:
+If you do bundle it, copy the plugin into your plugin (for example under `lib/parse-this/`) and load it only if the standalone plugin hasn't already, from `plugins_loaded` at priority 10 or later:
 
     add_action( 'plugins_loaded', function () {
         if ( ! function_exists( 'parse_this_loader' ) ) {
@@ -174,6 +188,7 @@ Yes. It is tested with ClassicPress 2.7 on PHP 7.4 to 8.3.
 * Microformats: read `follow-of`; read the ingredients, yield, duration, nutrition and instructions of recipes, more event properties, and the replies and likes of reviews; give events, reviews and recipes a `post-type`; keep names and ratings of "0"; and follow Post Type Discovery for entries with a name and no content (articles).
 * Move any nested object with a URL to `refs`, not only citations, keeping the result one level deep, and pass unknown microformats properties through instead of dropping them.
 * Support reviews published as an h-entry with `review-of`, `rating`, `best` and `worst` (microformats/h-entry#32), as Post Kinds publishes them, and h-entry h-review; ratings are also kept on other entries (rated watches, reads and so on).
+* Add the `PARSE_THIS_VERSION` constant and the `parse_this_loaded` action, so plugins can require Parse This instead of bundling it.
 * Return `rel=author` authors as jf2 cards, and give results that only meta tags filled the type `entry`.
 * Date posts read through the WordPress REST API from their GMT dates, so they are correct even without the site's timezone.
 * Read YouTube pages in full (they exceed the 1 MB limit) and extract the player data reliably.
