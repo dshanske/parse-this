@@ -564,4 +564,30 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 		$this->assertSame( 'Described', $review['content']['text'] );
 		$this->assertArrayNotHasKey( 'description', $review );
 	}
+
+	/**
+	 * Categories lose a leading # and duplicates (X-8).
+	 */
+	public function test_category_hashtags() {
+		$parser = new ParseThis\Parser();
+		$parser->set( '<div class="h-entry"><p class="e-content">Hi</p><a class="p-category">#indieweb</a><a class="p-category">indieweb</a><a class="p-category"> #xray</a><a class="p-category">#</a><div class="p-category h-card"><a class="u-url p-name" href="https://alice.example/">Alice</a></div></div>', 'https://example.com/a/' );
+		$parser->parse( array( 'references' => false ) );
+		$this->assertSame(
+			array(
+				'indieweb',
+				'xray',
+				array(
+					'name' => 'Alice',
+					'url'  => 'https://alice.example/',
+					'type' => 'card',
+				),
+			),
+			$parser->get()['category']
+		);
+
+		$parser = new ParseThis\Parser();
+		$parser->set( '<div class="h-entry"><p class="e-content">Hi</p><a class="p-category">#solo</a></div>', 'https://example.com/a/' );
+		$parser->parse();
+		$this->assertSame( 'solo', $parser->get()['category'] );
+	}
 }

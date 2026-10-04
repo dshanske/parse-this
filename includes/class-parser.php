@@ -976,10 +976,43 @@ class Parser {
 	}
 
 	/**
+	 * Strips a leading # from category names and removes duplicates.
+	 *
+	 * A hashtag and a plain tag are the same category, as XRay treats them.
+	 * Values that aren't strings (person tags as nested cards) are kept.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param mixed $category A category value or a list of them.
+	 * @return mixed The cleaned value, in the same shape.
+	 */
+	private static function clean_categories( $category ) {
+		$list   = wp_is_numeric_array( $category );
+		$values = $list ? $category : array( $category );
+		$clean  = array();
+		$seen   = array();
+		foreach ( $values as $value ) {
+			if ( is_string( $value ) ) {
+				$value = trim( ltrim( trim( $value ), '#' ) );
+				if ( '' === $value || isset( $seen[ $value ] ) ) {
+					continue;
+				}
+				$seen[ $value ] = true;
+			}
+			$clean[] = $value;
+		}
+		if ( $list ) {
+			return $clean;
+		}
+		return $clean ? $clean[0] : '';
+	}
+
+	/**
 	 * Normalizes one jf2 object; see format_output().
 	 *
 	 * A type is required by jf2, so an object without one that has any properties
-	 * besides url (as when only meta tags filled it) becomes an entry.
+	 * besides url (as when only meta tags filled it) becomes an entry. Category
+	 * names lose a leading # and duplicates (see clean_categories()).
 	 *
 	 * @since 2.0.0
 	 *
@@ -997,6 +1030,12 @@ class Parser {
 			);
 			if ( $properties ) {
 				$jf2['type'] = 'entry';
+			}
+		}
+		if ( isset( $jf2['category'] ) ) {
+			$jf2['category'] = self::clean_categories( $jf2['category'] );
+			if ( array() === $jf2['category'] || '' === $jf2['category'] ) {
+				unset( $jf2['category'] );
 			}
 		}
 		if ( array_key_exists( 'author', $jf2 ) ) {
