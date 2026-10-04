@@ -58,6 +58,7 @@
 		"cp vendor/mf2/mf2/*.md lib/mf2",
 		"cp vendor/masterminds/html5/src/HTML5.php lib/html5",
 		"cp vendor/masterminds/html5/*.md lib/html5",
+		"cp vendor/masterminds/html5/LICENSE.txt vendor/masterminds/html5/CREDITS lib/html5",
 		"rm -rf lib/html5/HTML5",
 		"cp -r vendor/masterminds/html5/src/HTML5 lib/html5"
 
