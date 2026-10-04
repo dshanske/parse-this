@@ -914,7 +914,7 @@ if ( ! function_exists( __NAMESPACE__ . '\\pt_secure_rewrite' ) ) {
 			'gnu.org',
 			'google.com',
 			'gravatar.com',
-			'gstatic.com',
+			'gstatic.com', // phpcs:ignore PluginCheck.CodeAnalysis.Offloading.OffloadedContent -- A domain to rewrite to https, not content loaded from it.
 			'kernel.org',
 			'lwn.net',
 			'tumblr.com',

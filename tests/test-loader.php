@@ -19,4 +19,15 @@ class Loader_Test extends WP_UnitTestCase {
 		$this->assertSame( 1, did_action( 'parse_this_loaded' ) );
 		$this->assertTrue( class_exists( 'ParseThis\Parser' ) );
 	}
+
+	/**
+	 * The plugin header, the readme's stable tag and PARSE_THIS_VERSION agree, so a release bumps all three.
+	 */
+	public function test_versions_agree() {
+		$root   = dirname( __DIR__ );
+		$plugin = get_file_data( $root . '/parse-this.php', array( 'Version' => 'Version' ) );
+		$readme = get_file_data( $root . '/readme.txt', array( 'Stable' => 'Stable tag' ) );
+		$this->assertSame( PARSE_THIS_VERSION, $plugin['Version'] );
+		$this->assertSame( PARSE_THIS_VERSION, $readme['Stable'] );
+	}
 }
