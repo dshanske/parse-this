@@ -243,6 +243,11 @@ class Discovery {
 					if ( 'microformats' === $type && in_array( 'alternate', $rels, true ) ) {
 						$mf2 = true;
 					}
+					// application/json: a WordPress REST API resource (every post links its own)
+					// isn't a feed; anything else is a JSON Feed, as version 1 used that type.
+					if ( 'json' === $type ) {
+						$type = preg_match( '#/wp-json/|[?&]rest_route=#', $href ) ? '' : 'jsonfeed';
+					}
 
 					if ( array_intersect( $rels, array( 'alternate', 'feed' ) ) && ! empty( $type ) ) {
 						$links[] = array_filter(

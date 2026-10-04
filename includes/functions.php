@@ -1048,6 +1048,46 @@ if ( ! function_exists( __NAMESPACE__ . '\\pt_find_rest_endpoint' ) ) {
 	}
 }
 
+if ( ! function_exists( __NAMESPACE__ . '\\pt_absolute_urls_in_html' ) ) {
+	/**
+	 * Makes the links and media URLs in an HTML fragment absolute.
+	 *
+	 * Resolves href, src and poster attributes against a base URL, for content
+	 * taken from a document (such as a JSON Feed item) whose own URL differs
+	 * from where it will be shown.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $html HTML fragment.
+	 * @param string $base Base URL.
+	 * @return string The HTML with absolute URLs, or $html unchanged if it has
+	 *                none to resolve or $base is not a URL.
+	 */
+	function pt_absolute_urls_in_html( $html, $base ) {
+		if ( ! is_string( $html ) || '' === trim( $html ) || ! wp_http_validate_url( $base ) || ! preg_match( '/\s(href|src|poster)\s*=/i', $html ) ) {
+			return $html;
+		}
+		$doc  = pt_load_domdocument( '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' . $html . '</body></html>' );
+		$body = $doc->getElementsByTagName( 'body' )->item( 0 );
+		if ( ! $body ) {
+			return $html;
+		}
+		foreach ( ( new \DOMXPath( $doc ) )->query( '//body//*[@href or @src or @poster]' ) as $element ) {
+			foreach ( array( 'href', 'src', 'poster' ) as $attribute ) {
+				$value = $element->getAttribute( $attribute );
+				if ( '' !== $value && '#' !== $value[0] ) {
+					$element->setAttribute( $attribute, pt_make_absolute_url( $value, $base ) );
+				}
+			}
+		}
+		$out = '';
+		foreach ( $body->childNodes as $node ) { // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- PHP DOM property.
+			$out .= $doc->saveHTML( $node );
+		}
+		return $out;
+	}
+}
+
 if ( ! function_exists( __NAMESPACE__ . '\\pt_make_absolute_url' ) ) {
 	/**
 	 * Resolves a relative URL against a base URL.
