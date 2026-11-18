@@ -278,7 +278,7 @@ class RESTAPI {
 				$return['note'] = $content['description'];
 				return $return;
 			} else {
-				$content = self::fetch( $rest_url, '/wp/v2/posts?_embed=1' );
+				$content = self::fetch( $rest_url, '/wp/v2/posts' );
 				if ( is_wp_error( $content ) || ! is_array( $content ) ) {
 					return $content;
 				}
