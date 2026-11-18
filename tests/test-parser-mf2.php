@@ -706,4 +706,24 @@ class Parser_MF2_Test extends Parse_This_TestCase {
 		$this->assertCount( 2, $feed['items'] );
 		$this->assertSame( 'Author Name', $feed['items'][0]['author']['name'] );
 	}
+
+	/**
+	 * Classic hReview markup is upgraded by php-mf2 0.5.1: the reviewer becomes
+	 * the author and the description becomes the content.
+	 */
+	public function test_classic_hreview() {
+		$jf2 = ParseThis\MF2::parse(
+			'<div class="hreview"><span class="item"><a class="fn url" href="https://example.com/thing">Thing</a></span> <span class="reviewer vcard"><span class="fn">Bob</span></span> <abbr class="rating" title="4">4</abbr><div class="description">Good stuff</div></div>',
+			'https://example.com/r',
+			array(
+				'follow'    => false,
+				'alternate' => false,
+			)
+		);
+		$this->assertSame( 'review', $jf2['type'] );
+		$this->assertSame( 'Bob', $jf2['author']['name'] );
+		$this->assertSame( '4', $jf2['rating'] );
+		$this->assertSame( 'Good stuff', $jf2['content']['text'] );
+		$this->assertSame( 'Thing', $jf2['refs']['https://example.com/thing']['name'] );
+	}
 }
