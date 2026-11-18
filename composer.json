@@ -28,7 +28,7 @@
     },
     "require-dev": {
         "dealerdirect/phpcodesniffer-composer-installer": "^1.2",
-        "masterminds/html5": "^2.11",
+        "masterminds/html5": "^2.12",
         "mf2/mf2": "^0.5.1",
         "php-parallel-lint/php-parallel-lint": "^1.4",
         "phpcompatibility/php-compatibility": "^9.3.5",
