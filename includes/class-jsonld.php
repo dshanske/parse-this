@@ -629,7 +629,10 @@ class JSONLD extends Base {
 	/**
 	 * Converts an Event node into a jf2 event.
 	 *
+	 * The organizer may be an Organization or a Person.
+	 *
 	 * @since 1.0.0
+	 * @since 2.0.1 Accepts a Person as organizer.
 	 *
 	 * @param array $event Event or BusinessEvent node.
 	 * @return array|false jf2 event, or false if the node is not an event.
@@ -643,7 +646,7 @@ class JSONLD extends Base {
 			'name'      => $event['name'] ?? null,
 			'url'       => $event['url'] ?? null,
 			'summary'   => $event['description'] ?? null,
-			'organizer' => self::organization_to_hcard( $event['organizer'] ?? null ),
+			'organizer' => self::person_to_hcard( $event['organizer'] ?? null ),
 			'location'  => self::place_to_hcard( $event['location'] ?? null ),
 			'start'     => normalize_iso8601( $event['startDate'] ?? null ),
 			'end'       => normalize_iso8601( $event['endDate'] ?? null ),
