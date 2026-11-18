@@ -55,7 +55,6 @@ class Parser_Feeds_More_Test extends Parse_This_TestCase {
 	 * An author name that is a single link becomes a card with that name and URL.
 	 */
 	public function test_author_single_link() {
-		$this->markTestSkipped( 'RSS::get_authors() drops an author whose name is a single link (#188).' );
 		$feed   = $this->simplepie( $this->rss( '<item><title>T</title><dc:creator>&lt;a href="https://a.example/"&gt;Ann&lt;/a&gt;</dc:creator></item>' ) );
 		$author = RSS::get_authors( $feed->get_items()[0]->get_authors() );
 		$this->assertSame( 'Ann', $author['name'] );
