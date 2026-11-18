@@ -166,6 +166,12 @@ Yes. It is tested with ClassicPress 2.7 on PHP 7.4 to 8.3.
 * Relative `<audio>` and `<video>` URLs found by the HTML parser are now made absolute.
 * The bundled php-mf2 is updated to 0.5.1. It no longer raises PHP 8.2 and 8.5 deprecation notices while parsing (three remain on PHP 8.4+ when the file loads, fixed upstream but not yet released). It also parses classic hReview markup better: the reviewer becomes the author, and hreview-aggregate and geo are recognized.
 * Unused code is removed: the `limit_array()`, `limit_url()`, `limit_img()` and `limit_embed()` helpers, a commented-out block in the HTML parser that would have scraped every image, embed and link on a page, and the `parse_this_img_filters` filter, which could no longer run.
+* Code coverage is measured in CI, and the test suite now covers about 95% of the plugin's code.
+* WordPress REST API: a feed of a site with plain permalinks no longer requests a route that doesn't exist, and a field that isn't a `{rendered}` object no longer causes a fatal error.
+* Microformats: a feed request for a page with an h-card and one other item now returns that item, with the h-card as its author only if it has none. A page's `rel=syndication` links are added to an entry's own syndication instead of replacing it. Author URLs are recognized by their syntax, without a DNS lookup, so an author whose site is unreachable is no longer given its URL as a name.
+* JSON-LD: `creator` no longer replaces `author`; plain-text addresses are kept as the card's label; an ImageObject without `url` uses `contentUrl` or `@id`; a person can organize an event; music release artists are plain cards, and a single artist is accepted; audio and video transcripts use `content.text`.
+* Meta tags: Parse.ly tags are trimmed, `article:modified_time` becomes `updated`, and Dublin Core tags are read whatever their case (`DC.title`, `dc.title`, `DCTERMS.*`).
+* RSS: an author whose name is a single link is no longer dropped.
 
 = 2.0.0 ( 2026-10-03 ) =
 
