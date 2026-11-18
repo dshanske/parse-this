@@ -640,7 +640,6 @@ class Parser_JSONLD_Types_Test extends Parse_This_TestCase {
 	 * The artists of a release are cards, whether one artist or several.
 	 */
 	public function test_music_artists() {
-		$this->markTestSkipped( 'music_to_hcite() wraps each artist card in an extra array and mishandles a single byArtist object (#176).' );
 		$one  = JSONLD::music_to_hcite(
 			array(
 				'@type'     => 'MusicRelease',
