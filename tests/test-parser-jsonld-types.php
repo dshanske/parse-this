@@ -570,7 +570,6 @@ class Parser_JSONLD_Types_Test extends Parse_This_TestCase {
 	 * A person can organize an event.
 	 */
 	public function test_event_person_organizer() {
-		$this->markTestSkipped( 'event_to_hevent() only accepts an Organization as organizer (#175).' );
 		$event = JSONLD::event_to_hevent(
 			array(
 				'@type'     => 'Event',
