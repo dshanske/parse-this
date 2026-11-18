@@ -28,7 +28,7 @@ jobs:
           - { php: '8.1', platform: 'latest' }
           - { php: '8.3', platform: 'latest' }
           - { php: '8.4', platform: 'latest' }
-          - { php: '8.5', platform: 'latest', experimental: true }
+          - { php: '8.5', platform: 'latest' }
           # ClassicPress.
           - { php: '7.4', platform: 'classicpress:2.7.3' }
           - { php: '8.1', platform: 'classicpress:2.7.3' }

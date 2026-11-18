@@ -76,7 +76,10 @@ class Discovery_Test extends Parse_This_TestCase {
 
 		// The feed URL follows a permanent redirect, not a temporary one.
 		$feed_url = new ReflectionMethod( ParseThis\Discovery::class, 'feed_url' );
-		$feed_url->setAccessible( true );
+		if ( PHP_VERSION_ID < 80100 ) {
+			// Needed before PHP 8.1, and deprecated (it does nothing) since PHP 8.5.
+			$feed_url->setAccessible( true );
+		}
 		foreach ( array( 301 => 'https://example.com/new-feed', 308 => 'https://example.com/new-feed', 302 => 'https://example.com/old-feed', 307 => 'https://example.com/old-feed' ) as $code => $expected ) {
 			$hop              = new WpOrg\Requests\Response();
 			$hop->status_code = $code;
