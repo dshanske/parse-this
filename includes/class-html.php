@@ -136,7 +136,8 @@ class HTML extends Base {
 	 * an entry, profile a card, and book, music.song and video types a cite.
 	 *
 	 * @since 1.0.0
-	 * @since 2.0.1 Parse.ly tags are trimmed.
+	 * @since 2.0.1 Parse.ly tags are trimmed, and article:modified_time becomes
+	 *              updated rather than modified.
 	 *
 	 * @param array $meta Meta values as grouped by parse_meta(), keyed by prefix
 	 *                    (og, article, dc, music, video, ...) or by plain name.
@@ -205,7 +206,7 @@ class HTML extends Base {
 					}
 					$modified = $meta['article']['modified_time'] ?? $meta['article']['modified'] ?? null;
 					if ( $modified ) {
-						$jf2['modified'] = normalize_iso8601( $modified );
+						$jf2['updated'] = normalize_iso8601( $modified );
 					}
 					$jf2['category'] = $meta['article']['tag'] ?? null;
 				}

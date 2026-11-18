@@ -168,7 +168,6 @@ class Parser_HTML_Meta_Test extends Parse_This_TestCase {
 	 * An article's modified time becomes jf2's updated.
 	 */
 	public function test_article_modified_is_updated() {
-		$this->markTestSkipped( 'meta_to_jf2() maps article:modified_time to "modified", which is not a jf2 property (#185).' );
 		$jf2 = $this->parse_head( '<meta property="og:type" content="article"><meta property="article:modified_time" content="2024-02-02T10:00:00Z">' );
 		$this->assertStringStartsWith( '2024-02-02', $jf2['updated'] );
 	}
