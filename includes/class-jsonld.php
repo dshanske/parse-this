@@ -1070,9 +1070,12 @@ class JSONLD extends Base {
 	/**
 	 * Converts an article or web page node into a jf2 entry.
 	 *
-	 * Accepts WebPage, Article, NewsArticle and BlogPosting.
+	 * Accepts WebPage, Article, NewsArticle and BlogPosting. The author comes
+	 * from author, or from creator when there is no usable author.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.1 A creator no longer replaces the author, and is a single card
+	 *              when there is only one.
 	 *
 	 * @param array|mixed $newsarticle Article node.
 	 * @return array|false jf2 entry, or false if the node is not an article.
@@ -1121,28 +1124,20 @@ class JSONLD extends Base {
 				'text' => trim( wp_strip_all_tags( $newsarticle['articleBody'] ) ),
 			);
 		}
-		if ( isset( $newsarticle['author'] ) ) {
-			if ( ! wp_is_numeric_array( $newsarticle['author'] ) ) {
-				$newsarticle['author'] = array( $newsarticle['author'] );
+		// The author, or failing that the creator: one card, or a list of them.
+		foreach ( array( 'author', 'creator' ) as $property ) {
+			if ( isset( $jf2['author'] ) || ! isset( $newsarticle[ $property ] ) ) {
+				continue;
 			}
-			$jf2['author'] = array();
-			foreach ( $newsarticle['author'] as $author ) {
-				$jf2['author'][] = self::person_to_hcard( $author );
+			$agents = $newsarticle[ $property ];
+			if ( ! wp_is_numeric_array( $agents ) ) {
+				$agents = array( $agents );
 			}
-			$jf2['author'] = array_filter( $jf2['author'] );
-			if ( 0 === count( $jf2['author'] ) ) {
-				unset( $jf2['author'] );
-			} elseif ( 1 === count( $jf2['author'] ) ) {
-				$jf2['author'] = array_pop( $jf2['author'] );
-			}
-		}
-		if ( isset( $newsarticle['creator'] ) ) {
-			if ( ! wp_is_numeric_array( $newsarticle['creator'] ) ) {
-				$newsarticle['creator'] = array( $newsarticle['creator'] );
-			}
-			$jf2['author'] = array();
-			foreach ( $newsarticle['creator'] as $creator ) {
-				$jf2['author'][] = self::person_to_hcard( $creator );
+			$cards = array_values( array_filter( array_map( array( __CLASS__, 'person_to_hcard' ), $agents ) ) );
+			if ( 1 === count( $cards ) ) {
+				$jf2['author'] = $cards[0];
+			} elseif ( $cards ) {
+				$jf2['author'] = $cards;
 			}
 		}
 
