@@ -1076,11 +1076,14 @@ class MF2 extends MF2_Utils {
 	 *
 	 * Reads name, published, updated, url, author, content and summary, drops
 	 * the name when it only repeats the start of the content (see
-	 * name_is_content_prefix()), and adds the document's rel=syndication links.
+	 * name_is_content_prefix()), and adds the document's rel=syndication links
+	 * to the item's own syndication.
 	 *
 	 * @since 1.0.0
 	 * @since 2.0.0 Drops a name that is a prefix of the content, including a
 	 *              truncated one, not only one that contains all of it.
+	 * @since 2.0.1 rel=syndication links are merged with the item's own
+	 *              syndication instead of replacing it.
 	 *
 	 * @param array $entry Microformat.
 	 * @param array $mf    Parsed mf2 document.
@@ -1110,15 +1113,11 @@ class MF2 extends MF2_Utils {
 			}
 		}
 
+		// The page's rel=syndication links add to the item's own u-syndication;
+		// callers merge this result over their own properties.
 		if ( isset( $mf['rels']['syndication'] ) ) {
-			if ( isset( $data['syndication'] ) ) {
-				if ( is_string( $data['syndication'] ) ) {
-					$data['syndication'] = array( $data['syndication'] );
-				}
-				$data['syndication'] = array_unique( array_merge( $data['syndication'], $mf['rels']['syndication'] ) );
-			} else {
-				$data['syndication'] = $mf['rels']['syndication'];
-			}
+			$own                 = array_filter( (array) ( self::get_prop_array( $entry, array( 'syndication' ), $args )['syndication'] ?? array() ), 'is_string' );
+			$data['syndication'] = array_values( array_unique( array_merge( $own, $mf['rels']['syndication'] ) ) );
 		}
 		return self::filter_empty( $data );
 	}
