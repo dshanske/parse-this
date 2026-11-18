@@ -46,6 +46,9 @@
 	"lint:wpcs-fix": "./vendor/bin/phpcbf",
 	"lint": "./vendor/bin/phpcs -n -q",
 	"lint:php": "@php ./vendor/bin/parallel-lint --exclude .git --exclude vendor --exclude node_modules --exclude lib .",
+	"coverage": "@php -d pcov.enabled=1 -d pcov.directory=. ./vendor/bin/phpunit --coverage-clover=build/coverage/clover.xml --coverage-text=build/coverage/coverage.txt",
+	"coverage:html": "@php -d pcov.enabled=1 -d pcov.directory=. ./vendor/bin/phpunit --coverage-html=build/coverage/html",
+	"coverage:check": "@php bin/coverage-check.php build/coverage/clover.xml 77",
 	"setup-local-tests": "bash bin/install-wp-tests.sh wordpress_test root root 127.0.0.1 latest",
 	"install-codestandards": [
 		"Dealerdirect\\Composer\\Plugin\\Installers\\PHPCodeSniffer\\Plugin::run"

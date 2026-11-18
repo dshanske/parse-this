@@ -11,4 +11,11 @@
 			<directory prefix="test-" suffix=".php">./tests/</directory>
 		</testsuite>
 	</testsuites>
+	<!-- Line coverage of the plugin's own code; lib/ (vendored) and tests are excluded. Run with composer coverage. -->
+	<coverage processUncoveredFiles="true">
+		<include>
+			<file>./parse-this.php</file>
+			<directory suffix=".php">./includes</directory>
+		</include>
+	</coverage>
 </phpunit>
