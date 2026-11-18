@@ -1483,13 +1483,6 @@ class MF2 extends MF2_Utils {
 		);
 		$properties = array( 'category', 'item' );
 		$data       = array_merge( $data, self::get_prop_array( $entry, $properties, $args ) );
-		$properties = array();
-		foreach ( $properties as $p ) {
-			$v = self::get_plaintext( $entry, $p );
-			if ( null !== $v ) {
-				$data[ $p ] = $v;
-			}
-		}
 		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
 		return self::filter_empty( $data );
 	}
@@ -1517,13 +1510,6 @@ class MF2 extends MF2_Utils {
 		);
 		$properties = array( 'category', 'item' );
 		$data       = array_merge( $data, self::get_prop_array( $entry, $properties, $args ) );
-		$properties = array();
-		foreach ( $properties as $p ) {
-			$v = self::get_plaintext( $entry, $p );
-			if ( null !== $v ) {
-				$data[ $p ] = $v;
-			}
-		}
 		$data = array_merge( $data, self::parse_h( $entry, $mf, $args ) );
 		return self::filter_empty( $data );
 	}
@@ -1592,13 +1578,6 @@ class MF2 extends MF2_Utils {
 		);
 		$properties = array( 'category', 'item' );
 		$data       = array_merge( $data, self::get_prop_array( $item, $properties, $args ) );
-		$properties = array();
-		foreach ( $properties as $p ) {
-			$v = self::get_plaintext( $item, $p );
-			if ( null !== $v ) {
-				$data[ $p ] = $v;
-			}
-		}
 		$data = array_merge( $data, self::parse_h( $item, $mf, $args ) );
 		return self::filter_empty( $data );
 	}
