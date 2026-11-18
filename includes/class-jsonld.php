@@ -657,12 +657,15 @@ class JSONLD extends Base {
 	/**
 	 * Returns the URL of an ImageObject.
 	 *
-	 * For a list, the last image is used.
+	 * For a list, the last image is used. The URL is taken from url, then
+	 * contentUrl, then @id.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.1 Falls back to contentUrl and @id when there is no url.
 	 *
 	 * @param array|string|mixed $image ImageObject node, list of nodes, or URL.
-	 * @return string|false The image URL, or false if $image is not an image.
+	 * @return string|false The image URL, or false if $image is not an image or
+	 *                      has no URL.
 	 */
 	public static function image_to_photo( $image ) {
 		if ( wp_is_numeric_array( $image ) ) {
@@ -685,7 +688,12 @@ class JSONLD extends Base {
 		 *     );
 		 * }
 		 */
-		return $image['url'];
+		foreach ( array( 'url', 'contentUrl', '@id' ) as $key ) {
+			if ( isset( $image[ $key ] ) && is_string( $image[ $key ] ) && '' !== trim( $image[ $key ] ) ) {
+				return trim( $image[ $key ] );
+			}
+		}
+		return false;
 	}
 
 	/**

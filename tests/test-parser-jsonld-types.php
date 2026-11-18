@@ -480,10 +480,9 @@ class Parser_JSONLD_Types_Test extends Parse_This_TestCase {
 	}
 
 	/**
-	 * An ImageObject with contentUrl instead of url still gives its URL.
+	 * An ImageObject with contentUrl or @id instead of url still gives its URL.
 	 */
 	public function test_image_object_content_url() {
-		$this->markTestSkipped( 'image_to_photo() reads only url, so an ImageObject with contentUrl or @id raises a warning (#174).' );
 		$this->assertSame(
 			'https://example.com/d.jpg',
 			JSONLD::image_to_photo(
@@ -493,6 +492,16 @@ class Parser_JSONLD_Types_Test extends Parse_This_TestCase {
 				)
 			)
 		);
+		$this->assertSame(
+			'https://example.com/e.jpg',
+			JSONLD::image_to_photo(
+				array(
+					'@type' => 'ImageObject',
+					'@id'   => 'https://example.com/e.jpg',
+				)
+			)
+		);
+		$this->assertFalse( JSONLD::image_to_photo( array( '@type' => 'ImageObject' ) ) );
 	}
 
 	/**
