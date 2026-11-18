@@ -198,7 +198,6 @@ class Parser_MF2_Paths_Test extends Parse_This_TestCase {
 	 * An author URL is the author page even when its host doesn't resolve.
 	 */
 	public function test_author_url_without_dns() {
-		$this->markTestSkipped( 'find_author() checks author URLs with a DNS lookup and treats unresolvable ones as names (#182).' );
 		$jf2 = MF2::parse( '<div class="h-entry"><p class="e-content">Hi</p><a class="u-author" href="https://writer.invalid/">a</a></div>', 'https://example.com/post', $this->offline() );
 		$this->assertSame( 'https://writer.invalid/', $jf2['author']['url'] );
 		$this->assertArrayNotHasKey( 'name', $jf2['author'] );

@@ -198,6 +198,7 @@ class MF2 extends MF2_Utils {
 	 *
 	 * @since 1.0.0
 	 * @since 2.0.0 Implements steps 7.2 to 7.4 of the algorithm. Added $args.
+	 * @since 2.0.1 Recognizes author URLs by their syntax, without a DNS lookup.
 	 *
 	 * @param array      $item   Microformat to find the author of.
 	 * @param array|bool $mf2    Parsed mf2 document the item came from.
@@ -218,7 +219,7 @@ class MF2 extends MF2_Utils {
 					// 5.1 "if it has an h-card, use it, exit."
 					return $a;
 				} elseif ( is_string( $a ) ) {
-					if ( wp_http_validate_url( $a ) ) {
+					if ( pt_is_http_url( $a ) ) {
 						// 5.2 "otherwise if author property is an http(s) URL, let the author-page have that URL"
 						$authorpage = $a;
 					} else {
