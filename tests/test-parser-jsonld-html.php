@@ -105,6 +105,15 @@ class Parser_JSONLD_HTML_Test extends Parse_This_TestCase {
 	}
 
 	/**
+	 * Relative audio and video sources are resolved against the page URL (#166).
+	 */
+	public function test_relative_media_urls() {
+		$jf2 = ParseThis\HTML::parse( ParseThis\pt_load_domdocument( '<html><body><audio src="/a.mp3"></audio><figure data-audio-url="b.mp3"></figure><video src="v.mp4"></video><video src="https://cdn.example.net/w.mp4"></video></body></html>' ), 'https://example.com/post/' );
+		$this->assertSame( array( 'https://example.com/a.mp3', 'https://example.com/post/b.mp3' ), $jf2['audio'] );
+		$this->assertSame( array( 'https://example.com/post/v.mp4', 'https://cdn.example.net/w.mp4' ), $jf2['video'] );
+	}
+
+	/**
 	 * Parses a page carrying the given JSON-LD graph, without other markup.
 	 *
 	 * @param array $graph JSON-LD nodes.
