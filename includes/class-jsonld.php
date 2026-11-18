@@ -537,7 +537,12 @@ class JSONLD extends Base {
 	/**
 	 * Converts a MusicRelease node into a jf2 cite.
 	 *
+	 * The artists (releaseOf.byArtist, one or a list) become a list of cards
+	 * in author.
+	 *
 	 * @since 1.0.0
+	 * @since 2.0.1 Artists are cards rather than one-item lists, and a single
+	 *              byArtist object is accepted.
 	 *
 	 * @param array $music MusicRelease node.
 	 * @return array|false jf2 cite including its artists and tracks, or false if the node
@@ -558,19 +563,29 @@ class JSONLD extends Base {
 			'published' => normalize_iso8601( $music['datePublished'] ?? null ),
 			'featured'  => self::image_to_photo( $music['image'] ?? null ),
 		);
-		if ( isset( $music['releaseOf'] ) ) {
-			if ( isset( $music['releaseOf']['byArtist'] ) ) {
-				$return['author'] = array();
-				foreach ( $music['releaseOf']['byArtist'] as $artist ) {
-					$return['author'][] = array(
-						array_filter(
-							array(
-								'type' => 'card',
-								'name' => $artist['name'] ?? null,
-								'url'  => $artist['@id'] ?? null,
-							)
-						),
-					);
+		if ( isset( $music['releaseOf']['byArtist'] ) ) {
+			// One artist or a list of them; each becomes a card.
+			$artists = $music['releaseOf']['byArtist'];
+			if ( ! is_array( $artists ) || ! wp_is_numeric_array( $artists ) ) {
+				$artists = array( $artists );
+			}
+			$return['author'] = array();
+			foreach ( $artists as $artist ) {
+				if ( is_string( $artist ) ) {
+					$artist = array( 'name' => $artist );
+				}
+				if ( ! is_array( $artist ) ) {
+					continue;
+				}
+				$card = array_filter(
+					array(
+						'name' => $artist['name'] ?? null,
+						'url'  => $artist['url'] ?? ( $artist['@id'] ?? null ),
+					),
+					'is_string'
+				);
+				if ( $card ) {
+					$return['author'][] = array( 'type' => 'card' ) + $card;
 				}
 			}
 		}
