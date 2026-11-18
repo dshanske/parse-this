@@ -295,7 +295,6 @@ class Parser_JSONLD_Types_Test extends Parse_This_TestCase {
 	 * A creator is treated like an author: one card on its own, and author isn't overwritten.
 	 */
 	public function test_article_creator() {
-		$this->markTestSkipped( 'article_to_hentry() replaces author with an unfiltered list of creators (#172).' );
 		$entry = JSONLD::article_to_hentry(
 			array(
 				'@type'   => 'Article',
