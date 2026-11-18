@@ -218,14 +218,17 @@ class Parser_HTML_Meta_Test extends Parse_This_TestCase {
 	}
 
 	/**
-	 * Dublin Core tags as pages write them (DC.title, dc.creator) are recognized.
+	 * Dublin Core tags as pages write them (DC.title, dc.creator, DCTERMS.issued) are recognized.
 	 */
 	public function test_dublin_core_in_markup() {
-		$this->markTestSkipped( 'Dublin Core is read only from "dc.Title"-style names; DC.title and dc.title are ignored (#186).' );
 		$jf2 = $this->parse_head( '<meta name="DC.title" content="Upper"><meta name="dc.creator" content="Lower Creator"><meta name="DC.description" content="About">' );
 		$this->assertSame( 'Upper', $jf2['name'] );
 		$this->assertSame( 'Lower Creator', $jf2['author'] );
 		$this->assertSame( 'About', $jf2['summary'] );
+
+		$terms = $this->parse_head( '<meta name="DCTERMS.title" content="Terms"><meta name="DCTERMS.issued" content="2021-07-08">' );
+		$this->assertSame( 'Terms', $terms['name'] );
+		$this->assertStringStartsWith( '2021-07-08', $terms['published'] );
 	}
 
 	/**
