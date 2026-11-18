@@ -78,7 +78,6 @@ The endpoint requires the `edit_posts` capability (Contributors and above); the 
 ### Filters
 
 * `pt_rewrite_secure`: the list of domains whose `http://` URLs are upgraded to `https://` before fetching.
-* `parse_this_img_filters`: an image URL found in a page, after the built-in exclusions (ads, spinners, tracking pixels and so on). Return an empty string to drop it.
 * `parse_this_url_shorteners`: the hosts treated as link shorteners. Links to them in a summary are expanded to where they redirect; other links are left as they are, without a request.
 * `parse_this_native_html_parser`: whether to parse HTML with PHP's own HTML5 parser on PHP 8.4 and later. Default true. Return false to use the bundled masterminds/html5 parser instead; the two only differ on invalid markup, where PHP's parser does what browsers do.
 * `parse_this_max_requests`: how many further requests one parse may make for followed author pages and short-link expansion. Default 10. Receives the URL.
@@ -157,6 +156,7 @@ Yes. It is tested with ClassicPress 2.7 on PHP 7.4 to 8.3.
 
 * Relative `<audio>` and `<video>` URLs found by the HTML parser are now made absolute.
 * The bundled php-mf2 is updated to 0.5.1. It no longer raises PHP 8.2 and 8.5 deprecation notices while parsing (three remain on PHP 8.4+ when the file loads, fixed upstream but not yet released). It also parses classic hReview markup better: the reviewer becomes the author, and hreview-aggregate and geo are recognized.
+* Unused code is removed: the `limit_array()`, `limit_url()`, `limit_img()` and `limit_embed()` helpers, a commented-out block in the HTML parser that would have scraped every image, embed and link on a page, and the `parse_this_img_filters` filter, which could no longer run.
 
 ### 2.0.0 ( 2026-10-03 )
 
