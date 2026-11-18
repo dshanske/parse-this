@@ -177,7 +177,6 @@ class RESTAPI_More_Test extends Parse_This_TestCase {
 	 * A plain-permalink site's posts are fetched with _embed as a query argument, not in the route.
 	 */
 	public function test_parse_root_as_feed_plain_permalinks() {
-		$this->markTestSkipped( 'RESTAPI::parse() puts "?_embed=1" inside rest_route on plain-permalink sites (#190).' );
 		$this->respond( 'https://example.com/?rest_route=/wp/v2/posts&_embed=1', wp_json_encode( array() ), 'application/json' );
 		$this->respond_site_data( 'https://example.com/?rest_route=/', array( 'name' => 'Site' ) );
 		$feed = RESTAPI::parse( array( 'namespaces' => array( 'wp/v2' ) ), 'https://example.com/?rest_route=/', array( 'return' => 'feed' ) );
