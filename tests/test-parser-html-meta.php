@@ -88,7 +88,6 @@ class Parser_HTML_Meta_Test extends Parse_This_TestCase {
 	 * Parse.ly tags separated by a comma and a space are trimmed.
 	 */
 	public function test_parsely_tags_trimmed() {
-		$this->markTestSkipped( 'meta_to_jf2() splits parsely-tags on commas without trimming (#184).' );
 		$jf2 = HTML::meta_to_jf2( array( 'parsely-tags' => 'alpha, beta' ) );
 		$this->assertSame( array( 'alpha', 'beta' ), $jf2['category'] );
 	}
@@ -169,7 +168,6 @@ class Parser_HTML_Meta_Test extends Parse_This_TestCase {
 	 * An article's modified time becomes jf2's updated.
 	 */
 	public function test_article_modified_is_updated() {
-		$this->markTestSkipped( 'meta_to_jf2() maps article:modified_time to "modified", which is not a jf2 property (#185).' );
 		$jf2 = $this->parse_head( '<meta property="og:type" content="article"><meta property="article:modified_time" content="2024-02-02T10:00:00Z">' );
 		$this->assertStringStartsWith( '2024-02-02', $jf2['updated'] );
 	}
@@ -220,14 +218,17 @@ class Parser_HTML_Meta_Test extends Parse_This_TestCase {
 	}
 
 	/**
-	 * Dublin Core tags as pages write them (DC.title, dc.creator) are recognized.
+	 * Dublin Core tags as pages write them (DC.title, dc.creator, DCTERMS.issued) are recognized.
 	 */
 	public function test_dublin_core_in_markup() {
-		$this->markTestSkipped( 'Dublin Core is read only from "dc.Title"-style names; DC.title and dc.title are ignored (#186).' );
 		$jf2 = $this->parse_head( '<meta name="DC.title" content="Upper"><meta name="dc.creator" content="Lower Creator"><meta name="DC.description" content="About">' );
 		$this->assertSame( 'Upper', $jf2['name'] );
 		$this->assertSame( 'Lower Creator', $jf2['author'] );
 		$this->assertSame( 'About', $jf2['summary'] );
+
+		$terms = $this->parse_head( '<meta name="DCTERMS.title" content="Terms"><meta name="DCTERMS.issued" content="2021-07-08">' );
+		$this->assertSame( 'Terms', $terms['name'] );
+		$this->assertStringStartsWith( '2021-07-08', $terms['published'] );
 	}
 
 	/**

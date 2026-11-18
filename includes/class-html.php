@@ -136,6 +136,9 @@ class HTML extends Base {
 	 * an entry, profile a card, and book, music.song and video types a cite.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.1 Parse.ly tags are trimmed, article:modified_time becomes
+	 *              updated rather than modified, and Dublin Core names (DC.,
+	 *              dc. and DCTERMS.) are matched in any case.
 	 *
 	 * @param array $meta Meta values as grouped by parse_meta(), keyed by prefix
 	 *                    (og, article, dc, music, video, ...) or by plain name.
@@ -204,7 +207,7 @@ class HTML extends Base {
 					}
 					$modified = $meta['article']['modified_time'] ?? $meta['article']['modified'] ?? null;
 					if ( $modified ) {
-						$jf2['modified'] = normalize_iso8601( $modified );
+						$jf2['updated'] = normalize_iso8601( $modified );
 					}
 					$jf2['category'] = $meta['article']['tag'] ?? null;
 				}
@@ -249,17 +252,25 @@ class HTML extends Base {
 				}
 			}
 		}
-		if ( isset( $meta['dc'] ) ) {
-			$dc = $meta['dc'];
-			if ( isset( $dc['Title'] ) ) {
-				$jf2['name'] = $dc['Title'];
+		// Dublin Core: DC.title, dc.title, DCTERMS.title and so on, in any case.
+		$dc = array();
+		foreach ( $meta as $prefix => $values ) {
+			if ( is_array( $values ) && in_array( strtolower( (string) $prefix ), array( 'dc', 'dcterms' ), true ) ) {
+				foreach ( $values as $key => $value ) {
+					$dc += array( strtolower( (string) $key ) => $value );
+				}
 			}
-			if ( isset( $dc['Creator'] ) ) {
-				if ( is_string( $dc['Creator'] ) ) {
-					$jf2['author'] = $dc['Creator'];
+		}
+		if ( $dc ) {
+			if ( isset( $dc['title'] ) ) {
+				$jf2['name'] = $dc['title'];
+			}
+			if ( isset( $dc['creator'] ) ) {
+				if ( is_string( $dc['creator'] ) ) {
+					$jf2['author'] = $dc['creator'];
 				} else {
 					$jf2['author'] = array();
-					foreach ( $dc['Creator'] as $creator ) {
+					foreach ( $dc['creator'] as $creator ) {
 						$jf2['author'][] = array(
 							'type' => 'card',
 							'name' => $creator,
@@ -267,11 +278,12 @@ class HTML extends Base {
 					}
 				}
 			}
-			if ( isset( $dc['Description'] ) ) {
-				$jf2['summary'] = $dc['Description'];
+			if ( isset( $dc['description'] ) ) {
+				$jf2['summary'] = $dc['description'];
 			}
-			if ( isset( $dc['Date'] ) && ! isset( $jf2['published'] ) ) {
-				$jf2['published'] = normalize_iso8601( $dc['Date'] );
+			$date = $dc['date'] ?? ( $dc['issued'] ?? ( $dc['created'] ?? null ) );
+			if ( $date && ! isset( $jf2['published'] ) ) {
+				$jf2['published'] = normalize_iso8601( $date );
 			}
 		}
 
@@ -300,11 +312,8 @@ class HTML extends Base {
 		}
 
 		if ( empty( $jf2['category'] ) && isset( $meta['parsely-tags'] ) ) {
-			if ( is_array( $meta['parsely-tags'] ) ) {
-				$jf2['category'] = $meta['parsely-tags'];
-			} else {
-				$jf2['category'] = explode( ',', $meta['parsely-tags'] );
-			}
+			$tags            = is_array( $meta['parsely-tags'] ) ? $meta['parsely-tags'] : explode( ',', $meta['parsely-tags'] );
+			$jf2['category'] = array_values( array_filter( array_map( 'trim', array_filter( $tags, 'is_string' ) ), 'strlen' ) );
 		}
 
 		if ( ! isset( $jf2['latitude'] ) && isset( $meta['playfoursquare'] ) ) {
