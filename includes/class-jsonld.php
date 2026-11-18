@@ -812,9 +812,30 @@ class JSONLD extends Base {
 	}
 
 	/**
+	 * Returns the card properties for a schema.org address.
+	 *
+	 * A PostalAddress gives its parts; plain text, which schema.org also allows,
+	 * becomes the card's label.
+	 *
+	 * @since 2.0.1
+	 *
+	 * @param array|string|mixed $address PostalAddress node or text.
+	 * @return array Address properties, possibly empty.
+	 */
+	private static function address_properties( $address ) {
+		if ( is_string( $address ) ) {
+			$address = trim( $address );
+			return '' === $address ? array() : array( 'label' => $address );
+		}
+		$parts = self::postaladdress_to_address( $address );
+		return is_array( $parts ) ? $parts : array();
+	}
+
+	/**
 	 * Converts a Place node into a jf2 card.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.1 A plain-text address is kept as the card's label.
 	 *
 	 * @param array|mixed $place Place node.
 	 * @return array|false Card with '_type' => 'place', its address merged in, or false.
@@ -838,10 +859,7 @@ class JSONLD extends Base {
 		);
 
 		if ( isset( $place['address'] ) ) {
-			$address = self::postaladdress_to_address( $place['address'] );
-			if ( is_array( $address ) ) {
-				$hcard = array_merge( $hcard, $address );
-			}
+			$hcard = array_merge( $hcard, self::address_properties( $place['address'] ) );
 		}
 		return array_filter( $hcard );
 	}
@@ -926,6 +944,7 @@ class JSONLD extends Base {
 	 * Converts an Organization node into a jf2 card.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.1 A plain-text address is kept as the card's label.
 	 *
 	 * @param array|mixed $organization Organization, NewsMediaOrganization, NGO or
 	 *                                   MusicGroup node.
@@ -962,12 +981,7 @@ class JSONLD extends Base {
 			$publication['member'] = array_filter( $publication['member'] );
 		}
 		if ( isset( $organization['address'] ) ) {
-			$address = self::postaladdress_to_address( $organization['address'] );
-			if ( is_array( $address ) ) {
-				$publication = array_merge( $publication, $address );
-			} else {
-				$publication['_address'] = $address;
-			}
+			$publication = array_merge( $publication, self::address_properties( $organization['address'] ) );
 		}
 		return array_filter( $publication );
 	}
