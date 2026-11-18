@@ -30,7 +30,6 @@ class RESTAPI_More_Test extends Parse_This_TestCase {
 	 * A rendered field that isn't an object is ignored rather than causing an error.
 	 */
 	public function test_rendered_string_field() {
-		$this->markTestSkipped( 'RESTAPI::get_rendered() throws a TypeError when the field is not an array (#191).' );
 		$this->assertNull( RESTAPI::get_rendered( 'title', array( 'title' => 'Plain string' ) ) );
 	}
 
