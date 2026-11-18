@@ -488,13 +488,16 @@ class MF2 extends MF2_Utils {
 	 * Combines a document's top-level items into a single h-feed.
 	 *
 	 * The first h-card is removed from the items and used as the feed's author.
-	 * If only one item remains, the document is returned with that h-card as the
-	 * item's author instead.
+	 * If only one item remains, the document is returned with just that item,
+	 * and the h-card becomes its author if it has none of its own.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.1 The remaining item keeps its own author, and is no longer
+	 *              lost when the h-card came first.
 	 *
 	 * @param array $input Parsed mf2 document.
-	 * @return array Parsed mf2 document with one h-feed item.
+	 * @return array Parsed mf2 document with one item: an h-feed, or the only
+	 *               item that isn't the h-card.
 	 */
 	public static function normalize_feed( $input ) {
 		$hcard = array();
@@ -505,8 +508,10 @@ class MF2 extends MF2_Utils {
 				break;
 			}
 		}
+		$input['items'] = array_values( $input['items'] );
+		$author         = $hcard ? array( 'author' => array( $hcard ) ) : array();
 		if ( 1 === count( $input['items'] ) ) {
-			if ( self::has_prop( $input['items'][0], 'author' ) ) {
+			if ( $hcard && ! self::has_prop( $input['items'][0], 'author' ) ) {
 				$input['items'][0]['properties']['author'] = array( $hcard );
 			}
 			return $input;
@@ -515,9 +520,7 @@ class MF2 extends MF2_Utils {
 			'items' => array(
 				array(
 					'type'       => array( 'h-feed' ),
-					'properties' => array(
-						'author' => array( $hcard ),
-					),
+					'properties' => $author,
 					'children'   => $input['items'],
 				),
 			),
