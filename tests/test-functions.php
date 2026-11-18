@@ -464,4 +464,18 @@ class Functions_Test extends Parse_This_TestCase {
 		wp_delete_user( $editor );
 		$this->assertSame( 1, ParseThis\url_to_user( home_url() )->ID );
 	}
+
+	/**
+	 * pt_is_http_url() is a syntax check that doesn't depend on DNS.
+	 */
+	public function test_is_http_url() {
+		$this->assertTrue( ParseThis\pt_is_http_url( 'https://writer.invalid/' ) );
+		$this->assertTrue( ParseThis\pt_is_http_url( 'HTTP://example.com' ) );
+		$this->assertFalse( ParseThis\pt_is_http_url( 'Jane Doe' ) );
+		$this->assertFalse( ParseThis\pt_is_http_url( '/relative/path' ) );
+		$this->assertFalse( ParseThis\pt_is_http_url( 'mailto:jane@example.com' ) );
+		$this->assertFalse( ParseThis\pt_is_http_url( 'https://example.com/a b' ) );
+		$this->assertFalse( ParseThis\pt_is_http_url( 'https:///nohost' ) );
+		$this->assertFalse( ParseThis\pt_is_http_url( array( 'https://example.com/' ) ) );
+	}
 }
