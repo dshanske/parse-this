@@ -273,6 +273,30 @@ class Parser_MF2_Paths_Test extends Parse_This_TestCase {
 	}
 
 	/**
+	 * Types without a handler keep all their properties, including ones other types know (#210).
+	 */
+	public function test_unknown_type_keeps_properties() {
+		$thing = MF2::parse( '<div class="h-x-thing"><span class="p-name">Thing</span><span class="p-category">tag</span><img class="u-photo" src="https://example.com/p.jpg"><span class="p-x-custom">c</span></div>', 'https://example.com/t', $this->offline() );
+		$this->assertSame( 'x-thing', $thing['type'] );
+		$this->assertSame( 'tag', $thing['category'] );
+		$this->assertSame( 'https://example.com/p.jpg', $thing['photo'] );
+		$this->assertSame( 'c', $thing['x-custom'] );
+
+		$aggregate = MF2::parse( '<div class="h-review-aggregate"><span class="p-name">Pizza</span> <data class="p-rating" value="4.5">4.5</data> <data class="p-best" value="5">5</data> <span class="p-count">20</span></div>', 'https://example.com/p', $this->offline() );
+		$this->assertSame( 'review-aggregate', $aggregate['type'] );
+		$this->assertSame( '4.5', $aggregate['rating'] );
+		$this->assertSame( '5', $aggregate['best'] );
+		$this->assertSame( '20', $aggregate['count'] );
+
+		// Classic markup, upgraded by php-mf2: no generic properties, only item, rating and count.
+		$classic = MF2::parse( '<div class="hreview-aggregate"><span class="item"><span class="fn">Pizza</span></span> <span class="rating">4.5</span> <span class="count">20</span></div>', 'https://example.com/p', $this->offline() );
+		$this->assertSame( 'review-aggregate', $classic['type'] );
+		$this->assertSame( '4.5', $classic['rating'] );
+		$this->assertSame( '20', $classic['count'] );
+		$this->assertSame( 'Pizza', $classic['item']['name'] );
+	}
+
+	/**
 	 * Every parse_h* function ignores input that isn't a microformat.
 	 */
 	public function test_type_parsers_reject_non_microformats() {

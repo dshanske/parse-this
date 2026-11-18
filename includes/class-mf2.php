@@ -1046,24 +1046,35 @@ class MF2 extends MF2_Utils {
 	 * Converts a microformat of an unrecognized type into jf2.
 	 *
 	 * Microformats2 parsing is vocabulary-agnostic, so any h-* root gets the
-	 * generic properties from parse_h() and its type without the h- prefix,
-	 * as jf2 does for known types (h-org becomes org).
+	 * generic properties from parse_h(), every other property it has (as
+	 * get_prop_array() converts them), and its type without the h- prefix, as
+	 * jf2 does for known types (h-org becomes org, h-review-aggregate becomes
+	 * review-aggregate).
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.1 Passes through all properties parse_h() doesn't read, even
+	 *              ones known from other types (category, photo, rating), and
+	 *              keeps items that have none of the generic properties.
 	 *
 	 * @param array $unknown Microformat.
 	 * @param array $mf      Parsed mf2 document.
 	 * @param array $args    Parse arguments (see Parser::parse()).
-	 * @return array jf2 with the generic properties and the type, or an empty
-	 *               array if the type isn't h-* or no properties were found.
+	 * @return array jf2 with the properties and the type, or an empty array if
+	 *               the type isn't h-* or no properties were found.
 	 */
 	public static function parse_hunknown( $unknown, $mf, $args ) {
 		$type = $unknown['type'][0];
 		if ( ! is_string( $type ) || 0 !== strpos( $type, 'h-' ) || 'h-' === $type ) {
 			return array();
 		}
-		// Parse unknown h property.
 		$data = self::parse_h( $unknown, $mf, $args );
+		// parse_h() reads these, and may drop one on purpose (a name that repeats
+		// the content), so only the rest are passed through.
+		$generic = array( 'name', 'published', 'updated', 'url', 'author', 'content', 'summary' );
+		$rest    = array_diff( array_keys( (array) ( $unknown['properties'] ?? array() ) ), $generic, array_keys( $data ) );
+		if ( $rest ) {
+			$data = array_merge( $data, self::filter_empty( self::get_prop_array( $unknown, array_values( $rest ), $args ) ) );
+		}
 		if ( empty( $data ) ) {
 			return array();
 		}
