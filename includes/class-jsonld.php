@@ -210,9 +210,6 @@ class JSONLD extends Base {
 		if ( ! array_key_exists( 'author', $return ) && array_key_exists( 'person', $jf2 ) ) {
 			$return['author'] = $jf2['person'];
 		}
-		if ( ! array_key_exists( 'publication', $return ) && array_key_exists( 'publisher', $jf2 ) ) {
-			$return['publication'] = $jf2['publisher'];
-		}
 		return array_filter( $return, array( __CLASS__, 'is_set' ) );
 	}
 
@@ -1154,8 +1151,6 @@ class JSONLD extends Base {
 		if ( isset( $newsarticle['keywords'] ) ) {
 			if ( ! is_array( $newsarticle['keywords'] ) ) {
 				$newsarticle['keywords'] = explode( ',', $newsarticle['keywords'] );
-			} elseif ( is_string( $newsarticle['keywords'] ) ) {
-				$newsarticle['keywords'] = array( $newsarticle['keywords'] );
 			}
 			$jf2['category'] = array_map( 'trim', $newsarticle['keywords'] );
 		}
