@@ -174,7 +174,6 @@ class Parser_JSONLD_Types_Test extends Parse_This_TestCase {
 	 * Audio and video transcripts become jf2 content with html and text.
 	 */
 	public function test_media_transcript_text() {
-		$this->markTestSkipped( 'audio_to_audio() and video_to_video() store the transcript text as content.value (#177).' );
 		$video = JSONLD::video_to_video(
 			array(
 				'@type'      => 'VideoObject',

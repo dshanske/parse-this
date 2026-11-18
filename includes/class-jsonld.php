@@ -718,6 +718,7 @@ class JSONLD extends Base {
 	 * Converts an AudioObject node into jf2 properties.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.1 The transcript's plain text is content.text, not content.value.
 	 *
 	 * @param array|string $audio AudioObject node, or a URL.
 	 * @return array|string|false jf2 properties (name, summary, featured, audio,
@@ -742,8 +743,8 @@ class JSONLD extends Base {
 		);
 		if ( isset( $audio['transcript'] ) ) {
 			$return['content'] = array(
-				'html'  => Parser::clean_content( $audio['transcript'] ),
-				'value' => wp_strip_all_tags( $audio['transcript'] ),
+				'html' => Parser::clean_content( $audio['transcript'] ),
+				'text' => trim( wp_strip_all_tags( $audio['transcript'] ) ),
 			);
 		}
 		if ( isset( $audio['publisher'] ) ) {
@@ -756,6 +757,7 @@ class JSONLD extends Base {
 	 * Converts a VideoObject node into jf2 properties.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.1 The transcript's plain text is content.text, not content.value.
 	 *
 	 * @param array|string $video VideoObject node, or a URL.
 	 * @return array|string|false jf2 properties (name, summary, featured, video,
@@ -780,8 +782,8 @@ class JSONLD extends Base {
 
 		if ( isset( $video['transcript'] ) ) {
 			$return['content'] = array(
-				'html'  => Parser::clean_content( $video['transcript'] ),
-				'value' => wp_strip_all_tags( $video['transcript'] ),
+				'html' => Parser::clean_content( $video['transcript'] ),
+				'text' => trim( wp_strip_all_tags( $video['transcript'] ) ),
 			);
 		}
 		if ( isset( $video['publisher'] ) ) {
