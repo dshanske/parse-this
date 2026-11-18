@@ -93,7 +93,8 @@ class Parser_Feeds_More_Test extends Parse_This_TestCase {
 	public function test_photos_and_itunes_image() {
 		$feed  = $this->simplepie(
 			$this->rss(
-				'<item><title>Photos</title><enclosure url="https://example.com/1.jpg" type="image/jpeg" length="1"/><enclosure url="https://example.com/2.jpg" type="image/jpeg" length="1"/></item>'
+				// media:content, not two <enclosure>s: SimplePie 1.5 (WordPress 6.2) reads only the first enclosure.
+				'<item><title>Photos</title><media:content url="https://example.com/1.jpg" type="image/jpeg"/><media:content url="https://example.com/2.jpg" type="image/jpeg"/></item>'
 				. '<item><title>Podcast</title><itunes:image href="https://example.com/cover.jpg"/></item>'
 			)
 		);
