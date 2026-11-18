@@ -136,6 +136,7 @@ class HTML extends Base {
 	 * an entry, profile a card, and book, music.song and video types a cite.
 	 *
 	 * @since 1.0.0
+	 * @since 2.0.1 Parse.ly tags are trimmed.
 	 *
 	 * @param array $meta Meta values as grouped by parse_meta(), keyed by prefix
 	 *                    (og, article, dc, music, video, ...) or by plain name.
@@ -300,11 +301,8 @@ class HTML extends Base {
 		}
 
 		if ( empty( $jf2['category'] ) && isset( $meta['parsely-tags'] ) ) {
-			if ( is_array( $meta['parsely-tags'] ) ) {
-				$jf2['category'] = $meta['parsely-tags'];
-			} else {
-				$jf2['category'] = explode( ',', $meta['parsely-tags'] );
-			}
+			$tags            = is_array( $meta['parsely-tags'] ) ? $meta['parsely-tags'] : explode( ',', $meta['parsely-tags'] );
+			$jf2['category'] = array_values( array_filter( array_map( 'trim', array_filter( $tags, 'is_string' ) ), 'strlen' ) );
 		}
 
 		if ( ! isset( $jf2['latitude'] ) && isset( $meta['playfoursquare'] ) ) {

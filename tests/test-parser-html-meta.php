@@ -88,7 +88,6 @@ class Parser_HTML_Meta_Test extends Parse_This_TestCase {
 	 * Parse.ly tags separated by a comma and a space are trimmed.
 	 */
 	public function test_parsely_tags_trimmed() {
-		$this->markTestSkipped( 'meta_to_jf2() splits parsely-tags on commas without trimming (#184).' );
 		$jf2 = HTML::meta_to_jf2( array( 'parsely-tags' => 'alpha, beta' ) );
 		$this->assertSame( array( 'alpha', 'beta' ), $jf2['category'] );
 	}
