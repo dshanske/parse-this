@@ -411,10 +411,9 @@ class Parser_JSONLD_Types_Test extends Parse_This_TestCase {
 	}
 
 	/**
-	 * A plain-text address on an organization is kept rather than dropped.
+	 * A plain-text address on an organization or place is kept as its label.
 	 */
 	public function test_organization_text_address() {
-		$this->markTestSkipped( 'organization_to_hcard() drops a plain-text address (#173).' );
 		$org = JSONLD::organization_to_hcard(
 			array(
 				'@type'   => 'Organization',
@@ -422,7 +421,15 @@ class Parser_JSONLD_Types_Test extends Parse_This_TestCase {
 				'address' => '1 Main Street, Town',
 			)
 		);
-		$this->assertSame( '1 Main Street, Town', $org['street-address'] );
+		$this->assertSame( '1 Main Street, Town', $org['label'] );
+		$place = JSONLD::place_to_hcard(
+			array(
+				'@type'   => 'Place',
+				'name'    => 'Park',
+				'address' => '2 Side Road',
+			)
+		);
+		$this->assertSame( '2 Side Road', $place['label'] );
 	}
 
 	/**
