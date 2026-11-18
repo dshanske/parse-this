@@ -96,7 +96,7 @@ class HTML extends Base {
 			foreach ( $xpath->query( '//video' ) as $video ) {
 				$src = $video->getAttribute( 'src' );
 				if ( ! empty( $src ) ) {
-					$videos[] = $src;
+					$videos[] = pt_make_absolute_url( $src, $url );
 				}
 			}
 			$jf2['video'] = array_unique( $videos );
@@ -109,14 +109,14 @@ class HTML extends Base {
 			foreach ( $xpath->query( '//audio' ) as $audio ) {
 				$src = $audio->getAttribute( 'src' );
 				if ( ! empty( $src ) ) {
-					$audios[] = $src;
+					$audios[] = pt_make_absolute_url( $src, $url );
 				}
 			}
 
 			foreach ( $xpath->query( '//figure' ) as $audio ) {
 				$src = $audio->getAttribute( 'data-audio-url' );
 				if ( ! empty( $src ) ) {
-					$audios[] = $src;
+					$audios[] = pt_make_absolute_url( $src, $url );
 				}
 			}
 			$jf2['audio'] = array_unique( $audios );

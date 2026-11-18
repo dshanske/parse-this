@@ -155,6 +155,7 @@ Yes. It is tested with ClassicPress 2.7 on PHP 7.4 to 8.3.
 
 ### Unreleased
 
+* Relative `<audio>` and `<video>` URLs found by the HTML parser are now made absolute.
 * The bundled php-mf2 is updated to 0.5.1. It no longer raises PHP 8.2 and 8.5 deprecation notices while parsing (three remain on PHP 8.4+ when the file loads, fixed upstream but not yet released). It also parses classic hReview markup better: the reviewer becomes the author, and hreview-aggregate and geo are recognized.
 
 ### 2.0.0 ( 2026-10-03 )
