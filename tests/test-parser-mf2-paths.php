@@ -260,7 +260,6 @@ class Parser_MF2_Paths_Test extends Parse_This_TestCase {
 	 * rel=syndication links are merged with the item's own syndication.
 	 */
 	public function test_syndication_rels() {
-		$this->markTestSkipped( 'parse_hentry() lets the page rel=syndication overwrite the entry u-syndication (#181).' );
 		$jf2 = MF2::parse( '<a rel="syndication" href="https://silo.example/1">s</a><div class="h-entry"><p class="p-name">Hi</p><a class="u-syndication" href="https://silo.example/2">t</a></div>', 'https://example.com/', $this->offline() );
 		$this->assertEqualsCanonicalizing( array( 'https://silo.example/1', 'https://silo.example/2' ), array_values( $jf2['syndication'] ) );
 
