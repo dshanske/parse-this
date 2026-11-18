@@ -139,7 +139,6 @@ class Parser_MF2_Paths_Test extends Parse_This_TestCase {
 	 * A feed request for a page with an h-card and one other item gives that item.
 	 */
 	public function test_feed_with_card_and_one_item() {
-		$this->markTestSkipped( 'normalize_feed() leaves the remaining item at index 1, so nothing is returned (#180).' );
 		$jf2 = MF2::parse( '<div class="h-card"><a class="p-name u-url" href="https://example.com/">Owner</a></div><div class="h-entry"><p class="p-name">Post</p></div>', 'https://example.com/', $this->offline( array( 'return' => 'feed' ) ) );
 		$this->assertSame( 'Post', $jf2['name'] );
 	}
@@ -148,7 +147,6 @@ class Parser_MF2_Paths_Test extends Parse_This_TestCase {
 	 * When a feed request's lone item has no author, the page's h-card becomes it.
 	 */
 	public function test_feed_card_becomes_author() {
-		$this->markTestSkipped( 'normalize_feed() only sets the h-card as author when the item already has one, overwriting it (#180).' );
 		$jf2 = MF2::parse( '<div class="h-card"><a class="p-name u-url" href="https://example.com/">Owner</a></div><div class="h-entry"><p class="p-name">Post</p></div>', 'https://example.com/', $this->offline( array( 'return' => 'feed' ) ) );
 		$this->assertSame( 'Owner', $jf2['author']['name'] );
 		$own = MF2::parse( '<div class="h-card"><a class="p-name u-url" href="https://example.com/">Owner</a></div><div class="h-entry"><p class="p-name">Post</p><span class="p-author">Guest</span></div>', 'https://example.com/', $this->offline( array( 'return' => 'feed' ) ) );
